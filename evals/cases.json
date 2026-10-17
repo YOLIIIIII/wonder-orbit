@@ -1,0 +1,55 @@
+{
+  "extraction": [
+    {
+      "id": "ocean-space",
+      "text": "我一直想了解海洋，最近对星空和深海生物感到好奇。",
+      "expected_mock_tags": [
+        "海洋",
+        "深海",
+        "星空"
+      ]
+    },
+    {
+      "id": "unknown",
+      "text": "我想做一件还没想好的小事。",
+      "expected_mock_tags": []
+    },
+    {
+      "id": "explicit-source",
+      "text": "关于音乐的文字；不要替我猜测原因。",
+      "expected_mock_tags": [
+        "音乐"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "empty-history",
+      "expected": "ask_question_no_proposal"
+    },
+    {
+      "id": "unknown-budget-with-limit",
+      "expected": "validation_reject"
+    },
+    {
+      "id": "invented-star-id",
+      "expected": "validation_reject"
+    },
+    {
+      "id": "unapproved-write",
+      "expected": "403_no_quest"
+    },
+    {
+      "id": "duplicate-approval",
+      "expected": "same_quest_id"
+    },
+    {
+      "id": "model-timeout",
+      "expected": "failed_audited_retryable"
+    },
+    {
+      "id": "feedback",
+      "expected": "persistent_candidate_not_explicit"
+    }
+  ]
+}
