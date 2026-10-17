@@ -1,13 +1,13 @@
 # 产品待办与迭代队列
 
-更新日期：2026-10-11（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
+更新日期：2026-10-17（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
 
 ## 已交付基线与当前范围
 
 - Star CRUD、单草稿确认、关键词/标签检索、真实关联、LangGraph/受控工具、审批、反馈、候选偏好确认、Mock、运行审计与基础 Web UI 已实现，详见 README 和既有验收。不会重新列为待实现。
-- PostgreSQL、容器、真实模型和 CI **已有实现/配置，缺对应验证**；语义检索、多草稿等是**待评估/待实现**。两者不得混同。
-- 上轮验收后端 47 passed / 1 skipped、前端 9 passed；本轮只做文档，不据此宣称重新通过应用测试。
-- 本轮只处理 DOC-001。所有 UX/UI/Agent/工程任务都不因被写入文档而启动，也不授权 commit/push 或真实模型调用。
+- PostgreSQL、容器、真实模型和 CI 已有实现/配置；首次远程前端及 PG 迁移/schema 通过，但普通 pytest 失败、独立 PG 集成未执行，完整验收仍缺证据。语义检索、多草稿等是待评估/待实现，两者不得混同。
+- 2026-10-17 实际回归后端 47 passed / 1 skipped、前端 9 passed；已在独立干净检出复现缺父目录问题并验证最小修复，PostgreSQL 本机仍缺服务。
+- 本轮仅处理 INFRA-003 的故障修复和 INFRA-007 本地提交身份；不改 Agent/UI/数据模型或依赖，不自动推送，不运行真实模型。
 
 ## 状态与完成规则
 
@@ -43,6 +43,8 @@
 
 语义检索等为 P2 实验，需基线和需求证据；并发验证 INFRA-004 当前为 P2，公开/多调用者场景出现时升优先级；checkpoint 和路由重构先用既有重试/组件抽取替代。下次排序变化在本节追加“日期、受影响 ID、旧/新优先级或顺序、证据、依赖与替代方案”；旧理由不删除。
 
+2026-10-17：重新审视全部未完成任务（含 deferred），优先收尾 **INFRA-007 本地身份 → INFRA-003 CI 修复与远程复验**，均为 P1；原因是已有根提交错误元数据和真实 CI 故障，修复成本低且直接影响可信交付。INFRA-003 仍 P1，执行顺序临时提前于 UX-003 → UX-001 → UX-002，待用户确认发布后再验远程；其他优先级与依赖不变，无新业务/数据安全 P0 证据。未完成 P1 仍为 8 项，INFRA-007 的本地范围已完成，不算远程历史已改。原 2026-10-11 排序理由保留在上文。
+
 ## 任务索引
 
 | ID | 标题 | 优先级 | 状态 | 想法 |
@@ -55,7 +57,7 @@
 | [UI-002](#ui-002) | 替换用户正式原创陪伴素材 | P3 | deferred | [IDEA-003](IDEA_LOG.md#idea-003) |
 | [INFRA-001](#infra-001) | 验证 PostgreSQL 迁移与现有集成测试 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [INFRA-002](#infra-002) | 验证完整 Compose 与 Nginx 应用启动 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
-| [INFRA-003](#infra-003) | 取得首次真实 GitHub Actions 运行证据 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
+| [INFRA-003](#infra-003) | 取得首次真实 GitHub Actions 运行证据 | P1 | in_progress | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [AGENT-001](#agent-001) | 验证一个真实模型服务的工具调用兼容性 | P1 | planned | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [EVAL-001](#eval-001) | 建立版本化案例与人工复核 Agent 基线 | P1 | planned | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [AGENT-002](#agent-002) | 评估并实现可分别审批的多兴趣草稿 | P2 | proposed | [IDEA-006](IDEA_LOG.md#idea-006) |
@@ -72,6 +74,7 @@
 | [DATA-004](#data-004) | 运行清理与审计保留策略 | P2 | proposed | [IDEA-010](IDEA_LOG.md#idea-010) |
 | [INFRA-005](#infra-005) | 定义幂等键与请求记录生命周期 | P2 | proposed | [IDEA-010](IDEA_LOG.md#idea-010) |
 | [INFRA-006](#infra-006) | 对外部署前的身份、对象权限与限流 | P3 | deferred | [IDEA-011](IDEA_LOG.md#idea-011) |
+| [INFRA-007](#infra-007) | 修正仓库本地提交身份与根提交元数据 | P1 | done | [IDEA-013](IDEA_LOG.md#idea-013) |
 
 ## 任务详情
 
@@ -215,18 +218,18 @@
 
 **取得首次真实 GitHub Actions 运行证据**
 
-- 描述与问题背景：工作流已配置，本地测试通过不代表远程 CI 已执行或成功。
+- 描述与问题背景：首次远程运行已失败；pytest 基础临时目录父级未建导致 35 项 setup 错误。本地测试通过仍不代表修复后的远程 CI 成功。
 - 优先级：P1。
-- 状态：planned。
+- 状态：in_progress。
 - 预期用户价值：后续改动可复现检查，维护者能知道失败在哪。
 - 技术价值（AI Agent 求职）：CI、锁文件安装及 PostgreSQL 服务验证。
 - 预计实现成本：S。
 - 主要风险：无远程执行权限/未发布；误把 YAML 可解析计为通过；日志泄露。
-- 前置依赖：[INFRA-001](#infra-001)；用户另行明确授权提交/推送或自行发布后才查看实际运行；本任务和 planned 状态不构成 push 授权。
+- 前置依赖：[INFRA-001](#infra-001) 的完整 PG 验收尚待完成；本轮已获只读核对远程和本地修复授权。发布修复及历史改写推送仍需用户明确确认；备份/本地修复见 [INFRA-007](#infra-007)，任何状态不构成 push 授权。
 - 验收标准：记录真实 workflow run 链接、commit SHA、环境、各 job 通过/失败/跳过；确认工作流规定的检查实际执行且 PostgreSQL 不是因缺配置跳过；失败修复后保留前后证据，不填写秘密进源码。
 - 原始想法：[IDEA-004](IDEA_LOG.md#idea-004)。
 - 相关文档或代码位置：.github/workflows/ci.yml；docs/VERIFICATION.md；README.md。
-- 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
+- 证据/交付记录：2026-10-17 通过 GitHub 连接器读取 [原失败运行](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/38140512844) 的步骤及 backend 日志：前端/PG 迁移/schema/Ruff 通过，普通 pytest 12 passed / 1 skipped / 35 errors，独立 PG 步骤 skipped。新增 mkdir -p .cache；独立干净检出修复后 47 passed / 1 skipped，前端 9 passed 及其他检查通过。修复未推送，未验远程全绿/PG 集成，保持 in_progress；完整证据见 [VERIFICATION](VERIFICATION.md)。
 
 ### AGENT-001
 
@@ -499,3 +502,20 @@
 - 原始想法：[IDEA-011](IDEA_LOG.md#idea-011)。
 - 相关文档或代码位置：README.md 已知限制；backend/app/main.py；backend/app/db.py；docker-compose.yml。
 - 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
+
+### INFRA-007
+
+**修正仓库本地提交身份与根提交元数据**
+
+- 描述与问题背景：首次根提交 Author/Committer 使用 Gitee noreply 身份；用户明确要求改为当前 GitHub 身份，并限制远程历史改写推送。
+- 优先级：P1。
+- 状态：done。
+- 预期用户价值：未来本地提交及已修正的根提交使用正确归属，旧历史有可恢复备份。
+- 技术价值（AI Agent 求职）：可审计的 Git 元数据修复、备份和显式 lease 发布流程。
+- 预计实现成本：S。
+- 主要风险：SHA 改变、误覆盖远程新提交、把本地完成误报为远程完成。
+- 前置依赖：用户明确授权；实际 main、唯一根提交与远程 SHA 相同；工作区/暂存区干净；备份成功后才 amend。
+- 验收标准：仅配置仓库 local 身份；创建旧提交备份引用；amend --reset-author 后 Author/Committer 均为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>；新旧 tree 相同；提供带精确期望 SHA 的 force-with-lease 步骤，未经确认不执行。此任务仅验收本地，远程发布/CI 由 INFRA-003 继续跟踪。
+- 原始想法：[IDEA-013](IDEA_LOG.md#idea-013)。
+- 相关文档或代码位置：.git/config、.git/refs（本地元数据，不提交）；[VERIFICATION](VERIFICATION.md)、README.md。
+- 证据/交付记录：2026-10-17，备份分支 backup/main-before-author-fix-20261017 指向 0fcb300ed9d06d7321b16354cb6f8ab5347bdbb3；本地根提交改为 5583c8bd2de9718b035ad16f5c5eeeadeb74599f，fuller 与 tree 比较通过。远程仍旧 SHA，没有推送。见本轮验证与 CHANGELOG。

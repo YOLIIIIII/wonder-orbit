@@ -29,6 +29,8 @@ jobs:
       - run: uv run alembic check
       - run: uv run ruff check backend evals
       - run: uv run ruff format --check backend evals
+      - name: Prepare pytest cache parent
+        run: mkdir -p .cache
       - run: uv run pytest
       - run: uv run pytest backend/tests/test_postgres.py --override-ini addopts=
         env:

@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### 2026-10-17：提交身份与 CI 本地修复（INFRA-007 / INFRA-003）
+
+- 已交付 INFRA-007 的本地范围：只配置仓库 GitHub 姓名/邮箱；备份唯一根提交后 amend --reset-author，Author/Committer 均正确，新旧文件树相同。远程历史未推送，备份引用保留。
+- CI 在 pytest 前新增 mkdir -p .cache，解决全新检出缺父目录的 setup 错误；未修改测试、Agent、数据模型、前端或依赖。
+- 独立干净检出先复现 12 passed / 1 skipped / 35 errors，只补父目录后 47 passed / 1 skipped；根目录回归同样通过，Ruff、隔离 SQLite 迁移/schema、前端 npm ci/格式/lint/类型/9 项测试/build 通过。
+- INFRA-003 尚未完成远程验收：原始运行 frontend 成功、backend 失败、独立 PG 集成步骤 skipped；修复未提交/推送，本机缺 PG/Docker。命令、原失败链接和带 lease 的待确认发布步骤见 VERIFICATION。
+
 ### 2026-10-11：需求与迭代维护机制（DOC-001）
 
 - 建立 IDEA_LOG 和 PRODUCT_BACKLOG，录入三项用户体验反馈及旧路线图工作，关联稳定 ID、优先级、状态、依赖、风险和验收条件。

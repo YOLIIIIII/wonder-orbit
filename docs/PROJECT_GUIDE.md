@@ -2,6 +2,8 @@
 
 核对日期：2026-10-11（Asia/Shanghai）。以本轮实际文件与源码为准，适合有 Java 后端基础、初学 Python Agent 的读者。本文解释“在哪里、怎么连起来、改完检查什么”，不另建需求或测试成绩台账。
 
+局部更新：2026-10-17 仅同步 CI 的 pytest 父目录准备、对应测试命令与最新 CI 边界；下文“本轮”及第八节首次导航检查数据保留为 2026-10-11 历史记录。本次实际重跑与 Git 身份修正见 [VERIFICATION](VERIFICATION.md) 的 2026-10-17 章节。
+
 本轮只允许创建本手册、补充 AGENTS；因此未改 Backlog/CHANGELOG/VERIFICATION。本文的当前状态是带日期的快照，正式任务仍以 [PRODUCT_BACKLOG](PRODUCT_BACKLOG.md) 为准，测试证据以 [VERIFICATION](VERIFICATION.md) 为准。历史 47 passed / 1 skipped 与前端 9 passed 不能当作本轮重跑结果。
 
 阅读范围为自有源码、测试、脚本、文档及配置/锁文件元数据；忽略 .git 内部、node_modules、.venv、.tools、.cache、dist 等第三方/运行产物。没有读取个人数据库内容或真实私有配置。当前检查范围内文件用途均可从内容确认；未来无法确认的新文件须标“待核实”，不能根据文件名填功能。
@@ -142,7 +144,7 @@ refresh 并行拉取七类数据；act 管理 busy/错误/提示，成功后 ref
 | [evals/run_live.py](../evals/run_live.py) | 显式 --allow-live 且有 Key 才运行；只做提取的结构验证/耗时；输出 .cache/live-eval.json | main；ModelAdapter.draft；mode/model/prompt_version/workflow_version/results | Settings、AgentRequest、cases.json；自动加入 backend 到 sys.path | 真实评测范围、版本或输出改变 | Q；显式 L；目前不是完整 LangGraph、建议质量或检索对比评测 |
 | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | push/PR 两 job；Ubuntu + PostgreSQL 16 + Python 3.12/uv；Node 22 前端 | backend/front-end job 名实际为 backend、frontend；MVP checks | 根 uv/迁移/Ruff/pytest；前端 npm ci 与格式/lint/type/test/build；专门 PG 测试 step | 检查集合、环境版本/依赖缓存或触发条件改变 | 本地 B/Q/F/M/P，最终核对真实 CI run；目前未含 Docker 构建、浏览器 E2E 或 Live eval |
 
-普通 pytest 使用 conftest 的 Mock/隔离 SQLite，Base.metadata.create_all 是测试准备，不证明 Alembic 迁移正确。CI 先做 PostgreSQL Alembic，再普通 pytest（PostgreSQL 用例通常因无 TEST_POSTGRES_URL 跳过），再单独带 TEST_POSTGRES_URL 执行 PostgreSQL 用例。检查哪些 job 真运行过要看远程结果；YAML 不能代替执行证据。
+普通 pytest 使用 conftest 的 Mock/隔离 SQLite，Base.metadata.create_all 是测试准备，不证明 Alembic 迁移正确。CI 先做 PostgreSQL Alembic/Ruff，再 mkdir -p .cache，之后普通 pytest（PostgreSQL 用例因无 TEST_POSTGRES_URL 跳过），最后单独带 TEST_POSTGRES_URL 执行 PostgreSQL 用例。首次远程运行在普通 pytest 失败，最后一步未执行；2026-10-17 父目录修复仅本地通过。检查哪些 job 真运行过要看远程结果；YAML 不能代替执行证据。
 
 ### 3.4 根配置、后端容器与启动脚本
 
@@ -337,12 +339,13 @@ Set-Location -LiteralPath 'D:\Projects\wonder-orbit'
 
 ```powershell
 Set-Location -LiteralPath 'D:\Projects\wonder-orbit'
+New-Item -ItemType Directory -Path .cache -Force | Out-Null
 & .\.venv\Scripts\python.exe -m pytest -q -rs
 & .\.venv\Scripts\ruff.exe check backend evals
 & .\.venv\Scripts\ruff.exe format --check backend evals
 ```
 
-pytest 配置自带 backend 导入路径和 .cache/pytest 临时目录。conftest 强制 Mock/空 Key、覆盖 Session，测试用隔离库；普通 pytest 未设置 TEST_POSTGRES_URL 时该项跳过。已有缓存的权限错误须处理环境权限并重跑，不能把初次错误计入通过。可定位回归：
+pytest 配置自带 backend 导入路径和 .cache/pytest 临时目录，但 basetemp 只创建最后一级，全新检出需先创建 .cache，不能依赖 uv 外部缓存。conftest 强制 Mock/空 Key、覆盖 Session，测试用隔离库；普通 pytest 未设置 TEST_POSTGRES_URL 时该项跳过。已有缓存的权限错误须处理环境权限并重跑，不能把初次错误计入通过。可定位回归：
 
 ```powershell
 Set-Location -LiteralPath 'D:\Projects\wonder-orbit'
@@ -517,7 +520,7 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 | --- | --- | --- |
 | 已实现且有历史本地验证 | Star CRUD/搜索/真实关联、单个可编辑草稿、LangGraph 节点/受控工具、候选检索与约束验证、批准写入、反馈/候选确认、生成重试及审计、八页 Web | 实际源码 + VERIFICATION 的 Mock/SQLite API/规则测试与开发阶段浏览器闭环；后端最近 47 passed、1 PG skipped，前端 9 passed |
 | 已实现且有历史工程检查 | SQLite 初始迁移/schema check、Ruff、前端格式/lint/typecheck/build、两版本脚本解析 | VERIFICATION 的分批次证据；本轮不重跑应用检查，不用旧耗时作性能基准 |
-| 已配置/实现但目标环境未验证 | PostgreSQL URL/ORM/FK/行锁和可选集成用例；Compose/两个 Dockerfile/Nginx；远程 CI | INFRA-001/002/003；PG 用例历史跳过；无 PG 迁移/回滚/并发、容器启动或远程 CI 成功证据 |
+| 仍待目标环境完整验证 | PostgreSQL URL/ORM/FK/行锁和可选集成用例；Compose/两个 Dockerfile/Nginx；修复后的远程 CI | 2026-10-17 核对首次远程前端及 PG 迁移/schema 检查通过，但普通 pytest 失败、独立 PG 集成未执行；本地已复现修复。INFRA-001/002/003 尚未完整验收，回滚/并发/容器未验证 |
 | 已实现适配路径但真实调用未验证 | ChatOpenAI forced tool、结构/异常分类、Live extraction runner | AGENT-001/EVAL-001；模拟服务测试不代表供应商兼容/效果；health 只查数据库并报告配置模式，不证明 Key 有效或模型服务已连通 |
 | 待实现与验收 | UX-003 输入提示、UX-001 首次引导、UX-002 流程衔接、UI-001/002 视觉/陪伴打磨 | 目前有基础提示/占位视觉，三项用户改进尚未完成，不把现有元素视为新方案通过 |
 | 计划或暂缓的后续能力 | RETR-001 语义检索及 EVAL 后续标注/比较；并发可靠性、候选编辑等正式待办 | 查看 PRODUCT_BACKLOG 的状态/依赖；semantic.py 只有接口，run_live.py 仅提取案例；暂缓不等于删除 |

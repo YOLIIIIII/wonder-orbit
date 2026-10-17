@@ -1,6 +1,6 @@
 # 想法与决策记录
 
-更新日期：2026-10-11（Asia/Shanghai）。
+更新日期：2026-10-17（Asia/Shanghai）。
 
 本文件保留原始问题、来源和评估结论；正式任务的优先级、状态、验收标准以 [PRODUCT_BACKLOG](PRODUCT_BACKLOG.md) 为准。里程碑见 [ROADMAP](../ROADMAP.md)，交付见 [CHANGELOG](../CHANGELOG.md)，证据见 [VERIFICATION](VERIFICATION.md)。
 
@@ -71,6 +71,7 @@
 - 正式任务：[INFRA-001](PRODUCT_BACKLOG.md#infra-001)、[INFRA-002](PRODUCT_BACKLOG.md#infra-002)、[INFRA-003](PRODUCT_BACKLOG.md#infra-003)、[INFRA-004](PRODUCT_BACKLOG.md#infra-004)。
 - 相关位置：docker-compose.yml；.github/workflows/ci.yml；backend/tests/test_postgres.py；docs/VERIFICATION.md。
 - 决策历史：2026-10-11，建立长期记录；本轮未实现关联业务改进。
+- 决策历史：2026-10-17，用户提供首次失败运行，合并到现有 INFRA-003，不另建 CI 重复任务。实际日志确认缺少 .cache 父目录，按最小方案在 pytest 前创建；本地验证完成，独立 PG 集成和修复后的远程 CI 仍待验收，不纳入业务或 UI 重构。
 
 ### IDEA-005
 
@@ -183,3 +184,17 @@
 - 正式任务：[DOC-001](PRODUCT_BACKLOG.md#doc-001)。
 - 相关位置：AGENTS.md；ROADMAP.md；docs/IMPLEMENTATION_PLAN.md。
 - 决策历史：2026-10-11，纳入本轮文档计划；文档一致性与修改范围检查通过后 DOC-001 完成。该完成状态不影响其他想法及其业务任务。
+
+### IDEA-013
+
+**修正 Git 提交身份并安全保留历史**
+
+- 记录日期：2026-10-17。
+- 来源：用户本轮 Git 身份与 CI 修复任务。
+- 原始想法/迁入内容：当前仓库未来提交及需要修正的历史提交，使用 YOLIIIIII 与 143058454+YOLIIIIII@users.noreply.github.com；不修改全局配置、不用 mailmap 替代，不经确认覆盖远程 main。
+- 当前观察与候选方案：本地 main 与 GitHub main 均是唯一根提交 0fcb300ed9d06d7321b16354cb6f8ab5347bdbb3，Author/Committer 使用 Gitee 邮箱；初始工作区和暂存区干净。选仓库 local 配置、备份旧引用、amend --reset-author，保留文件树；发布时单独确认并核对远程期望 SHA。
+- 处置：done（仅本地身份及根提交元数据）。
+- 评估与决策：拆为 INFRA-007 本地修复；远程历史改写推送和修复后 CI 的验收交由现有 INFRA-003 跟踪，不自动执行。SHA 会改变，本地成功不等于 GitHub 历史已修正。
+- 正式任务：[INFRA-007](PRODUCT_BACKLOG.md#infra-007)、[INFRA-003](PRODUCT_BACKLOG.md#infra-003)。
+- 相关位置：仓库 .git/config、备份引用；docs/VERIFICATION.md 的修复证据与发布步骤。
+- 决策历史：2026-10-17，按用户授权仅本地修正，备份与 Author/Committer/tree 校验通过；远程保留旧提交，等待用户确认发布。

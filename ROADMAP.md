@@ -1,12 +1,12 @@
 # WonderOrbit 路线图
 
-更新日期：2026-10-11（Asia/Shanghai）。阶段与顺序以本文件说明；正式任务的当前状态、依赖和验收只在 [PRODUCT_BACKLOG](docs/PRODUCT_BACKLOG.md) 维护，来源见 [IDEA_LOG](docs/IDEA_LOG.md)，交付见 [CHANGELOG](CHANGELOG.md)，实证见 [VERIFICATION](docs/VERIFICATION.md)。里程碑名称不代表已发布版本或 Git tag。
+更新日期：2026-10-17（Asia/Shanghai）。阶段与顺序以本文件说明；正式任务的当前状态、依赖和验收只在 [PRODUCT_BACKLOG](docs/PRODUCT_BACKLOG.md) 维护，来源见 [IDEA_LOG](docs/IDEA_LOG.md)，交付见 [CHANGELOG](CHANGELOG.md)，实证见 [VERIFICATION](docs/VERIFICATION.md)。里程碑名称不代表已发布版本或 Git tag。
 
 ## 当前阶段
 
-**M1 本地 MVP 已交付并通过 Mock + SQLite 验收；现在准备 M2 体验修整。** 本轮只建立文档机制 DOC-001，不实施体验或工程任务。M3 的环境/服务准备可与体验修整独立推进；未授权外部操作仍不能执行。没有整体完成百分比，尚未进入生产或多用户验收。
+**M1 本地 MVP 已交付并通过 Mock + SQLite 验收；M2 体验修整仍待实施。** 当前按用户范围优先修复 M3 的 INFRA-003 首次 CI 故障，并完成 INFRA-007 本地提交身份修正；不实施体验功能。远程历史改写推送仍待用户明确批准。没有整体完成百分比，尚未进入生产或多用户验收。
 
-最近应用验收记录为后端 47 passed / 1 skipped、前端 9 passed；PostgreSQL 跳过。它们是既有记录，本轮文档整理不视为重跑测试。
+2026-10-17 本地回归为后端 47 passed / 1 skipped、前端 9 passed；本机 PostgreSQL 未配置。首次远程前端和 PG 迁移/schema 检查通过，普通 pytest 失败，独立 PG 集成步骤未执行；本地 CI 修复尚待远程验证，细节见 VERIFICATION。
 
 ## M1 / v0.1：本地 MVP（已交付，验证范围有限）
 
@@ -39,7 +39,7 @@
 - [INFRA-002](docs/PRODUCT_BACKLOG.md#infra-002)：完整 Compose/Nginx 启动、闭环与重启持久化。
 - [AGENT-001](docs/PRODUCT_BACKLOG.md#agent-001)：一个兼容服务的真实 tool calling、结构/引用/约束与异常路径。
 - [EVAL-001](docs/PRODUCT_BACKLOG.md#eval-001)：版本化 Prompt/工作流/案例及人工复核基线，区分规则与真实模型结果。
-- [INFRA-003](docs/PRODUCT_BACKLOG.md#infra-003)：用户授权发布或自行推送后核对真实 GitHub Actions。当前不执行 commit/push。
+- [INFRA-003](docs/PRODUCT_BACKLOG.md#infra-003)：首次运行已失败；缓存父目录修复已本地验证，待用户发布后核对两个 job 和独立 PostgreSQL 集成均通过。不自动推送。
 
 建议 PostgreSQL → 容器与真实模型 → 评测两条路径按环境独立推进，不因新增时间排序。验收出口：上述 P1 各有实际运行/复核证据；未执行、跳过和失败留在待办，配置文件存在不计完成。并发语义另由 INFRA-004 验证。
 
@@ -68,5 +68,7 @@
 ## 本轮排序决策与范围
 
 2026-10-11：在原 PostgreSQL/真实模型验证路径前，增加有用户实际反馈和源码证据的体验小迭代；首先处理预算文案，再做入口与衔接。当前没有已证实的未修 P0，未完成 P1 为 8 项，清单与理由见 Backlog。较大迭代前重新审视全部未完成任务，变化追加原因，避免路线图和正式待办维护两套状态。
+
+2026-10-17：首次 CI 已有明确失败证据，先处理 INFRA-003 和关联的本地身份修正 INFRA-007，再回到 UX-003 → UX-001 → UX-002。两项均按 P1，其他未完成任务含 deferred 的优先级维持；没有新的业务/安全 P0 证据。INFRA-007 只完成本地身份及备份，远程仍为原 SHA；INFRA-003 仍在验收中，不能因本地测试通过标 done。
 
 不在当前 MVP 范围：多智能体、任意网页爬取、日历同步、语音、社交、大型向量基础设施、复杂 MCP Server。不承诺未评测的准确率、性能改进或招聘结果。

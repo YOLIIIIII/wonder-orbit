@@ -62,7 +62,7 @@ npm run dev
 
 Linux/macOS 将 `$env:PYTHONPATH='backend'` 换成 `export PYTHONPATH=backend`。完整容器启动：创建 .env 后执行 `docker compose up --build`，应用在 [localhost:8080](http://localhost:8080)，后端自动执行迁移。数据库持久化到 wonder_data volume。默认开发数据库密码仅供本机使用；端口绑定 127.0.0.1。
 
-本机没有 Docker / PostgreSQL，完整容器启动和 PostgreSQL 集成尚未在本机验证；配置了独立 CI PostgreSQL 服务进行迁移检查及外键/JSON 集成测试，不宣称远程 CI 已通过。
+本机没有可用 Docker / PostgreSQL，完整容器启动和 PostgreSQL 集成尚未在本机验证。[首次 GitHub Actions](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/38140512844) 的前端、PostgreSQL 迁移/schema 检查通过，但普通 pytest 因缺少 .cache 父目录失败，后续独立 PostgreSQL 集成步骤未执行。2026-10-17 已在本地修复并复现验证；修复后的远程 CI 尚待用户发布后验收，不能宣称全绿。
 
 ## 模型配置
 
@@ -87,6 +87,7 @@ Mock 草稿不会猜测兴趣原因、预算或精力。免费“写三个好奇
 ## 检查与测试
 
 ```powershell
+New-Item -ItemType Directory -Path .cache -Force | Out-Null
 uv run pytest -q
 uv run ruff check backend evals
 uv run alembic check
@@ -99,7 +100,7 @@ npm run build
 
 本机用已安装工具也可以运行 `.\.venv\Scripts\python.exe -m pytest -q`；前端先将项目的 Node 22 bin 加入当前终端 PATH，或直接使用它启动 node_modules 下的 CLI。
 
-- 后端测试使用隔离 SQLite 数据库；临时文件在 .cache/pytest。
+- 后端测试使用隔离 SQLite 数据库；临时文件在 .cache/pytest。pytest 的 basetemp 不自动创建父目录，全新检出必须先创建 .cache；CI 也在 pytest 前执行 mkdir -p .cache。设置 uv 的外部下载缓存不等于创建这个测试目录。
 - 设置 TEST_POSTGRES_URL 后，test_postgres.py 在独立临时 schema 中检查 PostgreSQL JSON 和外键保护。
 - 固定兴趣提取案例在 evals/cases.json；规则测试与真实模型评测分开。
 - 可复现浏览器流程在 frontend/e2e/smoke.mjs。必须对专用临时数据库运行；E2E_ALLOW_WRITE=true 明确允许写测试数据，不能用于个人正式档案。先将后端 DATABASE_URL 设为 sqlite:///./.cache/e2e.db，迁移并启动后端，启动前端，再运行：
@@ -142,7 +143,7 @@ scripts/        当前 Windows 环境启动脚本
 - [路线图](ROADMAP.md)：当前阶段与里程碑；[交付记录](CHANGELOG.md) 只记实际完成的改动；[验证记录](docs/VERIFICATION.md) 区分通过、跳过和未执行。
 - [开发约定](AGENTS.md)：开始开发前读取和复评记录，结束后同步状态与实证。
 
-当前本地 MVP 闭环已经交付，Mock + SQLite 的既有验收通过；下一轮优先校准输入提示和流程衔接。三项体验反馈已纳入待办，尚未修改界面；PostgreSQL、真实模型、Docker 和远程 CI 仍待验证。列表中的 planned 不是已经实施，也不授权远程提交或模型调用。
+当前本地 MVP 闭环已经交付，Mock + SQLite 的本轮回归通过；当前优先收尾 INFRA-003 的 CI 故障验证，再恢复输入提示和流程衔接队列。三项体验反馈尚未实现；PostgreSQL 集成、真实模型、Docker 和修复后的远程 CI 仍待验证。列表中的 planned 不是已经实施，也不授权远程推送或模型调用。
 
 ## 已知限制
 
@@ -156,4 +157,4 @@ scripts/        当前 Windows 环境启动脚本
 - 每个 Quest 仅记录一次最终反馈；结果保存后不再编辑。模型生成的说明仍需用户核对，尚无自动文本事实核查。
 - 没有网页爬取、日历、语音、社交、多 Agent 或 MCP Server。没有宣称模型准确率、性能提升或任务成功率。
 
-本次开发未执行 git commit、git push，未连接 Codex Cloud。
+2026-10-17 已按授权仅在本地备份并 amend 根提交的 Author/Committer，未推送远程；CI 修复尚未提交。身份、历史改写和安全发布步骤见 [验证记录](docs/VERIFICATION.md) 的本轮章节；未连接 Codex Cloud。

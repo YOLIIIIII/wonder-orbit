@@ -134,3 +134,103 @@
 - 没有实现流程引导、输入文案或视觉优化，也没有新的可用性/对比度测量结果；其验收条件是后续目标，不是本轮结果。
 
 当前状态：M1 本地 MVP 基线已交付；M2 体验修整准备阶段，推荐 UX-003 → UX-001 → UX-002；工程路径保留 INFRA-001/002/003、AGENT-001、EVAL-001。正式状态/优先级以 PRODUCT_BACKLOG 为准，本节为本轮历史快照。
+
+## 2026-10-17：Git 身份与首次 CI 故障修复（INFRA-007 / INFRA-003）
+
+本节是本轮实际执行记录；上文 2026-10-11 的“无提交/未运行远程”等说法是历史快照，不代表当前状态。范围仅 Git 元数据、CI 父目录准备与相关文档；未改业务、数据模型、测试、依赖或 UI，未直接查看个人数据/私有配置内容，未修改个人 wonder.db 或真实 .env。测试显式使用隔离数据库、Mock 和空模型 Key，未启用真实模型。
+
+### Git 身份与历史修正证据
+
+- 初始为实际 main，工作区/暂存区干净，origin 为 https://github.com/YOLIIIIII/wonder-orbit.git；HEAD 与 origin/main 均为唯一根提交 0fcb300ed9d06d7321b16354cb6f8ab5347bdbb3，无父提交。
+- git config --local 没有 user.name/user.email；git var 和根提交实际 Author/Committer 为 YOLIII <12766407+yoliii@user.noreply.gitee.com>。仅在 local 设置 user.name=YOLIIIIII、user.email=143058454+YOLIIIIII@users.noreply.github.com；没有更改全局 Git 或换行配置。
+- git ls-remote 在沙箱及获准权限下均失败：既有代理 127.0.0.1:7897 无法连接。未修改代理；改用 GitHub 连接器读取 main 提交，实际 SHA 与上述本地根提交相同，因此确认远程 main 当时也没有其他新增提交。
+- 写 .git/config 首次因沙箱拒绝失败，获准权限下重试成功；确认实际身份后才继续。创建 backup/main-before-author-fix-20261017，指向旧根提交，然后在再次检查工作区/暂存区干净后执行 git commit --amend --no-edit --reset-author。
+- 本地新根提交为 **5583c8bd2de9718b035ad16f5c5eeeadeb74599f**。git show -s --format=fuller HEAD 显示 Author 与 Committer 均为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>；比较新旧 HEAD^{tree} 相同，文件内容没有因 amend 改动。
+- 仅本地 main 历史已修正。origin/main 和 GitHub main 仍为旧 SHA；备份分支故意保留原始元数据。main 相对 origin/main ahead 1 / behind 1 是根提交 SHA 改写所致，不是完成了远程同步。
+- 本轮没有创建 CI 修复提交，没有暂存、push、force push、合并或发布；后续提交使用已确认的 local GitHub 身份。INFRA-007 只验收本地范围；远程发布和 CI 仍由 INFRA-003 跟踪。
+
+### 已读取的远程失败证据
+
+原始运行：[GitHub Actions 38140512844](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/38140512844)，commit 为 0fcb300ed9d06d7321b16354cb6f8ab5347bdbb3；运行发生于 2026-10-11，本轮于 2026-10-17 通过 GitHub 连接器读取 jobs/steps 及 backend 完整日志。普通网页抓取失败，没有将失败抓取当作日志证据。
+
+| 原始远程检查 | 实际结果 |
+| --- | --- |
+| frontend job | passed：npm ci、format:check、lint、typecheck、Vitest、build 步骤 success |
+| backend 安装/迁移/schema/Ruff | passed：uv sync --frozen、alembic upgrade head/check、Ruff lint/format 步骤 success |
+| backend 普通 pytest | failed：12 passed、1 skipped、35 errors，进程退出 1 |
+| 独立 PostgreSQL 测试步骤 | skipped：前一个 pytest 失败，默认成功条件阻止后续步骤执行，不能计为集成通过 |
+| 修复后的远程 run | not run：本轮未推送修复，也没有以重跑旧 SHA 冒充新配置验证 |
+
+根因链：pyproject.toml 固定 addopts="--basetemp=.cache/pytest"；conftest.db 依赖 tmp_path，进而触发 pytest 临时目录创建。实际日志中 pathlib.mkdir 的 parents=False，尝试创建 /home/runner/work/wonder-orbit/wonder-orbit/.cache/pytest 时抛 FileNotFoundError。全新 checkout 不含被 .gitignore 排除的 .cache；setup-uv 的 UV_CACHE_DIR 是 runner 的外部路径，不会自动创建仓库内的 .cache。35 项依赖数据库 fixture 的测试因此在 setup 报错，未到业务断言；不依赖它的测试仍可通过。
+
+唯一 CI 改动为在 Ruff 之后、普通 pytest 之前增加：
+
+```yaml
+- name: Prepare pytest cache parent
+  run: mkdir -p .cache
+```
+
+保留 Python 3.12、Node 22、uv 0.13.0、PostgreSQL 16、锁文件、测试/断言及现有两个 pytest 命令。顺序仍为 PG 迁移/schema → Ruff → 创建测试父目录 → 普通 Mock/SQLite 测试 → 独立 PG 集成。TEST_POSTGRES_URL 仅在最后一步明确注入，conftest 不会覆盖它；普通测试跳过 PG 用例是有意分组，最后一步必须真正执行且 1 passed 才算集成验证。未用 continue-on-error、忽略异常或删除测试绕过失败。
+
+### 本轮本地执行与结果
+
+项目内 Python 3.12.15、uv 0.13.0、Node 22.23.3；npm CLI 通过该 Node 显式启动 D:/Soft/Node/node_modules/npm/bin/npm-cli.js，避免全局旧 Node/npm.cmd。缓存/日志/临时检出均放被忽略的 .cache。使用现有安装依赖与锁文件，未添加依赖。
+
+| 本轮检查 | 状态 | 命令/实际证据 |
+| --- | --- | --- |
+| 冻结 Python 安装 | passed | 项目内 uv sync --frozen：Checked 66 packages；首次沙箱解释器查询拒绝访问，获准权限重试成功 |
+| 干净源码检出复现 | failed（预期复现） | git archive HEAD 解压到 .cache/ci-clean-ead12d642f07，确认其中无 .cache；用共享已安装 .venv 和绝对 UV_CACHE_DIR 执行 uv run --offline pytest：12 passed / 1 skipped / 35 errors，退出 1，与远程一致 |
+| 同一检出只补父目录 | passed / skipped | 在该检出创建 .cache，再执行相同 uv run --offline pytest：47 passed / 1 skipped，退出 0；没有修改任何测试或测试配置 |
+| 根目录回归 | passed / skipped | uv run pytest：47 passed / 1 skipped；日志 .cache/ci-root-tests.log；PG 跳过不是通过 |
+| 后端 lint | passed | uv run ruff check backend evals：All checks passed! |
+| 后端格式 | passed | uv run ruff format --check backend evals：21 files already formatted |
+| SQLite 迁移 | passed | DATABASE_URL 指向新 .cache/ci-fix-c28d8b40d49a42a685b39322464ce897.db，uv run alembic upgrade head / check / current：No new upgrade operations detected、0001 (head) |
+| 本机 PostgreSQL 迁移/集成 | not run | 未发现可用 Docker/psql/postgres 或 PostgreSQL 安装；WSL 也不可用。未提供 TEST_POSTGRES_URL，普通 pytest 的该用例为 skipped |
+| 前端锁安装 | passed | Node 22 启动 npm ci：added 267 packages；首次沙箱 mkdir EPERM 失败，获准权限重试成功，保留锁文件 |
+| 前端格式 | passed | npm run format:check：All matched files use Prettier code style! |
+| 前端 lint | passed | npm run lint：退出 0 |
+| 前端类型 | passed | npm run typecheck：退出 0 |
+| 前端测试 | passed | npm run test（脚本等同 npm test）：3 files、9 tests passed |
+| 前端构建 | passed | npm run build：tsc -b 与 Vite 成功；1581 modules transformed |
+| 浏览器闭环/容器/真实模型 | not run | 本轮未更改这些实现，不用历史结果冒充本轮执行 |
+
+干净检出验证的是“源码没有预置 .cache”的场景，复用已安装 Python 环境及依赖缓存，**不等于**新 Linux runner 的完整安装/PG/CI 已验收。原失败/修复后日志分别保存在 .cache/ci-clean-before.log、ci-clean-after.log；这些运行产物不提交。npm 报了既有依赖 deprecated 提示，本轮不借机更新依赖。
+
+交付前静态核对：工作流 YAML 可解析，创建父目录/两次 pytest 的顺序和独立 PG 环境变量符合预期；CI diff 仅新增上述两行，frontend、backend/app、测试、迁移、脚本、pyproject 和两个锁文件内容保持不变。8 个预期文件变更，暂存区为空；本地文档文件链接/任务锚点、26 个唯一任务与 13 个唯一想法、任务索引/状态一致，未完成 P1 为 8。README/PROJECT_GUIDE/本记录中共 22 段 PowerShell 示例经实际 5.1 与 7 解析器检查，均无语法错误，仅解析未执行发布命令。修正新增记录的一处末尾多余空行后重新检查通过，git diff --check 通过，没有以初次格式失败当作通过。
+
+### 待用户确认的发布步骤（本轮未执行）
+
+改写 Author/Committer 会改变根提交 SHA；普通 fast-forward push 无法将远程旧根提交替换为新根提交。备份引用保留在本地，不能自动一并推送。先审阅本轮八个文件，确认后可创建本地修复提交：
+
+```powershell
+Set-Location -LiteralPath 'D:\Projects\wonder-orbit'
+git add -- .github/workflows/ci.yml README.md ROADMAP.md CHANGELOG.md docs/IDEA_LOG.md docs/PRODUCT_BACKLOG.md docs/PROJECT_GUIDE.md docs/VERIFICATION.md
+git diff --cached --check
+if ($LASTEXITCODE -ne 0) { throw 'Fix staged whitespace before committing' }
+git diff --cached --stat
+git commit -m "fix: prepare pytest cache for clean CI checkouts"
+if ($LASTEXITCODE -ne 0) { throw 'Local fix commit failed' }
+git show -s --format=fuller HEAD
+```
+
+**仅在用户明确批准覆盖远程 main 后**，在 Git 网络/认证正常的环境执行以下命令。若网络查询失败或远程 SHA 已变化则停止，不能把 fetch 的新值直接当作允许覆盖的值；不要用无条件 --force：
+
+```powershell
+Set-Location -LiteralPath 'D:\Projects\wonder-orbit'
+$expectedRemote = '0fcb300ed9d06d7321b16354cb6f8ab5347bdbb3'
+if ((git branch --show-current) -ne 'main') { throw 'Expected local main' }
+if (git status --porcelain) { throw 'Review and commit local fixes first' }
+if ((git config --local user.name) -ne 'YOLIIIIII') { throw 'Unexpected Git name' }
+if ((git config --local user.email) -ne '143058454+YOLIIIIII@users.noreply.github.com') { throw 'Unexpected Git email' }
+git fetch origin
+if ($LASTEXITCODE -ne 0) { throw 'Fetch failed; do not push' }
+if ((git rev-parse origin/main) -ne $expectedRemote) { throw 'Remote main changed; stop and reassess history' }
+git merge-base --is-ancestor 5583c8bd2de9718b035ad16f5c5eeeadeb74599f HEAD
+if ($LASTEXITCODE -ne 0) { throw 'Corrected root not in current history' }
+git push --force-with-lease="refs/heads/main:$expectedRemote" origin HEAD:refs/heads/main
+if ($LASTEXITCODE -ne 0) { throw 'Lease push rejected; do not use force' }
+```
+
+这个 lease 同时防止核对后出现的远程竞态。若服务器保护规则拒绝，不绕过保护；保留备份并重新讨论发布方案。不要把旧备份分支 merge 回 main，否则错误邮箱根提交会重新进入主线历史。
+
+发布后记录新的 run URL/commit SHA，确认 backend/frontend 均 success，且独立 PostgreSQL step 实际运行、输出 1 passed 而非 skipped，再更新 INFRA-003；PG 回滚/并发和完整容器仍按 INFRA-001/002/004 各自验收。当前 M1 基线保持，M2 未实施；未完成 P0 为 0、P1 为 8，本次只先收尾已确认的 CI 故障。
