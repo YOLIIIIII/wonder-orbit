@@ -1321,6 +1321,17 @@ svg {
   }
 }
 /* Text contrast and readable small-screen labels. */
+.field-hint {
+  display: block;
+  color: #705c80;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.field-grid > label {
+  min-width: 0;
+}
 .mode-label {
   font-size: 10px;
   background: #f0e8f8;

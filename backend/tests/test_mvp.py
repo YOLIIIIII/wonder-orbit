@@ -156,6 +156,42 @@ def test_current_preferences_revalidated_at_approval(client, star):
     )
 
 
+@pytest.mark.parametrize("budget,cap", [(None, 5), (0, 0), (3, 3), (8, 5)])
+def test_request_budget_and_preference_use_stricter_cap(client, star, budget, cap):
+    assert client.put("/api/preferences", json={"max_budget": 5}).status_code == 200
+    response = client.post(
+        "/api/agent/runs", json={"request_type": "explore", "text": "深海", "budget": budget}
+    )
+    assert response.status_code == 201
+    run = response.json()
+    proposal = run["state"]["proposals"][0]
+    url = f"/api/agent/runs/{run['run_id']}/decision"
+    for cost in [None, cap + 1]:
+        proposal["estimated_budget"] = cost
+        rejected = client.post(url, json={"approved": True, "edited_proposal": proposal})
+        assert rejected.status_code == 422
+        assert client.get("/api/quests").json() == []
+    proposal["estimated_budget"] = cap
+    assert client.post(url, json={"approved": True, "edited_proposal": proposal}).status_code == 200
+    assert client.get("/api/quests").json()[0]["estimated_budget"] == cap
+
+
+def test_no_budget_caps_allows_unknown_cost(client, star):
+    response = client.post("/api/agent/runs", json={"request_type": "explore", "text": "深海"})
+    assert response.status_code == 201
+    run = response.json()
+    proposal = run["state"]["proposals"][0]
+    proposal["estimated_budget"] = None
+    assert (
+        client.post(
+            f"/api/agent/runs/{run['run_id']}/decision",
+            json={"approved": True, "edited_proposal": proposal},
+        ).status_code
+        == 200
+    )
+    assert client.get("/api/quests").json()[0]["estimated_budget"] is None
+
+
 @pytest.mark.parametrize("constraints,expected", [(["仅室内", "不购买"], True), (["不要使用纸笔"], False)])
 def test_constraint_support_and_clarification(client, star, constraints, expected):
     client.put("/api/preferences", json={"constraints": constraints})

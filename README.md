@@ -6,7 +6,7 @@
 ## 已实现的闭环
 
 - Star 创建/查询/编辑/删除、类别和状态筛选、关键词搜索。保留原始文字和独立结构化字段。
-- 自然语言整理为可编辑草稿；用户确认后写入 Star。来源区分手动、粘贴和参考链接；不抓取网页。
+- 每次自然语言整理生成一张可编辑草稿；用户确认后写入 Star。来源区分手动、粘贴和参考链接；不抓取网页。
 - 中文二元词组 / 英文词检索，返回真实 ID、原文片段、命中词和分数。关联页只展示实际共同标签或类别。
 - 真实 LangGraph StateGraph：收集和探索走不同分支，调用八个经过 Pydantic 校验的受控工具。
 - 根据真实星星和明确偏好生成 1–3 个候选。时间、预算、精力、引用 ID 在生成后和批准时再次验证；归档星星不参与推荐。
@@ -62,7 +62,7 @@ npm run dev
 
 Linux/macOS 将 `$env:PYTHONPATH='backend'` 换成 `export PYTHONPATH=backend`。完整容器启动：创建 .env 后执行 `docker compose up --build`，应用在 [localhost:8080](http://localhost:8080)，后端自动执行迁移。数据库持久化到 wonder_data volume。默认开发数据库密码仅供本机使用；端口绑定 127.0.0.1。
 
-本机没有可用 Docker / PostgreSQL，完整容器启动和 PostgreSQL 集成尚未在本机验证。[首次 GitHub Actions](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/38140512844) 的前端、PostgreSQL 迁移/schema 检查通过，但普通 pytest 因缺少 .cache 父目录失败，后续独立 PostgreSQL 集成步骤未执行。2026-10-17 已在本地修复并复现验证；修复后的远程 CI 尚待用户发布后验收，不能宣称全绿。
+本机没有可用 Docker / PostgreSQL，完整容器启动和 PostgreSQL 集成尚未在本机验证。[首次 GitHub Actions](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/38140512844) 的前端、PostgreSQL 迁移/schema 检查通过，但普通 pytest 因缺少 .cache 父目录失败，后续独立 PostgreSQL 集成步骤未执行。2026-10-17 修复后的 [GitHub Actions](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39030090153) 两个 Job 均 success，独立 PostgreSQL 集成实际 1 passed；完整 Compose/Nginx、PG 回滚与并发仍未完成验收。
 
 ## 模型配置
 
@@ -84,14 +84,24 @@ Linux/macOS 将 `$env:PYTHONPATH='backend'` 换成 `export PYTHONPATH=backend`�
 
 Mock 草稿不会猜测兴趣原因、预算或精力。免费“写三个好奇问题”体验预算为 0，时间明确为估计值。约束取当前请求与已设置偏好的较严格上限。预算受限时未知预算会被拒绝；自由文本约束不会让模型自行宣称满足。
 
+## 输入提示与实际规则
+
+- 每次收集围绕一个兴趣，先填写原始文字；参考链接只保存来源，接受完整 http/https 地址，不读取网页。整理只生成一张草稿，确认后入档。
+- 本次预算 0 是明确零预算；留空仍遵守偏好预算上限，都未设置则不额外限制，同时设置取更低上限。未知预计预算留空，不等于免费；有上限时未知成本不能通过检查。
+- 时间为分钟（1–1440）：预计时间指所需时长，本次可用时间是上限（可选，留空沿用偏好最长时间）；仍需符合偏好最短/最长范围，冲突会澄清。精力按低/中/高取较低上限；未知或未设置不代表低精力。
+- 标签、类别、约束、喜欢/不喜欢列表支持中英文逗号及换行解析；当前单行框建议逗号。步骤和不确定性一行一项。未知兴趣原因可留空，无需猜测；必填及范围见字段附近说明。
+- 自由文本约束目前只支持原词“仅室内”“不购买”“不外出”，限定免费室内文字记录体验；其他约束需澄清，不代表模型能自动验证。
+
 ## 检查与测试
 
 ```powershell
 New-Item -ItemType Directory -Path .cache -Force | Out-Null
 uv run pytest -q
 uv run ruff check backend evals
+uv run ruff format --check backend evals
 uv run alembic check
 cd frontend
+npm run format:check
 npm run lint
 npm run typecheck
 npm test
@@ -112,7 +122,7 @@ $env:E2E_ALLOW_WRITE='true'
 npm run test:e2e
 ```
 
-浏览器测试覆盖收集、确认、搜索、关联、探索接受、修改、反馈、偏好确认和运行详情，同时检查 390px 布局。截图保存在 .cache/e2e，并包含明确由测试输入/批准形成的数据。脚本只检查 E2E_ALLOW_WRITE 授权，不会自动核验后端数据库地址；执行前必须确认目标服务使用专用临时数据库，否则可能写入个人档案。
+浏览器测试覆盖收集、确认、搜索、关联、5 元偏好上限下空预算与 0 元请求、探索接受、修改、反馈、偏好确认和运行详情，同时检查收集/探索/偏好在 1440px 与 390px 的布局。截图保存在 .cache/e2e，并包含明确由测试输入/批准形成的数据。脚本只检查 E2E_ALLOW_WRITE 授权，不会自动核验后端数据库地址；执行前必须确认目标服务使用专用临时数据库，否则可能写入个人档案。
 
 实际检查结果和未执行项见 [验证记录](docs/VERIFICATION.md)。
 
@@ -143,7 +153,7 @@ scripts/        当前 Windows 环境启动脚本
 - [路线图](ROADMAP.md)：当前阶段与里程碑；[交付记录](CHANGELOG.md) 只记实际完成的改动；[验证记录](docs/VERIFICATION.md) 区分通过、跳过和未执行。
 - [开发约定](AGENTS.md)：开始开发前读取和复评记录，结束后同步状态与实证。
 
-当前本地 MVP 闭环已经交付，Mock + SQLite 的本轮回归通过；当前优先收尾 INFRA-003 的 CI 故障验证，再恢复输入提示和流程衔接队列。三项体验反馈尚未实现；PostgreSQL 集成、真实模型、Docker 和修复后的远程 CI 仍待验证。列表中的 planned 不是已经实施，也不授权远程推送或模型调用。
+M1 本地 MVP 闭环已经交付，当前为 M2 首轮 UX-003 输入文案优化：代码、组件/API 测试和隔离浏览器已验证，仍待用户人工体验；UX-001/002 后续再实施。CI 故障修复已有两个 Job 成功及独立 PG 集成证据；PG 回滚/并发、真实模型和完整 Docker 仍待验证。正式任务状态只在 Backlog 维护，planned 不代表已实施。
 
 ## 已知限制
 
@@ -157,4 +167,4 @@ scripts/        当前 Windows 环境启动脚本
 - 每个 Quest 仅记录一次最终反馈；结果保存后不再编辑。模型生成的说明仍需用户核对，尚无自动文本事实核查。
 - 没有网页爬取、日历、语音、社交、多 Agent 或 MCP Server。没有宣称模型准确率、性能提升或任务成功率。
 
-2026-10-17 已按授权仅在本地备份并 amend 根提交的 Author/Committer，未推送远程；CI 修复尚未提交。身份、历史改写和安全发布步骤见 [验证记录](docs/VERIFICATION.md) 的本轮章节；未连接 Codex Cloud。
+2026-10-17 已核对远程 main 的 CI 修复基线 172103d，Author/Committer 为 GitHub noreply 身份。历史身份修正、旧失败和后续成功证据分别保留在 [验证记录](docs/VERIFICATION.md)；本轮仅按用户授权普通推送，不改写远程历史，未连接 Codex Cloud。

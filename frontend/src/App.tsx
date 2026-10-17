@@ -490,16 +490,21 @@ export default function App() {
                       }}
                     >
                       <label>
-                        你最近对什么感到好奇？
+                        你最近对什么感到好奇？（必填）
                         <textarea
                           className="idea-input"
                           required
                           maxLength={12000}
                           value={text}
                           onChange={(e) => setText(e.target.value)}
-                          placeholder="例如：我一直想了解海洋，最近还收藏了关于星空和深海生物的文字。"
+                          aria-label="你最近对什么感到好奇？"
+                          aria-describedby="collect-draft-hint"
+                          placeholder="例如：我想了解深海生物为什么会发光，想先记下几个好奇的问题。"
                         />
                       </label>
+                      <p className="field-hint" id="collect-draft-hint">
+                        一次整理生成一张可编辑草稿，确认后才会加入正式档案。建议每次围绕一个兴趣填写。
+                      </p>
                       <div className="field-grid">
                         <label>
                           内容来源
@@ -518,14 +523,17 @@ export default function App() {
                           参考链接（可选）
                           <input
                             type="url"
+                            pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                            aria-describedby="collect-reference-hint"
                             value={reference}
                             onChange={(e) => setReference(e.target.value)}
-                            placeholder="https://…"
+                            placeholder="https://example.com/notes"
                           />
                         </label>
                       </div>
-                      <p className="muted">
-                        链接仅作为参考保存。星屿不会自动抓取网页。
+                      <p className="field-hint" id="collect-reference-hint">
+                        填写完整 http/https
+                        地址。链接仅保存来源，不读取网页；选择链接引用后，仍需填写上方的兴趣原始文字。
                       </p>
                       <button className="primary" disabled={busy}>
                         <Sparkles size={16} />
@@ -737,39 +745,55 @@ export default function App() {
                   }}
                 >
                   <label>
-                    今天想靠近哪份好奇？
+                    今天想靠近哪份好奇？（必填）
                     <input
                       required
                       value={text}
                       onChange={(e) => setText(e.target.value)}
+                      aria-label="今天想靠近哪份好奇？"
+                      maxLength={12000}
                       placeholder="使用档案里的关键词，如：海洋、星空…"
                     />
                   </label>
                   <div className="field-grid three">
                     <label>
-                      可用时间（分钟）
+                      可用时间（分钟，可选）
                       <input
+                        aria-label="可用时间（分钟，可选）"
+                        aria-describedby="explore-minutes-hint"
                         type="number"
                         min={1}
                         max={1440}
-                        required
                         value={minutes}
                         onChange={(e) => setMinutes(e.target.value)}
                       />
+                      <span className="field-hint" id="explore-minutes-hint">
+                        本次可用的时间上限，1–1440
+                        分钟；留空沿用偏好最长时间。同时设置时取较短上限，仍需达到偏好最短时间。
+                      </span>
                     </label>
                     <label>
-                      预算（元，留空不限）
+                      本次预算（元，可选）
                       <input
+                        aria-label="本次预算（元，可选）"
+                        aria-describedby="explore-budget-hint"
                         type="number"
                         min={0}
+                        max={100000}
                         step="0.01"
                         value={budget}
                         onChange={(e) => setBudget(e.target.value)}
                       />
+                      <span className="field-hint" id="explore-budget-hint">
+                        0 元表示本次预算为
+                        0。留空不额外设置本次预算，仍遵守“我的偏好”的预算上限；偏好也未设置时不额外限制。同时设置时取更低上限。
+                      </span>
                     </label>
                     <label>
-                      当前精力
+                      当前精力（必选）
                       <select
+                        aria-label="当前精力（必选）"
+                        aria-describedby="explore-energy-hint"
                         value={energy}
                         onChange={(e) => setEnergy(e.target.value as Energy)}
                       >
@@ -779,6 +803,9 @@ export default function App() {
                           </option>
                         ))}
                       </select>
+                      <span className="field-hint" id="explore-energy-hint">
+                        本次可用精力上限；与偏好同时设置时取更低等级。
+                      </span>
                     </label>
                   </div>
                   <button className="primary" disabled={busy}>
@@ -1108,8 +1135,10 @@ export default function App() {
                 >
                   <div className="field-grid">
                     <label className="wide">
-                      兴趣类别（逗号分隔，用于候选排序）
+                      兴趣类别（可选，最多 30 项，每项不超过 80
+                      字，用于候选排序）
                       <ListInput
+                        label="兴趣类别（可选）"
                         value={preferences.explicit.categories}
                         onChange={(categories) =>
                           setPreferences({
@@ -1120,11 +1149,14 @@ export default function App() {
                       />
                     </label>
                     <label>
-                      最短时间（分钟）
+                      最短时间（分钟，必填）
                       <input
                         required
                         type="number"
                         min={1}
+                        max={1440}
+                        aria-label="最短时间（分钟，必填）"
+                        aria-describedby="preferences-time-hint"
                         value={preferences.explicit.min_minutes}
                         onChange={(e) =>
                           setPreferences({
@@ -1136,14 +1168,19 @@ export default function App() {
                           })
                         }
                       />
+                      <span className="field-hint" id="preferences-time-hint">
+                        时间范围用于每次体验：1–1440
+                        分钟，最长不能小于最短。本次可用时间低于偏好最短时间时，会要求澄清。
+                      </span>
                     </label>
                     <label>
-                      最长时间（分钟）
+                      最长时间（分钟，必填）
                       <input
                         required
                         type="number"
                         min={1}
                         max={1440}
+                        aria-describedby="preferences-time-hint"
                         value={preferences.explicit.max_minutes}
                         onChange={(e) =>
                           setPreferences({
@@ -1157,11 +1194,14 @@ export default function App() {
                       />
                     </label>
                     <label>
-                      预算上限（元）
+                      预算上限（元，可选）
                       <input
                         type="number"
                         min={0}
+                        max={100000}
                         step="0.01"
+                        aria-label="预算上限（元，可选）"
+                        aria-describedby="preferences-budget-hint"
                         value={preferences.explicit.max_budget ?? ""}
                         onChange={(e) =>
                           setPreferences({
@@ -1173,10 +1213,16 @@ export default function App() {
                           })
                         }
                       />
+                      <span className="field-hint" id="preferences-budget-hint">
+                        预算上限为 0–100000 元；留空不额外限制，0
+                        表示仅限无需花费的体验。与本次预算同时设置时取更低上限。
+                      </span>
                     </label>
                     <label>
-                      精力偏好
+                      精力偏好（可选）
                       <select
+                        aria-label="精力偏好（可选）"
+                        aria-describedby="preferences-energy-hint"
                         value={preferences.explicit.energy_level || ""}
                         onChange={(e) =>
                           setPreferences({
@@ -1188,17 +1234,22 @@ export default function App() {
                           })
                         }
                       >
-                        <option value="">未设置</option>
+                        <option value="">未设置（不额外限制）</option>
                         {Object.entries(energyNames).map(([k, v]) => (
                           <option key={k} value={k}>
                             {v}
                           </option>
                         ))}
                       </select>
+                      <span className="field-hint" id="preferences-energy-hint">
+                        精力偏好是所需精力的上限；未设置表示不额外限制，不代表低精力。
+                      </span>
                     </label>
                     <label className="wide">
-                      明确约束（逗号分隔）
+                      明确约束（可选，最多 20 项）
                       <ListInput
+                        label="明确约束（可选）"
+                        describedBy="preferences-constraints-hint"
                         value={preferences.explicit.constraints}
                         onChange={(constraints) =>
                           setPreferences({
@@ -1208,11 +1259,15 @@ export default function App() {
                         }
                         placeholder="仅室内，不购买，不外出"
                       />
+                      <span
+                        className="field-hint"
+                        id="preferences-constraints-hint"
+                      >
+                        目前只支持“仅室内、不购买、不外出”的免费室内文字记录体验。请按这些原词填写；其他约束尚不能自动验证，会要求澄清。
+                      </span>
                     </label>
                   </div>
-                  <p className="muted">
-                    第一版能确定性验证“仅室内、不购买、不外出”的文字记录体验。其他约束会返回澄清问题。
-                  </p>
+
                   <div className="button-row">
                     <button className="primary" disabled={busy}>
                       保存明确偏好
@@ -1404,16 +1459,24 @@ export default function App() {
               />
             </label>
             <label>
-              喜欢的方面（逗号分隔）
-              <input value={liked} onChange={(e) => setLiked(e.target.value)} />
+              喜欢的方面（可选，最多 20 项，每项不超过 80 字）
+              <input
+                aria-describedby="feedback-list-hint"
+                value={liked}
+                onChange={(e) => setLiked(e.target.value)}
+              />
             </label>
             <label>
-              不喜欢的方面（逗号分隔）
+              不喜欢的方面（可选，最多 20 项，每项不超过 80 字）
               <input
+                aria-describedby="feedback-list-hint"
                 value={disliked}
                 onChange={(e) => setDisliked(e.target.value)}
               />
             </label>
+            <p className="field-hint" id="feedback-list-hint">
+              支持中英文逗号或换行分隔；单行输入建议用逗号。
+            </p>
             <p className="muted">
               喜欢的方面会形成候选摘要，不会自动成为用户事实。
             </p>

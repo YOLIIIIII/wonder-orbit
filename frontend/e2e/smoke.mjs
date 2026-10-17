@@ -28,8 +28,13 @@ try {
   });
   await page.getByRole("button", { name: /^收集星星/ }).click();
   await page
+    .getByText(/一次整理生成一张可编辑草稿，确认后才会加入正式档案/)
+    .waitFor();
+  await page.getByText(/链接仅保存来源，不读取网页/).waitFor();
+  await page
     .getByLabel("你最近对什么感到好奇？")
-    .fill(marker + " 我想了解深海生物和海洋的微光。");
+    .fill(marker + " 我想了解深海生物为什么会发光，想先记下几个好奇的问题。");
+  await page.getByLabel("参考链接（可选）").fill("https://example.com/notes");
   await page.getByRole("button", { name: "整理成草稿" }).click();
   await page.getByText("正在处理，请稍候…").waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "确认保存星星" }).waitFor();
@@ -60,11 +65,30 @@ try {
     .first()
     .waitFor();
 
+  await page.getByRole("button", { name: "我的偏好", exact: true }).click();
+  await page.getByLabel("预算上限（元，可选）").fill("5");
+  await page.getByRole("button", { name: "保存明确偏好" }).click();
+  await page.getByText("明确偏好已保存。").waitFor();
   await page.getByRole("button", { name: "微型探索", exact: true }).click();
   await page.getByLabel("今天想靠近哪份好奇？").fill(marker);
-  await page.getByLabel("可用时间（分钟）").fill("10");
-  await page.getByLabel("预算（元，留空不限）").fill("0");
+  await page.getByLabel("可用时间（分钟，可选）").fill("10");
+  const budget = page.getByLabel("本次预算（元，可选）");
+  assert.equal(await budget.inputValue(), "");
+  await page.getByText(/仍遵守“我的偏好”的预算上限/).waitFor();
+  const blankBudgetRequest = page.waitForRequest(
+    (req) => req.method() === "POST" && req.url().endsWith("/api/agent/runs"),
+  );
   await page.getByRole("button", { name: "寻找小体验" }).click();
+  assert.equal((await blankBudgetRequest).postDataJSON().budget, null);
+  await page.getByRole("button", { name: "接受这个体验" }).first().waitFor();
+  // 再验证显式 0 元；不接受上一批候选，不产生额外 Quest。
+  await budget.fill("0");
+  const zeroBudgetRequest = page.waitForRequest(
+    (req) => req.method() === "POST" && req.url().endsWith("/api/agent/runs"),
+  );
+  await page.getByRole("button", { name: "寻找小体验" }).click();
+  assert.equal((await zeroBudgetRequest).postDataJSON().budget, 0);
+  await page.getByText("正在处理，请稍候…").waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "接受这个体验" }).first().waitFor();
   await page.screenshot({ path: artifact + "/explore.png", fullPage: true });
   await page.getByRole("button", { name: "接受这个体验" }).first().click();
@@ -80,8 +104,10 @@ try {
     .getByLabel("感受（可选）")
     .fill("E2E 测试：写问题让我更想了解海洋。");
   await page
-    .getByLabel("喜欢的方面（逗号分隔）", { exact: true })
-    .fill("自然观察, 文字记录");
+    .getByLabel("喜欢的方面（可选，最多 20 项，每项不超过 80 字）", {
+      exact: true,
+    })
+    .fill("自然观察，文字记录");
   await page.getByRole("button", { name: "保存真实反馈" }).click();
   await page.getByText("真实感受已保存。跳过也没关系。").waitFor();
   await page.getByRole("button", { name: "我的偏好", exact: true }).click();
@@ -94,12 +120,20 @@ try {
   await page.screenshot({ path: artifact + "/run.png", fullPage: true });
   await page.getByRole("button", { name: "我的星屿", exact: true }).click();
   await page.screenshot({ path: artifact + "/home-after.png", fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: artifact + "/mobile.png", fullPage: true });
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth,
-  );
-  assert.equal(overflow, false, "移动端不应横向溢出");
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const name of ["收集星星", "微型探索", "我的偏好"]) {
+      await page.getByRole("button", { name: new RegExp("^" + name) }).click();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      );
+      assert.equal(overflow, false, `${name}在 ${width}px 不应横向溢出`);
+      await page.screenshot({
+        path: `${artifact}/${name}-${width}.png`,
+        fullPage: true,
+      });
+    }
+  }
   assert.deepEqual(failures, [], "不应出现浏览器脚本异常");
   console.log(
     "PASS: collection → draft approval → archive/search → relations → proposal approval → edit → reflection → preference confirmation → audit; desktop/mobile",

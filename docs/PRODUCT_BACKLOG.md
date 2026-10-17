@@ -5,9 +5,9 @@
 ## 已交付基线与当前范围
 
 - Star CRUD、单草稿确认、关键词/标签检索、真实关联、LangGraph/受控工具、审批、反馈、候选偏好确认、Mock、运行审计与基础 Web UI 已实现，详见 README 和既有验收。不会重新列为待实现。
-- PostgreSQL、容器、真实模型和 CI 已有实现/配置；首次远程前端及 PG 迁移/schema 通过，但普通 pytest 失败、独立 PG 集成未执行，完整验收仍缺证据。语义检索、多草稿等是待评估/待实现，两者不得混同。
-- 2026-10-17 实际回归后端 47 passed / 1 skipped、前端 9 passed；已在独立干净检出复现缺父目录问题并验证最小修复，PostgreSQL 本机仍缺服务。
-- 本轮仅处理 INFRA-003 的故障修复和 INFRA-007 本地提交身份；不改 Agent/UI/数据模型或依赖，不自动推送，不运行真实模型。
+- PostgreSQL、容器、真实模型和 CI 已有实现/配置；CI 修复后的远程 backend/frontend 均通过，独立 PG 集成实际 1 passed。PG 回滚/并发、完整容器与真实模型仍缺验收；语义检索、多草稿是待评估/待实现。
+- 2026-10-17 UX-003 本地回归后端 52 passed / 1 skipped、前端 17 passed；隔离 SQLite 浏览器闭环通过。本机 PostgreSQL 仍缺服务，上一轮远程证据独立补记于 VERIFICATION。
+- 本轮仅实施 UX-003，附带核对 INFRA-003 远程成功证据并收尾；不实施 UX-001/002、UI-001 或新 Agent 功能，不改数据模型/依赖。用户已授权必要检查通过后 commit、普通 push origin/main 及远程 CI；UX-003 人工体验尚待用户执行。
 
 ## 状态与完成规则
 
@@ -39,11 +39,13 @@
 
 2026-10-11，初次建立统一 ID。原路线图优先补 PostgreSQL/模型证据；本轮新增用户实际体验反馈，将近期小迭代排为 **UX-003 → UX-001 → UX-002**：预算提示存在源码可核对的不一致，文案改动成本低；随后解决新用户路径和确认后衔接。UI-001 为 P2，先让流程/文案稳定再打磨视觉，UI-002 等原创素材，不为视觉重做业务。
 
-下一条工程路径为 **INFRA-001 → INFRA-002** 与 **AGENT-001 → EVAL-001**；环境/服务具备时可独立推进。INFRA-003 为 P1，但等待用户授权发布或自行推送，不因此执行远程操作。现无已证实的未修 P0；P1 共 8 项（UX-001/002/003、INFRA-001/002/003、AGENT-001、EVAL-001）。这是推荐队列，本轮没有实施它们。
+2026-10-11 历史评估：下一条工程路径为 **INFRA-001 → INFRA-002** 与 **AGENT-001 → EVAL-001**；环境/服务具备时可独立推进。INFRA-003 为 P1，但等待用户授权发布或自行推送，不因此执行远程操作。现无已证实的未修 P0；P1 共 8 项（UX-001/002/003、INFRA-001/002/003、AGENT-001、EVAL-001）。这是推荐队列，本轮没有实施它们。
 
 语义检索等为 P2 实验，需基线和需求证据；并发验证 INFRA-004 当前为 P2，公开/多调用者场景出现时升优先级；checkpoint 和路由重构先用既有重试/组件抽取替代。下次排序变化在本节追加“日期、受影响 ID、旧/新优先级或顺序、证据、依赖与替代方案”；旧理由不删除。
 
 2026-10-17：重新审视全部未完成任务（含 deferred），优先收尾 **INFRA-007 本地身份 → INFRA-003 CI 修复与远程复验**，均为 P1；原因是已有根提交错误元数据和真实 CI 故障，修复成本低且直接影响可信交付。INFRA-003 仍 P1，执行顺序临时提前于 UX-003 → UX-001 → UX-002，待用户确认发布后再验远程；其他优先级与依赖不变，无新业务/数据安全 P0 证据。未完成 P1 仍为 8 项，INFRA-007 的本地范围已完成，不算远程历史已改。原 2026-10-11 排序理由保留在上文。
+
+2026-10-17（UX-003 开发前/交付复评）：核对全部未完成项，含 UI-002、UI-003、AGENT-006、INFRA-006 的 deferred 触发条件；未出现新的 P0 或足以提高实验/重构项优先级的证据。INFRA-003 已取得两个 Job 成功及独立 PG 1 passed 的远程证据，按既有 CI 范围收尾，PG 回滚/容器/并发仍分别留给 INFRA-001/002/004。执行顺序从临时 CI 收尾恢复 **UX-003 → UX-001 → UX-002**；其余 P1/P2/P3、依赖和简单替代方案维持，不扩大本轮范围。未完成 P1 为 7 项（UX-001/002/003、INFRA-001/002、AGENT-001、EVAL-001），无已证实未修 P0；先等用户体验 UX-003，再建议 UX-001。
 
 ## 任务索引
 
@@ -52,12 +54,12 @@
 | [DOC-001](#doc-001) | 建立持续维护的需求与迭代记录 | P2 | done | [IDEA-012](IDEA_LOG.md#idea-012) |
 | [UX-001](#ux-001) | 首次使用与空状态的下一步引导 | P1 | planned | [IDEA-001](IDEA_LOG.md#idea-001) |
 | [UX-002](#ux-002) | 审批结果、体验手记与失败恢复衔接 | P1 | planned | [IDEA-001](IDEA_LOG.md#idea-001) |
-| [UX-003](#ux-003) | 输入示例、格式、未知值与约束文案校准 | P1 | planned | [IDEA-002](IDEA_LOG.md#idea-002) |
+| [UX-003](#ux-003) | 输入示例、格式、未知值与约束文案校准 | P1 | in_progress | [IDEA-002](IDEA_LOG.md#idea-002) |
 | [UI-001](#ui-001) | 视觉层级、可读性与移动端导航打磨 | P2 | planned | [IDEA-003](IDEA_LOG.md#idea-003) |
 | [UI-002](#ui-002) | 替换用户正式原创陪伴素材 | P3 | deferred | [IDEA-003](IDEA_LOG.md#idea-003) |
 | [INFRA-001](#infra-001) | 验证 PostgreSQL 迁移与现有集成测试 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [INFRA-002](#infra-002) | 验证完整 Compose 与 Nginx 应用启动 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
-| [INFRA-003](#infra-003) | 取得首次真实 GitHub Actions 运行证据 | P1 | in_progress | [IDEA-004](IDEA_LOG.md#idea-004) |
+| [INFRA-003](#infra-003) | 取得首次真实 GitHub Actions 运行证据 | P1 | done | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [AGENT-001](#agent-001) | 验证一个真实模型服务的工具调用兼容性 | P1 | planned | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [EVAL-001](#eval-001) | 建立版本化案例与人工复核 Agent 基线 | P1 | planned | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [AGENT-002](#agent-002) | 评估并实现可分别审批的多兴趣草稿 | P2 | proposed | [IDEA-006](IDEA_LOG.md#idea-006) |
@@ -135,7 +137,7 @@
 
 - 描述与问题背景：预算“留空不限”与后端仍读取 max_budget 不一致；示例含多个主题但只产一张草稿。列表、参考链接、精力和未知字段需要以实际 schema 与 split 行为为依据。
 - 优先级：P1。
-- 状态：planned。
+- 状态：in_progress。
 - 预期用户价值：输入前理解含义，不被示例或提示误导。
 - 技术价值（AI Agent 求职）：体现结构化输入、确定性约束与模型能力边界。
 - 预计实现成本：S。
@@ -144,7 +146,7 @@
 - 验收标准：建立受影响字段的原文/候选文案/规则对照；预算说明留空沿用偏好上限、未设上限时不限制，0 为明确免费；偏好上限 5 元且预算留空时文案与后端规则一致；说明当前每次一张草稿、链接仅作引用且仍需原始文字；列表明确中英文逗号，步骤/不确定性每行一项；必填、范围、未知精力及兴趣原因可留空提示与 schema 一致；组件测试核对可见说明，人工按示例提交并记录结果。
 - 原始想法：[IDEA-002](IDEA_LOG.md#idea-002)。
 - 相关文档或代码位置：frontend/src/App.tsx collect/explore/preferences；frontend/src/components.tsx ListInput/StarEditor/ProposalEditor；backend/app/schemas.py；backend/app/tools.py。
-- 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
+- 证据/交付记录：2026-10-17，代码与文案交付，前端 17 passed、后端 52 passed / 1 skipped，格式/lint/类型/build、隔离浏览器闭环与 1440/390px 检查通过；原文/规则/新文案/测试映射及真实失败重试记录见 [VERIFICATION](VERIFICATION.md#ux-003-fields)，交付见 [CHANGELOG](../CHANGELOG.md)。**待用户人工体验验收**，保留 in_progress；自动化通过不代表体验已验收。
 
 ### UI-001
 
@@ -184,7 +186,7 @@
 
 **验证 PostgreSQL 迁移与现有集成测试**
 
-- 描述与问题背景：PostgreSQL 为既定目标数据库；模型、迁移和 JSON/外键测试已实现，但验收中该测试跳过，SQLite 不能替代 PostgreSQL 证据。
+- 描述与问题背景：PostgreSQL 为既定目标数据库；模型、迁移和 JSON/外键测试已实现；2026-10-17 远程 CI 迁移/schema 与独立集成通过，但隔离库回滚再升级尚未验证，SQLite 不能替代 PostgreSQL 证据。
 - 优先级：P1。
 - 状态：planned。
 - 预期用户价值：档案和审批关系在目标数据库可靠保存。
@@ -218,18 +220,18 @@
 
 **取得首次真实 GitHub Actions 运行证据**
 
-- 描述与问题背景：首次远程运行已失败；pytest 基础临时目录父级未建导致 35 项 setup 错误。本地测试通过仍不代表修复后的远程 CI 成功。
+- 描述与问题背景：首次远程运行因 pytest 基础临时目录父级未建导致 35 项 setup 错误；最小修复后已核对成功远程运行与独立 PostgreSQL 日志。
 - 优先级：P1。
-- 状态：in_progress。
+- 状态：done。
 - 预期用户价值：后续改动可复现检查，维护者能知道失败在哪。
 - 技术价值（AI Agent 求职）：CI、锁文件安装及 PostgreSQL 服务验证。
 - 预计实现成本：S。
 - 主要风险：无远程执行权限/未发布；误把 YAML 可解析计为通过；日志泄露。
-- 前置依赖：[INFRA-001](#infra-001) 的完整 PG 验收尚待完成；本轮已获只读核对远程和本地修复授权。发布修复及历史改写推送仍需用户明确确认；备份/本地修复见 [INFRA-007](#infra-007)，任何状态不构成 push 授权。
+- 前置依赖：CI 所需的 PostgreSQL 16 服务已在 GitHub Actions 执行；[INFRA-001](#infra-001) 的完整 PG 回滚验收独立跟踪，不用 CI 结果替代。修复提交 172103d 已在远程 main；本轮用户明确授权后续普通推送，不授权历史改写。
 - 验收标准：记录真实 workflow run 链接、commit SHA、环境、各 job 通过/失败/跳过；确认工作流规定的检查实际执行且 PostgreSQL 不是因缺配置跳过；失败修复后保留前后证据，不填写秘密进源码。
 - 原始想法：[IDEA-004](IDEA_LOG.md#idea-004)。
 - 相关文档或代码位置：.github/workflows/ci.yml；docs/VERIFICATION.md；README.md。
-- 证据/交付记录：2026-10-17 通过 GitHub 连接器读取 [原失败运行](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/38140512844) 的步骤及 backend 日志：前端/PG 迁移/schema/Ruff 通过，普通 pytest 12 passed / 1 skipped / 35 errors，独立 PG 步骤 skipped。新增 mkdir -p .cache；独立干净检出修复后 47 passed / 1 skipped，前端 9 passed 及其他检查通过。修复未推送，未验远程全绿/PG 集成，保持 in_progress；完整证据见 [VERIFICATION](VERIFICATION.md)。
+- 证据/交付记录：2026-10-17 通过 GitHub 连接器读取 [原失败运行](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/38140512844) 的步骤及 backend 日志：前端/PG 迁移/schema/Ruff 通过，普通 pytest 12 passed / 1 skipped / 35 errors，独立 PG 步骤 skipped。新增 mkdir -p .cache；独立干净检出修复后 47 passed / 1 skipped，前端 9 passed 及其他检查通过。上述为首次失败/本地修复历史。2026-10-17 补记并核对 [成功运行 39030090153](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39030090153)，关联提交 172103d3bc03c28c093db3cbe6ef863c936a887b，backend/frontend 均 success，独立 PostgreSQL 步骤日志实际 1 passed；满足本任务验收。完整 Docker/PG 回滚/并发未包含，见 [VERIFICATION](VERIFICATION.md)。
 
 ### AGENT-001
 

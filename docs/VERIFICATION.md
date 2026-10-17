@@ -234,3 +234,78 @@ if ($LASTEXITCODE -ne 0) { throw 'Lease push rejected; do not use force' }
 这个 lease 同时防止核对后出现的远程竞态。若服务器保护规则拒绝，不绕过保护；保留备份并重新讨论发布方案。不要把旧备份分支 merge 回 main，否则错误邮箱根提交会重新进入主线历史。
 
 发布后记录新的 run URL/commit SHA，确认 backend/frontend 均 success，且独立 PostgreSQL step 实际运行、输出 1 passed 而非 skipped，再更新 INFRA-003；PG 回滚/并发和完整容器仍按 INFRA-001/002/004 各自验收。当前 M1 基线保持，M2 未实施；未完成 P0 为 0、P1 为 8，本次只先收尾已确认的 CI 故障。
+
+
+## 2026-10-17：M2 首轮输入文案校准（UX-003）
+
+开发前核对：main / HEAD 与远程 main 均为 172103d3bc03c28c093db3cbe6ef863c936a887b；工作区干净；Author/Committer 配置为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>。普通远程查询因本机 127.0.0.1:7897 代理不可用失败，获准联网重试后，命令级禁用代理成功核对，未更改全局配置。本轮只实施 UX-003，附带已授权的 INFRA-003 文档收尾。
+
+<a id="ux-003-fields"></a>
+### 开发前字段对照与验收映射
+
+| 原有文案/问题 | 实际规则（源码） | 本轮新文案方案 | 对应验证 |
+| --- | --- | --- | --- |
+| 探索预算“元，留空不限” | tools.validate_quest_proposal / ModelAdapter.proposals 取非空预算最小值；0 有效 | 本次预算（元，可选）；0 为零预算；空值仍受偏好上限、都空不额外限制、同时设置取更低值 | App 预算提示及 null/0 请求；后端 5 元偏好回归 |
+| 海洋、星空、深海生物多主题示例 | DraftResult 仅一份 StarInput，批准前不创建 Star | 单主题“深海生物为什么会发光”；一次一张可编辑草稿，确认后才入档 | App 收集可见提示、草稿审批边界；隔离示例流程 |
+| 参考链接 https://… | valid_url 只接受带主机的 http/https；不抓取网页，text 必填 | 完整 https://example.com/notes；链接仅保存来源，仍需原始文字 | App/StarEditor 链接说明、格式及 required；后端 URL 校验 |
+| 标签/类别/约束/反馈“逗号分隔” | split 支持英文逗号、中文逗号及换行；ListInput 为单行 input | 可选；支持中英文逗号或换行分隔（单行框建议逗号） | 组件 split、连续输入、中英文逗号；App 偏好/反馈说明 |
+| 步骤/不确定性“每行一项” | 按换行切分；步骤 1–10 项且每项 1–1000 字；不确定性至多 20 项 | 一行一项；步骤必填并给范围，不确定性可选 | ProposalEditor 可见提示与换行 payload |
+| 原因仅 placeholder 提示可空 | 原因、Star 时间/预算/精力允许 null，不能把未知预算变 0 | 明确选填和未知留空，不猜原因；0 表示无需花费 | StarEditor 清空/提交 null；ProposalEditor null 与 0 |
+| 分钟/可用时间/偏好最短最长含义不清 | 预计分钟 1–1440；本次/偏好时间上限取较低值，仍需达到偏好下限 | 预计所需时长；本次可用上限；偏好每次体验范围，冲突会澄清 | 表单 required/min/max、App 辅助说明；后端已有约束测试 |
+| 精力“轻轻一点/刚刚好/充满能量” | low/medium/high 有序上限；Star 未知、偏好未设置是 null | 低/中/高＋原温柔称呼；说明所需/可用/上限及未设置含义 | 编辑器/偏好/探索选项及 null 断言 |
+| 偏好有限约束说明独立于字段 | SUPPORTED_CONSTRAINTS 精确三项；其他要求澄清，支持项限定免费室内文字步骤 | 字段附近说明仅室内、不购买、不外出；其他约束需澄清 | App 偏好可见说明；后端已有支持/不支持约束测试 |
+
+### 上一轮 INFRA-003 远程成功证据补记
+
+通过 GitHub 连接器核对 [运行 39030090153](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39030090153)：frontend job 117388639008 与 backend job 117388639211 均 completed / success。backend checkout 日志 SHA 为 172103d3bc03c28c093db3cbe6ef863c936a887b；Ubuntu 24.04 / Python 3.12 / PostgreSQL 16，锁安装、upgrade head、alembic check、Ruff 均成功。普通 pytest 为 47 passed / 1 skipped；独立 `uv run pytest backend/tests/test_postgres.py --override-ini addopts=` 实际为 **1 passed in 0.20s**。这是上一轮远程结果的补记，不是本轮测试重跑。保留前述首次失败与 skipped 记录；此证据不涵盖完整 Compose/Nginx、PG downgrade/upgrade 回滚或并发验证。
+
+### 本轮修改与逐项验收证据
+
+修改文件：frontend/src/App.tsx、components.tsx、styles.css、App.test.tsx、components.test.tsx；frontend/e2e/smoke.mjs；backend/tests/test_mvp.py；README.md、ROADMAP.md、CHANGELOG.md、docs/IDEA_LOG.md、PRODUCT_BACKLOG.md、PROJECT_GUIDE.md、VERIFICATION.md。未修改 backend/app、Schema、预算计算、依赖/锁文件、迁移或 CI 配置。
+
+- 预算：App 参数化用例验证偏好上限 5 元、本次空/0/8 元分别提交 null/0/8，界面明确仍受偏好上限。后端新增四组 API 回归验证空/0/3/8 元请求实际限额为 5/0/3/5；未知成本或超额在确认 API 被拒，边界值可以确认。另验证都无预算上限时未知成本保持 null。
+- 单草稿/链接：App 可见说明与 accessible description 断言，原始文字 required、maxlength=12000；只有链接不能发起整理。http/https（含大写 scheme）可用，ftp 被拒；示例为完整地址，编辑器说明来源用途。已有草稿不自动写正式 API 的测试继续通过。
+- 分隔/未知字段：StarEditor 提交中英文逗号标签；原 split 的换行解析单独断言，明确 HTML 单行输入会移除换行，未声称新增多行控件。清空已知原因/分钟/预算/精力提交 null，0 元提交 0；偏好未设置保留 null。步骤/不确定性按换行提交，步骤中的逗号保持同项；required/min/max/maxlength 与 Schema 对照。
+- 时间/精力/有限约束：组件检查各处关联说明，偏好低/中/高和空值含义清楚；探索可用时间从前端错误必填改为可选，与 AgentRequest 的可空语义一致，空值沿用偏好最长时间。只补既有边界，不新增解析或改变后端规则。
+
+### 实际环境、命令和自动化结果
+
+Windows / PowerShell，项目内 Python 3.12.15、Node 22.23.3，复用现有已安装依赖。下表以最终实际完成结果为准，失败/中止记录另列，不用旧测试冒充本轮。
+
+| 检查 | 实际命令与环境 | 结果 |
+| --- | --- | --- |
+| 后端 pytest | `.venv/Scripts/python.exe -m pytest -q -rs --basetemp=.cache/ux003-pytest`；conftest 强制 Mock/空 Key，每例独立 SQLite | passed：52 passed；skipped：1 项 PG，未设置 TEST_POSTGRES_URL |
+| Ruff lint | `.venv/Scripts/ruff.exe check backend evals` | passed：All checks passed |
+| Ruff format | `.venv/Scripts/ruff.exe format --check backend evals` | passed：21 files already formatted |
+| 前端格式 | `npm run format:check` | passed |
+| 前端 lint | `npm run lint` | passed |
+| 前端类型 | `npm run typecheck` | passed |
+| 前端 Vitest | `npm run test` | passed：3 files / 17 tests（App 8、components 7、api 2） |
+| 前端构建 | `npm run build` | passed：tsc -b 与 Vite 6.4.4，1581 modules |
+| 隔离浏览器 | Node 22 执行 `e2e/smoke.mjs`；E2E_ALLOW_WRITE=true，E2E_BASE_URL=http://127.0.0.1:5178，PLAYWRIGHT_BROWSERS_PATH=项目/.cache/browsers，E2E_ARTIFACT_DIR=项目/.cache/ux003-e2e-final | passed：完整收集→审批→搜索/关联→探索→接受/修改→反馈→偏好确认→足迹；无 pageerror，三个表单页 1440/390px 无横向溢出 |
+| 本轮本机 PostgreSQL / Docker / 真实模型 | 未配置本机 PG/Docker，未授权真实模型调用额度；代码没有改变相关能力 | not run；不以本地 PG skipped 或上一轮 CI 冒充本轮执行 |
+| 用户人工体验验收 | 需要用户本人按下述步骤体验 | not run；UX-003 保留 in_progress |
+
+前端命令实际由项目 `.tools/node/node_modules/node/bin/node.exe` 启动 `D:/Soft/Node/node_modules/npm/bin/npm-cli.js run <script>`，PATH 优先项目 Node 22、npm 缓存限定 .cache/npm。最后完整顺序 format:check → lint → typecheck → test → build 退出 0，无依赖变更。
+
+失败与重试：首次 pytest 在沙箱内长时间无输出，主动中止（未计通过），改用获准权限与新的 basetemp 后完整通过。首次 Vitest 因 realpath EPERM 没有运行测试；获准权限后通过。首次 typecheck 发现新增测试误用了 Playwright 的 exact 参数，修正后完整前端检查通过。首次 build realpath EPERM，获准权限重跑通过。E2E 首次访问本机被 ERR_NETWORK_ACCESS_DENIED 拒绝，单独提升浏览器后因沙箱服务不可达超时；前后端均在获准权限下监听专用端口后业务闭环完成，但新增截图循环中“收集星星”精确名称与原导航可访问名称不一致而超时，修正定位并换另一份新库完整重跑通过。原失败产物 .cache/ux003-e2e 保留，不以其部分截图当成功结果。一次匿名 GitHub REST 查询遭 IP rate limit，改由现有 GitHub 连接器核对真实 run，不记录任何认证信息。
+
+### 浏览器隔离与视觉核对
+
+测试启动器（被忽略的 .cache/ux003_server.py）启动前断言新 DB 不存在、绝对路径位于项目 .cache 内，强制 DATABASE_URL、MOCK_MODE=true、空 MODEL_API_KEY，并从应用实际 engine.url.database 再次核对目标路径后才迁移/启动。最终目标为 **D:/Projects/wonder-orbit/.cache/ux003-browser-20261017c.db**；专用后端 127.0.0.1:8018，临时 Vite 127.0.0.1:5178 的 /api 明确转发 8018，不复用日常 8000/5173。早先隔离尝试的无后缀/b 库保留在 .cache，不删除个人数据。
+
+运行前后仅对个人 wonder.db 做文件 SHA-256 对照，均为 FDBE6D81BB9ABF6684E06AD0D0A79F73F6795293748EB264CA0E869E1F243950；未查询其业务内容，也未向其写入测试数据。截图位于 .cache/ux003-e2e-final（忽略、不提交）。已查看“微型探索-390.png”“我的偏好-1440.png”“收集星星-1440.png”：字段附近说明可读，无覆盖/截断，维持原配色与布局。这是开发检查，不是用户本人验收。
+
+### 待用户依次体验
+
+1. 打开“我的偏好”，先记下原设置，将预算上限设为 5 元并保存；查看时间范围、精力未设置、列表格式和三种有限约束说明。
+2. 打开“收集星星”，输入“我想了解深海生物为什么会发光，想先记下几个好奇的问题。”，参考链接可填 https://example.com/notes；确认只产生一张可编辑草稿。原因、预计时间/预算、精力未知时保留空值，确认后才加入档案；检查标签“深海，微光,观察”。可先试仅填链接、留空原文，确认不能整理。
+3. 打开“微型探索”，输入档案中确有的关键词“深海”，可用时间 10 分钟、本次预算留空：说明应明确仍遵守 5 元上限；再填 0 元生成，说明应明确是零预算。当前 Mock 模板本来就免费，不能仅凭候选免费推断 5 元规则已验证；非零边界由后端 API 回归证明。
+4. 点击候选“修改”，检查预计分钟、预算未知/0、精力必选、步骤必填与不确定性可选的“一行一项”说明。可以取消，不必保存测试体验；如接受并记录反馈，检查喜欢/不喜欢的格式说明。
+5. 窄屏（约 390px）再次打开收集、探索、偏好，核对阅读和操作；体验后按需恢复原偏好，反馈是否有难懂或过长的说明。
+
+风险/剩余：用户体验尚未执行；Mock 不能证明真实模型质量；PG 回滚/并发、完整容器仍待各自验收。本轮仅 UX-003 与 INFRA-003 文档收尾，下一项建议在用户体验通过后实施 UX-001，不继续开发。当前 M2，未修 P0 无已知实证，未完成 P1 七项见 Backlog。
+
+本轮远程 CI 结果在提交推送后核对，并在最终交付中提供链接、SHA、两个 Job 与独立 PG 实际输出；按用户要求留待下轮补记，不为写入本次 CI 结果额外触发一次构建。
+
+提交前静态复核：运行被忽略的 .cache/ux003_doccheck.py，265 个本地 Markdown 文件链接/锚点存在，26 个任务 ID 与索引/详情状态一致，13 个 IDEA ID 未重复，UX-001/002/UI-001 保持 planned，未完成 P1 七项；变更限定上述 14 个文件，backend/app、依赖锁文件与个人 DB 未纳入。已审阅 git diff、git diff --check 通过；重新 fetch origin main 后确认远程与本地基线仍为 172103d，无未知远程变更。测试临时前后端已停止，隔离库/截图保留在忽略目录供复核。

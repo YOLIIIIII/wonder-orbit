@@ -2,9 +2,9 @@
 
 核对日期：2026-10-11（Asia/Shanghai）。以本轮实际文件与源码为准，适合有 Java 后端基础、初学 Python Agent 的读者。本文解释“在哪里、怎么连起来、改完检查什么”，不另建需求或测试成绩台账。
 
-局部更新：2026-10-17 仅同步 CI 的 pytest 父目录准备、对应测试命令与最新 CI 边界；下文“本轮”及第八节首次导航检查数据保留为 2026-10-11 历史记录。本次实际重跑与 Git 身份修正见 [VERIFICATION](VERIFICATION.md) 的 2026-10-17 章节。
+局部更新：2026-10-17 同步 UX-003 输入规则与浏览器选择器、CI 成功证据边界。未增删重要源码文件，也未改变模块职责、API、启动命令或数据流；ListInput 增加可访问标签及说明关联参数，原 split 解析保持不变。下文“本轮”和第八节首次导航检查数据保留为 2026-10-11 历史记录；最新实际执行结果见 [VERIFICATION](VERIFICATION.md) 的 UX-003 章节。
 
-本轮只允许创建本手册、补充 AGENTS；因此未改 Backlog/CHANGELOG/VERIFICATION。本文的当前状态是带日期的快照，正式任务仍以 [PRODUCT_BACKLOG](PRODUCT_BACKLOG.md) 为准，测试证据以 [VERIFICATION](VERIFICATION.md) 为准。历史 47 passed / 1 skipped 与前端 9 passed 不能当作本轮重跑结果。
+2026-10-11 首次导航编写时只允许创建本手册、补充 AGENTS；因此未改 Backlog/CHANGELOG/VERIFICATION。本文的当前状态是带日期的快照，正式任务仍以 [PRODUCT_BACKLOG](PRODUCT_BACKLOG.md) 为准，测试证据以 [VERIFICATION](VERIFICATION.md) 为准。历史 47 passed / 1 skipped 与前端 9 passed 不能当作本轮重跑结果。
 
 阅读范围为自有源码、测试、脚本、文档及配置/锁文件元数据；忽略 .git 内部、node_modules、.venv、.tools、.cache、dist 等第三方/运行产物。没有读取个人数据库内容或真实私有配置。当前检查范围内文件用途均可从内容确认；未来无法确认的新文件须标“待核实”，不能根据文件名填功能。
 
@@ -103,10 +103,10 @@ Java 对照：Pydantic 类近似 DTO + Bean Validation，FastAPI Depends 近似�
 | [frontend/src/types.ts](../frontend/src/types.ts) | 前端接口形状和状态，和后端 Pydantic/实际 JSON 共同构成契约 | Energy、StarInput、Star、Proposal、Reflection、Quest、Match、AgentRequest、Run、Preference、PreferenceData、Stats、Relation | App/components/api 的类型参数；非自动生成 | 后端入参/返回字段、枚举或前端需要显示字段改变；Run.state 是前端用到的部分，不等于全部数据库 state | F；接口/状态变化 B/E |
 | [frontend/src/styles.css](../frontend/src/styles.css) | 原生 CSS 的配色、卡片、轨迹、CSS 陪伴、焦点、弹窗和响应式；末尾还有可读性覆盖规则 |  :root 变量；.companion、.orbit-art、.star-grid、.runs-layout、.modal；600/850/1150/1450px 媒体查询 | App/components className、OrbitArt 内联 SVG 色值；无 Tailwind 配置 | UI-001/002 视觉、布局、字体/对比度或移动导航改变 | F、E；桌面/移动截图和人工视觉/键盘复核；单测不能证明审美或对比度 |
 | [frontend/src/test-setup.ts](../frontend/src/test-setup.ts) | 导入 Vitest 的 jest-dom 断言扩展 | @testing-library/jest-dom/vitest | vite.config.ts 的 setupFiles、组件测试 | 测试初始化与断言环境改变 | F（至少 Vitest + 类型/lint） |
-| [frontend/src/App.test.tsx](../frontend/src/App.test.tsx) | 模拟 api，检查空档案/Mock、草稿不自动写入、后端连接失败 | backend(mock) 辅助函数；三个 it；vi.mock api | App、api、Testing Library；不是服务集成测试 | 页面状态或交互边界改变 | F；增加覆盖需要的状态而不是宣称新引导已测 |
-| [frontend/src/components.test.tsx](../frontend/src/components.test.tsx) | 检查 StarEditor 未知值/来源锁、ListInput 连续逗号、ProposalEditor 不提交 ORM 元信息、未知预算不当免费 | 四个 it；固定 star/proposal fixture | ListInput、StarEditor、ProposalEditor、ProposalFacts | 编辑器、拆分规则或金额展示改变 | F；真实提交规则仍由 B/E 验证 |
+| [frontend/src/App.test.tsx](../frontend/src/App.test.tsx) | 模拟 api，检查空档案/Mock、审批边界、连接失败；UX-003 单草稿/链接提示、5 元偏好下空/0/8 元请求、偏好空值和范围 | backend(mock, maxBudget) 辅助函数；含参数化用例；vi.mock api | App、api、Testing Library；不是服务集成测试 | 页面状态或交互边界改变 | F；增加覆盖需要的状态而不是宣称新引导已测 |
+| [frontend/src/components.test.tsx](../frontend/src/components.test.tsx) | 检查未知值/来源锁、ListInput 分隔、ProposalEditor 方案字段与多行输入、空值/0 元、输入说明和 Schema 范围 | 固定 star/proposal fixture；清空再保存与可访问说明断言 | ListInput、StarEditor、ProposalEditor、ProposalFacts | 编辑器、拆分规则或金额展示改变 | F；真实提交规则仍由 B/E 验证 |
 | [frontend/src/api.test.ts](../frontend/src/api.test.ts) | 检查批准请求体/幂等头与失败 ApiError 的 runId | 两个 it；vi.stubGlobal(fetch) | api、ApiError；模拟 Response | 请求/错误处理改变 | F；不是在线服务成功证据 |
-| [frontend/e2e/smoke.mjs](../frontend/e2e/smoke.mjs) | Playwright 真浏览器提交收集/批准/检索/关联/体验/反馈/偏好/足迹，检查页面异常和 390px 溢出并截图 | chromium.launch；E2E_ALLOW_WRITE、E2E_BASE_URL、E2E_ARTIFACT_DIR | 运行中的前端/后端；输出 .cache/e2e；TEMP/TMP 指向 artifact/browser-tmp | 交互文案、选择器、流程/截图输出改变；文案改动要查这里精确 label | F lint + E；只用隔离库，授权开关不自动核验数据库地址 |
+| [frontend/e2e/smoke.mjs](../frontend/e2e/smoke.mjs) | Playwright 真浏览器闭环；检查 5 元偏好下空/0 元请求、页面异常，收集/探索/偏好在 1440/390px 的溢出并截图 | chromium.launch；E2E_ALLOW_WRITE、E2E_BASE_URL、E2E_ARTIFACT_DIR | 运行中的前端/后端；输出 .cache/e2e；TEMP/TMP 指向 artifact/browser-tmp | 交互文案、选择器、流程/截图输出改变；文案改动要查这里精确 label | F lint + E；只用隔离库，授权开关不自动核验数据库地址 |
 | [frontend/vite.config.ts](../frontend/vite.config.ts) | React 插件；开发 /api 代理到 127.0.0.1:8000；Vitest jsdom/setupFiles | defineConfig；server.proxy、test | 开发服务器、FastAPI、test-setup.ts | 后端端口、开发代理、测试环境改变 | F、E；代理变更实际启动核对 |
 | [frontend/tsconfig.json](../frontend/tsconfig.json) | ES2022、strict、Bundler 模块解析、react-jsx、noEmit；检查 src 与 vite.config.ts | compilerOptions、include | tsc --noEmit / tsc -b、IDE | 编译目标、类型边界或包含目录改变 | F 的 typecheck/build；不把编译通过当运行时通过 |
 | [frontend/eslint.config.js](../frontend/eslint.config.js) | ESLint flat config：TS/React Hooks、Node JS、E2E 同时允许浏览器/Node globals；忽略 dist 等 | tseslint.config；hooks.configs.recommended.rules | 所有前端自有 JS/TS；npm run lint | lint 规则、文件环境/忽略改变 | F lint/typecheck，确认 E2E 脚本被检查 |
@@ -144,7 +144,7 @@ refresh 并行拉取七类数据；act 管理 busy/错误/提示，成功后 ref
 | [evals/run_live.py](../evals/run_live.py) | 显式 --allow-live 且有 Key 才运行；只做提取的结构验证/耗时；输出 .cache/live-eval.json | main；ModelAdapter.draft；mode/model/prompt_version/workflow_version/results | Settings、AgentRequest、cases.json；自动加入 backend 到 sys.path | 真实评测范围、版本或输出改变 | Q；显式 L；目前不是完整 LangGraph、建议质量或检索对比评测 |
 | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | push/PR 两 job；Ubuntu + PostgreSQL 16 + Python 3.12/uv；Node 22 前端 | backend/front-end job 名实际为 backend、frontend；MVP checks | 根 uv/迁移/Ruff/pytest；前端 npm ci 与格式/lint/type/test/build；专门 PG 测试 step | 检查集合、环境版本/依赖缓存或触发条件改变 | 本地 B/Q/F/M/P，最终核对真实 CI run；目前未含 Docker 构建、浏览器 E2E 或 Live eval |
 
-普通 pytest 使用 conftest 的 Mock/隔离 SQLite，Base.metadata.create_all 是测试准备，不证明 Alembic 迁移正确。CI 先做 PostgreSQL Alembic/Ruff，再 mkdir -p .cache，之后普通 pytest（PostgreSQL 用例因无 TEST_POSTGRES_URL 跳过），最后单独带 TEST_POSTGRES_URL 执行 PostgreSQL 用例。首次远程运行在普通 pytest 失败，最后一步未执行；2026-10-17 父目录修复仅本地通过。检查哪些 job 真运行过要看远程结果；YAML 不能代替执行证据。
+普通 pytest 使用 conftest 的 Mock/隔离 SQLite，Base.metadata.create_all 是测试准备，不证明 Alembic 迁移正确。CI 先做 PostgreSQL Alembic/Ruff，再 mkdir -p .cache，之后普通 pytest（PostgreSQL 用例因无 TEST_POSTGRES_URL 跳过），最后单独带 TEST_POSTGRES_URL 执行 PostgreSQL 用例。首次远程运行在普通 pytest 失败，最后一步未执行；2026-10-17 已补记 [修复后的成功运行](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39030090153)，两个 Job 成功，独立 PG 实际 1 passed，原失败记录保留。检查哪些 job 真运行过要看远程结果；YAML 不能代替执行证据。
 
 ### 3.4 根配置、后端容器与启动脚本
 
@@ -281,6 +281,8 @@ PostgreSQL 行锁、Quest.proposal_key 唯一与 Reflection.quest_id 唯一参�
 生成失败：execute_run rollback 后重新读取 run，保存 failed/error_type/summary、finish_run，返回 502 和 run_id；ModelFailure 只公开 timeout/rate_limit/model_unavailable/invalid_tool_call/invalid_model_output 分类。节点/工具事件和已提交快照用于审计；反馈失败的 reflect 特别恢复 failed_events，避免 rollback 丢事件。
 
 带 run_id 的 ApiError 可使 App.act 打开失败运行；不带 run_id 的错误只显示错误。main.retry_run 仅 collect/explore 的 failed/running 可用，running 要等 max(120 秒, 4×MODEL_TIMEOUT) 保护期，新建运行重做读取/生成，不重放批准写入。UI 目前只为失败生成展示重试，运行页可打开待确认结果；列表最多取最近 50 条，已知 run_id 可调用详情 API。
+
+UX-003 核对补充（2026-10-17）：App 的收集示例为单兴趣，草稿/链接说明可见；StarEditor/ProposalEditor 保留未知预算 null 和零预算差别。时间与预算 HTML 范围对齐 Schema，本次可用时间现可留空；精力显示低/中/高。ListInput 仍为单行 input，split 支持中英文逗号及换行，提示建议单行用逗号，未新增多行解析。共享说明用 useId 关联，避免同时出现多个编辑器时 ID 重复。smoke.mjs 已同步新 label，检查 5 元偏好下空预算/0 元及三个表单页面 1440/390px；执行前仍须自行核对隔离数据库。
 
 ## 五、常见开发任务定位
 
@@ -514,7 +516,7 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 
 ## 七、项目状态边界
 
-截至上述核对日期，正式里程碑为 **M1 Mock + SQLite 基线已交付，M2 体验修整准备阶段**；没有按文件数量计算完成百分比。
+以下表格为 **UX-003 前的历史快照（2026-10-11 建立，2026-10-17 CI 修复轮局部更新）**，保留其历史验证边界，不作当前状态台账。现已进入 M2 UX-003 首轮文案交付、等待用户体验；CI 成功范围及最新测试见 VERIFICATION，正式任务状态见 Backlog；没有按文件数量计算完成百分比。
 
 | 状态 | 实际范围 | 依据与边界 |
 | --- | --- | --- |
