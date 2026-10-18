@@ -10,7 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { api, ApiError } from "./api";
-import type { Proposal, Quest, Run, Star } from "./types";
+import type { Proposal, Quest, Relation, Run, Star, StarInput } from "./types";
 vi.mock("./api", async (original) => ({
   ...(await original<typeof import("./api")>()),
   api: vi.fn(),
@@ -73,6 +73,9 @@ function server(initial: Run[] = [], initialStars: Star[] = []) {
     generation: run(),
     missingId: false,
     missingTarget: false,
+    editFailure: false,
+    deleteFailure: false,
+    relations: [] as Relation[],
   };
   mockedApi.mockImplementation(async (path, method = "GET", body) => {
     if (path === "/health") return { mock_mode: true };
@@ -103,9 +106,29 @@ function server(initial: Run[] = [], initialStars: Star[] = []) {
       const target = state.stars.find((s) => path.endsWith("/" + s.id));
       if (!target || state.missingTarget)
         throw new Error("星星暂未找到，请刷新后重试");
+      if (method === "PUT") {
+        if (state.editFailure) throw new Error("修改暂未保存，请重试");
+        const input = body as StarInput;
+        const updated = {
+          ...target,
+          ...input,
+          title: input.title.trim(),
+          updated_at: "2026-10-18T12:00:00Z",
+        };
+        state.stars = state.stars.map((item) =>
+          item.id === target.id ? updated : item,
+        );
+        return updated;
+      }
+      if (method === "DELETE") {
+        if (state.deleteFailure) throw new Error("已被体验引用，请改为归档");
+        state.stars = state.stars.filter((item) => item.id !== target.id);
+        return undefined;
+      }
       return target;
     }
     if (path.startsWith("/stars")) return state.stars;
+    if (path === "/relations") return state.relations;
     if (path === "/quests") return state.missingTarget ? [] : state.quests;
     if (path === "/agent/runs") {
       if (method === "POST") {
@@ -314,7 +337,8 @@ describe("UX-002 真实结果衔接", () => {
     fireEvent.click(screen.getByRole("button", { name: "查看这颗星星" }));
     const dialog = await screen.findByRole("dialog");
     await idle();
-    expect(within(dialog).getByLabelText("标题")).toHaveValue("海洋");
+    expect(within(dialog).getByRole("heading", { name: "海洋" })).toBeVisible();
+    expect(within(dialog).queryByLabelText("标题")).not.toBeInTheDocument();
     expect(screen.getByLabelText("搜索星星")).toHaveValue("");
     expect(screen.getByLabelText("星星状态筛选")).toHaveValue("");
     expect(mockedApi).toHaveBeenCalledWith("/stars/saved-star");
@@ -660,4 +684,223 @@ describe("UX-002 真实结果衔接", () => {
     fireEvent.click(next);
     expect(await screen.findByRole("dialog")).toBeVisible();
   });
+});
+
+describe("UX-002 星星阅读与明确编辑", () => {
+  async function openCard() {
+    const card = document.getElementById("star-card-" + star.id)!;
+    card.focus();
+    fireEvent.click(card);
+    return screen.findByRole("dialog", { name: "星星详情" });
+  }
+  it.each(["首页", "档案", "轨道", "探索引用"])(
+    "%s 查看入口统一只读，关闭恢复焦点且不写正式记录",
+    async (entry) => {
+      const s = server(
+        [],
+        [star, { ...star, id: "other-star", title: "星空" }],
+      );
+      s.relations = [
+        {
+          from_id: star.id,
+          to_id: "other-star",
+          from_title: "海洋",
+          to_title: "星空",
+          reasons: ["共同兴趣"],
+        },
+      ];
+      s.generation = run("explore");
+      render(<App />);
+      await ready();
+      let trigger: HTMLElement;
+      if (entry === "首页" || entry === "档案") {
+        if (entry === "档案") await nav("星星档案");
+        trigger = document.getElementById("star-card-" + star.id)!;
+      } else if (entry === "轨道") {
+        await nav("兴趣轨道");
+        trigger = screen.getByRole("button", { name: "海洋" });
+      } else {
+        await generate("explore");
+        await idle();
+        trigger = screen.getAllByRole("button", { name: "海洋" })[0];
+      }
+      trigger.focus();
+      fireEvent.click(trigger);
+      const dialog = await screen.findByRole("dialog", { name: "星星详情" });
+      await idle();
+      expect(
+        within(dialog).getByRole("heading", { name: "海洋" }),
+      ).toBeVisible();
+      expect(within(dialog).queryByRole("textbox")).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole("button", { name: "删除这颗星星" }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole("button", { name: "关闭弹窗" }));
+      expect(trigger).toHaveFocus();
+      expect(
+        mockedApi.mock.calls.some(
+          ([path, method]) =>
+            method === "PUT" ||
+            method === "DELETE" ||
+            (path === "/stars" && method === "POST") ||
+            path.endsWith("/decision"),
+        ),
+      ).toBe(false);
+    },
+  );
+  it("编辑才出现表单；取消和关闭丢弃草稿，不发生写入", async () => {
+    server([], [star]);
+    render(<App />);
+    await ready();
+    await openCard();
+    fireEvent.click(screen.getByRole("button", { name: "编辑星星" }));
+    expect(screen.getByLabelText("标题")).toHaveFocus();
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "未保存的修改" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "取消编辑" }));
+    const dialog = screen.getByRole("dialog", { name: "星星详情" });
+    expect(within(dialog).getByRole("heading", { name: "海洋" })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "编辑星星" }));
+    expect(screen.getByLabelText("标题")).toHaveValue("海洋");
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "关闭后丢弃" },
+    });
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await openCard();
+    fireEvent.click(screen.getByRole("button", { name: "编辑星星" }));
+    expect(screen.getByLabelText("标题")).toHaveValue("海洋");
+    expect(
+      mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
+    ).toBe(true);
+  });
+  it("异步来源读取使入口失焦后，关闭仍恢复原触发元素", async () => {
+    const s = server([], [star]);
+    s.relations = [
+      {
+        from_id: star.id,
+        to_id: star.id,
+        from_title: "查看来源",
+        to_title: "另一端",
+        reasons: [],
+      },
+    ];
+    const original = mockedApi.getMockImplementation()!;
+    let finish!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    mockedApi.mockImplementation(async (path, ...rest) => {
+      if (path === "/stars/saved-star") await gate;
+      return original(path, ...rest);
+    });
+    render(<App />);
+    await ready();
+    await nav("兴趣轨道");
+    const trigger = screen.getByRole("button", { name: "查看来源" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    trigger.blur();
+    await act(async () => finish());
+    await idle();
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "星星详情" })).getByRole(
+        "button",
+        { name: "关闭弹窗" },
+      ),
+    );
+    expect(trigger).toHaveFocus();
+  });
+  it("保存使用服务端确认内容返回阅读，并保留归档和明确零预算", async () => {
+    server([], [star]);
+    render(<App />);
+    await ready();
+    await openCard();
+    fireEvent.click(screen.getByRole("button", { name: "编辑星星" }));
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: " 更新后的星星 " },
+    });
+    fireEvent.change(screen.getByLabelText("状态"), {
+      target: { value: "archived" },
+    });
+    fireEvent.change(screen.getByLabelText("预计预算（元，可选）"), {
+      target: { value: "0" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "确认保存星星" }));
+    const dialog = await screen.findByRole("dialog", { name: "星星详情" });
+    await idle();
+    expect(
+      within(dialog).getByRole("heading", { name: "更新后的星星" }),
+    ).toHaveFocus();
+    expect(within(dialog).getByText("已归档")).toBeVisible();
+    expect(within(dialog).getByText("0 元")).toBeVisible();
+    expect(within(dialog).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(mockedApi).toHaveBeenCalledWith(
+      "/stars/saved-star",
+      "PUT",
+      expect.objectContaining({
+        title: " 更新后的星星 ",
+        status: "archived",
+        estimated_budget: 0,
+      }),
+    );
+    expect(await screen.findByText("星星已更新。")).toBeVisible();
+  });
+  it("保存失败保留编辑内容和错误，可重试，不误报成功", async () => {
+    const s = server([], [star]);
+    s.editFailure = true;
+    render(<App />);
+    await ready();
+    await openCard();
+    fireEvent.click(screen.getByRole("button", { name: "编辑星星" }));
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "继续编辑" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "确认保存星星" }));
+    const dialog = screen.getByRole("dialog", { name: "编辑兴趣星星" });
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "修改暂未保存",
+    );
+    await idle();
+    expect(within(dialog).getByLabelText("标题")).toHaveValue("继续编辑");
+    expect(screen.queryByText("星星已更新。")).not.toBeInTheDocument();
+    s.editFailure = false;
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "确认保存星星" }),
+    );
+    expect(
+      await within(
+        await screen.findByRole("dialog", { name: "星星详情" }),
+      ).findByRole("heading", { name: "继续编辑" }),
+    ).toBeVisible();
+  });
+  it.each([false, true])(
+    "删除仅在明确编辑中，引用保护失败=%s",
+    async (protectedStar) => {
+      const s = server([], [star]);
+      s.deleteFailure = protectedStar;
+      vi.stubGlobal(
+        "confirm",
+        vi.fn(() => true),
+      );
+      render(<App />);
+      await ready();
+      await openCard();
+      expect(
+        screen.queryByRole("button", { name: "删除这颗星星" }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "编辑星星" }));
+      fireEvent.click(screen.getByRole("button", { name: "删除这颗星星" }));
+      await idle();
+      if (protectedStar) {
+        expect(
+          within(screen.getByRole("dialog")).getByRole("alert"),
+        ).toHaveTextContent("请改为归档");
+        expect(screen.getByLabelText("状态")).toBeVisible();
+      } else expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        mockedApi.mock.calls.filter(([, method]) => method === "DELETE"),
+      ).toHaveLength(1);
+    },
+  );
 });

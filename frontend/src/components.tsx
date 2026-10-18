@@ -173,6 +173,110 @@ export function StarCard({ star, onOpen }: { star: Star; onOpen: () => void }) {
     </button>
   );
 }
+export function StarDetails({ star }: { star: Star }) {
+  let reference: string | null = null;
+  if (star.source_reference) {
+    try {
+      const url = new URL(star.source_reference);
+      if (["http:", "https:"].includes(url.protocol)) reference = url.href;
+    } catch {
+      /* 非 URL 来源仍以安全文本显示。 */
+    }
+  }
+  return (
+    <article className="star-details" aria-label={star.title}>
+      <h3 data-star-title tabIndex={-1}>
+        {star.title}
+      </h3>
+      <div className="tags">
+        <span className="chip">{star.category}</span>
+        <span className="chip">{statusNames[star.status]}</span>
+        {star.tags.map((tag) => (
+          <span key={tag}>#{tag}</span>
+        ))}
+      </div>
+      <section>
+        <h4>最初输入的文字</h4>
+        <p>{star.original_text}</p>
+      </section>
+      <section>
+        <h4>整理后的描述</h4>
+        <p>{star.description || "尚未填写描述。"}</p>
+      </section>
+      {star.interest_reason && (
+        <section>
+          <h4>兴趣原因</h4>
+          <p>{star.interest_reason}</p>
+        </section>
+      )}
+      <dl className="star-detail-facts">
+        <div>
+          <dt>预计时间</dt>
+          <dd>
+            {star.estimated_minutes === null
+              ? "尚未记录"
+              : `${star.estimated_minutes} 分钟`}
+          </dd>
+        </div>
+        <div>
+          <dt>预计预算</dt>
+          <dd>
+            {star.estimated_budget === null
+              ? "尚未记录"
+              : `${star.estimated_budget} 元`}
+          </dd>
+        </div>
+        <div>
+          <dt>所需精力</dt>
+          <dd>
+            {star.energy_level ? energyNames[star.energy_level] : "尚未记录"}
+          </dd>
+        </div>
+      </dl>
+      <section>
+        <h4>内容来源</h4>
+        <p>
+          {
+            { manual: "手动输入", paste: "粘贴文字", link: "链接引用" }[
+              star.source_type
+            ]
+          }
+        </p>
+        {star.source_reference && (
+          <p>
+            参考链接：
+            {reference ? (
+              <a href={reference} target="_blank" rel="noopener noreferrer">
+                {star.source_reference}
+              </a>
+            ) : (
+              star.source_reference
+            )}
+          </p>
+        )}
+      </section>
+      <div className="star-detail-dates">
+        {(
+          [
+            ["收藏时间", star.created_at],
+            ["更新时间", star.updated_at],
+          ] as const
+        ).map(
+          ([label, value]) =>
+            value &&
+            !Number.isNaN(new Date(value).getTime()) && (
+              <p key={label}>
+                {label}：
+                <time dateTime={value}>
+                  {new Date(value).toLocaleString("zh-CN")}
+                </time>
+              </p>
+            ),
+        )}
+      </div>
+    </article>
+  );
+}
 export function StarEditor({
   initial,
   disabled,

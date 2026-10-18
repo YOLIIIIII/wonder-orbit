@@ -610,3 +610,71 @@ Windows / PowerShell，项目 Python 3.12.15、Node 22.23.3 和已有锁定依�
 - 我们通过这次开发学到了什么？一次性定位要同时等待 DOM 和处理状态稳定，异步返回还需页面导航版本保护；精确导航不仅要 ID，还要目标存在、过滤和跨页弹窗焦点恢复。JSDOM 调用断言不足以证明滚动，真实浏览器/隔离数据库计数与后端保护测试共同验证边界。
 
 最终复核：已查看 .cache/ux002-e2e-delivery/result-focus-390.png、clarification-1440.png、quest-target-1.png，草稿顶部与真实澄清可见、体验定位正确、原品牌与 UX-003 中文提示保留。完整浏览器最终通过包括 1440/390px 几何边界、正常 Tab、八页指南和减少动画；故障段真实执行。文档检查脚本 .cache/ux002_doccheck.py 已核对 294 个本地链接/锚点、28 个任务索引/详情、14 个 IDEA、6 项未完成 P1、16 个预期文件；git diff --check 与源码/测试 diff 复核通过。个人 wonder.db 前后 SHA-256 相同，未改业务后端/Schema/迁移/依赖；提交前 ls-remote 核对 main 仍为预期基线。
+
+<a id="ux-002-star-reading-20261018"></a>
+
+## 2026-10-18：UX-002 人工反馈修正——星星查看与编辑分离
+
+### 基线、反馈和范围
+
+本地 main / HEAD 与实际 fetch 后的 origin/main 均为 edfb3892082a6ebe375163d1b3fb49b90dffa8c8，工作区干净，作者为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>。命令级代理 12450 在沙箱连接失败，正常权限 fetch 成功；不改全局配置，不覆盖未知修改。
+
+2026-10-18 用户实际体验原话：“我都体验过了，你想了解的两个地方，第一点我觉得挺好的，切换很丝滑；但是第二点，我确实有点意料之外，我只是想看看而已。其余都不错。”记录为自动定位良好、整体衔接正面反馈，以及默认打开编辑表单的明确预期偏差；没有扩写为所有边界/键盘/390px 已由用户亲测。追加 IDEA-001，不新增重复想法。UX-002 继续修正并等待再体验，UX-001 保持 done，UX-003 的具体人工记录缺口独立保留。全部未完成项含 deferred 复评无排序或优先级变化，M2 与 6 项未完成 P1 保持，ROADMAP 无需改动，不开始 AGENT-001。
+
+### 实际实现与操作边界
+
+| 操作/数据 | 当前行为 | 写入边界 |
+| --- | --- | --- |
+| 保存后的查看、首页/档案 StarCard、轨道两端、探索来源 | 共用 selectedStar，默认只读 StarDetails + 现有 Modal；来源入口按 ID 读取，精确档案跳转仍清除过滤 | 查看仅 GET 或当前真实列表，不 POST/PUT/DELETE |
+| 阅读详情 | 标题、类别/标签/状态，原文与描述独立展示，真实原因才显示；预计时间/预算/精力、来源及存在的时间 | null 显示尚未记录，不转为零；明确预算 0 显示 0 元，不猜原因 |
+| 原文、长描述、链接 | 普通 React 文本，换行/任意长词可折行；Modal 可滚动；只有解析为 http/https 的 URL 可点击，其他来源仍安全文本 | 不注入 HTML，不抓网页，不新增 Schema |
+| 编辑星星 | 明确点击才挂载原 StarEditor，保留现有允许字段与校验、状态归档 | 挂载和切换无请求 |
+| 取消编辑 / 关闭 | 卸载未保存草稿；取消回阅读标题，关闭回原触发元素或跨页对应卡片 | 无保存/删除请求 |
+| 保存成功 | PUT 返回的正式 Star 核对同一 id，展示服务端确认内容并更新卡片缓存，回阅读 | 单次既有 PUT；不以输入值或 notice 当作服务器结果 |
+| 保存失败 | 保留编辑器、输入、错误与重试方式，不显示成功；取消仍可回原详情 | 不假称已保存；重试由用户触发 |
+| 删除 / 归档 | 删除只在编辑中，沿用确认及后端引用保护；引用星星不可删但可改状态归档 | 保留原 DELETE/PUT，不由查看触发 |
+| 异步详情读取 / 读写中关闭 | 点击时捕获 starOpener；保存响应用查看版本避免关闭后重新弹出；Modal Tab 循环包括新链接 | 不增加持久化状态或依赖 |
+
+焦点：默认阅读聚焦 Modal 关闭按钮；进入编辑聚焦标题输入；取消/保存后聚焦详情标题（tabIndex=-1），普通 Tab 可进入链接和编辑按钮；关闭还原原入口，精确跨页沿用 StarCard DOM ID。Quest 的查看/编辑、UX-002 一次性结果定位/减少动画/失败重试/刷新待确认恢复、顶栏指南和首页双入口继续沿用，没有新工作流、真实模型或新数据库字段。
+
+### 本轮实际检查
+
+环境：Windows / PowerShell，已有 Python 3.12.15 / Node 22.23.3 与锁定依赖。npm 仍由项目 Node 执行 D:/Soft/Node/node_modules/npm/bin/npm-cli.js，PATH 优先项目 Node，缓存 .cache/npm。
+
+| 检查 | 实际命令/环境 | 结果 |
+| --- | --- | --- |
+| 后端 pytest | `.venv/Scripts/python.exe -m pytest -q -rs --basetemp=.cache/ux002-star-reading-pytest`，conftest 强制 Mock/空 Key、逐例隔离 SQLite | passed：55 passed；skipped：本机缺 TEST_POSTGRES_URL，PG 1 项跳过；15.68s |
+| Ruff | `.venv/Scripts/ruff.exe check backend evals`；`.venv/Scripts/ruff.exe format --check backend evals` | passed；21 files already formatted |
+| 前端格式/lint/类型 | frontend 中 `npm run format:check`、`npm run lint`、`npm run typecheck` | passed；E2E 选择器最终修正后又核对格式/lint |
+| Vitest | `npm run test` | passed：4 files、82 tests（App 31、App.results 39、components 10、api 2）；19.43s |
+| build | `npm run build` | passed：tsc -b + Vite，1581 modules，3.59s |
+| 本机 PG / Docker / 真实模型 | 服务/额度未具备且不在本轮新增范围 | PG skipped，其余 not run，不记通过 |
+| 用户修正后的再次体验 | 本人尚未反馈修正版本 | not run，保留 UX-002 in_progress |
+
+组件保留原 69 项并扩展为 82 项：默认阅读/无输入框/无删除、四类卡片和引用入口、精确 ID 查看、取消/关闭丢弃、服务端确认内容、0 元与归档、失败重试、删除保护、原文/描述独立、未知不当零、安全文本/非 http 链接，以及异步入口失焦后的焦点恢复。旧 69 项与旧 CI 不能当本轮重跑，以上为实际执行。
+
+### 浏览器隔离、失败修复与重跑
+
+Node 22 执行 frontend/e2e/smoke.mjs → verifyResults → verifyStarReading，base=http://127.0.0.1:5178，E2E_ALLOW_WRITE=true，E2E_INJECTED_FAILURE=true，PLAYWRIGHT_BROWSERS_PATH=项目/.cache/browsers。沿用隔离启动器的一次性 Mock timeout，仅对无敏感 UX002-E2E-FAIL- 文本故障注入，真实 failed/retry API 及新 run_id 回归继续执行，不调用真实模型。新的编辑失败由浏览器仅一次拦截 PUT 503 模拟，核对真实 GET 仍是旧值，重试才真实写入。
+
+实际三份新库：首轮 D:/Projects/wonder-orbit/.cache/ux002-star-reading-20261018.db，修复重跑 .cache/ux002-star-reading-retry-20261018.db，最终 .cache/ux002-star-reading-final-20261018.db。被忽略的 .cache/ux002_star_reading_server.py 每次启动先断言新库不存在、解析路径在项目 .cache，核对应用实际 engine.url.database，再迁移；强制 Mock/空 Key，后端仅本机 8018。临时 Vite 5178 的 /api 显式代理 8018，浏览器开头实际 /api/stars 返回空列表。个人 wonder.db 只核对文件哈希，不读取业务内容；测试前 SHA-256 为 B449C756D6B762E52D0C76CC11C6788D7FEDCCE8BA7E938A929AD5B3DEE43AA9，结束后另行核对，不沿用上轮个人库哈希。
+
+首轮组件 81 项、完整前端及后端通过；首轮浏览器原闭环通过，但新阅读入口关闭后的焦点断言失败。原因是异步读取时触发按钮被 busy 禁用，Modal 打开时原活动元素已丢失；修复为点击时捕获 starOpener、Modal 明确 returnFocusTo，跨页仍用卡片 fallback，保存时不覆盖原入口。补 1 个异步失焦组件回归后 82 项与 build 通过。第二轮新库已通过五类查看、双尺寸长文、链接 Tab、取消、保存失败/重试，但归档脚本 exact 标签查询未匹配含选项的状态控件，30s timeout，整轮不记通过；改用 role=combobox 和状态名称前缀定位，保留实际后端 archived 结果断言，再换新库完整重跑。第三轮全量 passed：原 UX-001/002/003 闭环、真实故障/重试/恢复、五类只读入口、1440/390px、长文与链接 Tab、取消/保存失败/重试/服务器最新内容、引用删除保护后归档，以及新手动星星明确编辑后成功删除；无 pageerror，未删除测试或降低断言。
+
+实际查看最终 star-reading-1440.png 与 star-reading-390.png，原文和描述分区清楚、长文本可滚动、无横向溢出。视觉复核将新详情标题的键盘焦点纳入既有暖黄色规则；仅此 CSS 追加后 format/lint/build 再通过（4.20s），被忽略的只读预览脚本在同一隔离库两种宽度验证焦点色、无表单且零写请求，截图更新于 .cache/ux002-star-reading-e2e-final。没有据此声称用户已体验。
+
+最终安全/范围复核：个人 wonder.db 前后 SHA-256 均为 B449C756D6B762E52D0C76CC11C6788D7FEDCCE8BA7E938A929AD5B3DEE43AA9，未向个人库写测试数据；临时前后端已停止。首轮/第二轮/最终产物分别位于 .cache/ux002-star-reading-e2e、ux002-star-reading-e2e-retry、ux002-star-reading-e2e-final，均保持忽略。.cache/ux002_star_reading_doccheck.py 实际检查 296 个本地 Markdown 链接/锚点、28 个任务索引/详情状态、14 个 IDEA ID、6 项未完成 P1 与 13 个预期变更文件，通过；git diff --check 与实现/测试/文档 diff 复核通过。仅改 App、components/样式、App.results/components 测试、smoke/results 浏览器，以及 README/CHANGELOG/IDEA_LOG/Backlog/VERIFICATION/PROJECT_GUIDE；无新增文件、后端/Schema/迁移/依赖、个人配置或临时产物混入。ROADMAP 阶段/顺序未变，未修改；提交前再次核对远程 main 仍为预期基线。
+
+### 上一轮远程 CI 补记
+
+本轮重新读取 [39126328074](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39126328074) 的实际 Job/日志，提交 edfb3892082a6ebe375163d1b3fb49b90dffa8c8。backend 117672117198、frontend 117672117360 均 completed/success；普通后端 55 passed / 1 skipped，独立 `uv run pytest backend/tests/test_postgres.py --override-ini addopts=` **1 passed in 0.13s**，前端为上一轮 69 passed。这是上一轮补记，不算本轮重跑，也不代表完整容器、PG 回滚/并发或真实模型已通过。本轮推送后的实际 CI 在最终汇报给出，后续迭代再补记，不为记录同次构建额外提交。
+
+### 待本人再次体验与三问复盘
+
+1. 保存后点“查看这颗星星”，应先读到详情，原文和描述是否清楚；其他卡片、轨道和探索引用应有同样预期。
+2. 明确点“编辑星星”，修改后取消应不保存；保存后回阅读并显示新内容。删除仅在编辑中，已有引用的星星可归档。
+3. 桌面与约 390px 看长文、来源链接和未知值是否自然；用关闭/Escape、编辑/取消及普通 Tab 体验焦点，原结果定位和 Quest 流程应继续顺畅。用户尚未报告的边界不代填人工通过。
+
+- 为什么用户需要它？真实反馈是“只是想看看”，默认编辑造成意外；本轮把阅读作为查看入口的默认动作，修改由明确选择触发。
+- 它在 AI Agent 系统中解决了什么问题？对齐阅读、修改和持久化意图，并清楚区分原文与结构化内容、未知与零；保留审批/API 安全边界，属于 UI/UX 与工作流展示改进，没有模型能力提升。
+- 我们通过这次开发学到了什么？入口写“查看”就需要提供阅读界面；服务端返回记录才是保存后的展示依据。异步 busy 会影响真实浏览器焦点，JSDOM 不会自动重现全部行为，需要显式触发元素、组件回归与浏览器几何/键盘/写入检查共同验证。

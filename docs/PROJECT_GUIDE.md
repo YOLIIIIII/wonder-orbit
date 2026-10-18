@@ -18,6 +18,8 @@
 
 新增 App.results.test.tsx 专门测试结果/焦点/ID/恢复边界，test-setup.ts 仅补 JSDOM scrollIntoView mock；新增 e2e/results.mjs 由 smoke.mjs 调用，负责真实双尺寸定位、恢复、精确导航及计数检查。可选 E2E_INJECTED_FAILURE=true 只用于带一次性 Mock timeout 的隔离启动器；没有该 fixture 时明确跳过故障段，正常闭环继续。新增文件职责与执行证据见下表及 [UX-002 验证](VERIFICATION.md#ux-002-20261018)；不加入新工作流、工具、checkpointer 或模型。
 
+2026-10-18（UX-002 查看/编辑分离）局部更新：components.tsx 新增 StarDetails 只读展示真实 Star，原文/描述分开、未知值与 0 元区分，链接仅 http/https 可点击，正文普通 React 文本。App 的 selectedStar 统一默认阅读，starEditing 明确选择才挂载原 StarEditor；取消卸载草稿无写入，PUT 成功核对返回 id 并展示服务端内容，失败保留表单，删除仅在编辑内。viewStar(id, navigate) 支持精确档案跳转和来源原页阅读；异步前捕获 starOpener，Modal 用 returnFocusTo/卡片 ID 恢复焦点，Tab 循环纳入链接。编辑/阅读切换聚焦表单标题输入或详情标题，关闭途中到达的旧保存响应不重开弹窗。未新增文件、API、Schema、依赖或 Quest 行为；App.results/components 测试与 results/smoke 浏览器同步。历史“默认编辑弹窗”由本轮只读详情替代，实证见 [本轮验证](VERIFICATION.md#ux-002-star-reading-20261018)。
+
 ## 一、整体地图与阅读入口
 
 ```text
@@ -108,7 +110,7 @@ Java 对照：Pydantic 类近似 DTO + Bean Validation，FastAPI Depends 近似�
 | [frontend/index.html](../frontend/index.html) | 中文页面、viewport/theme 元信息、#root 与 /src/main.tsx 入口 | root DOM、module script | Vite → main.tsx；Nginx 提供构建结果 | 页面元信息、挂载点或静态入口改变 | F、E；容器 D |
 | [frontend/src/main.tsx](../frontend/src/main.tsx) | 挂载 App，加载全局 CSS，启用 React.StrictMode | ReactDOM.createRoot、App | index.html root、App.tsx、styles.css | 挂载/全局 provider 或启动样式改变 | F、E |
 | [frontend/src/App.tsx](../frontend/src/App.tsx) | 八个页面、服务器数据刷新、草稿/候选审批、错误/运行恢复、星星与反馈弹窗；页面未拆成独立文件 | App；refresh、act、openRun、generate、decision；UsageGuide、SavedStarNextStep、PageTitle、ResultHeading、Modal；pages、blankStar、initialPreferences | api、types、components、全部相应 /api 端点；页面明细见下表 | 输入提示、引导、页面交互/状态、反馈和可见审计改变；UX-001/002/003 的主要位置 | F；重点 App.test、组件测试；完整行为 E，审批变化 B |
-| [frontend/src/components.tsx](../frontend/src/components.tsx) | 通用编辑/展示；保留未输入数值为 null；列表按中英文逗号/换行拆分；编辑体验只提交 Proposal 字段 | split、numeric、energyNames、statusNames、ListInput、OrbitArt、Empty、StarCard、StarEditor、ProposalEditor、ProposalFacts | App、types；ListInput 有自己的 raw 字符串，不把尾随逗号立即吞掉 | 字段说明、表单输入/锁定、标签、预算展示、可替换 SVG 改变 | F；重点 components.test；与 schema/数据语义有关加 B/E |
+| [frontend/src/components.tsx](../frontend/src/components.tsx) | 通用编辑/展示；StarDetails 负责只读真实字段、安全文本/来源和未知值；StarEditor 保留原表单；列表解析与体验提交不变 | split、numeric、energyNames、statusNames、ListInput、OrbitArt、Empty、StarCard、StarDetails、StarEditor、ProposalEditor、ProposalFacts | App、types；ListInput 有独立 raw 字符串，StarDetails 不写 API | 字段展示、查看/编辑语义、安全链接、表单/锁定和数值改变 | F；重点 components.test/App.results；真实双尺寸/读写边界 E |
 | [frontend/src/api.ts](../frontend/src/api.ts) | fetch('/api' + path)，JSON 请求及可选 Idempotency-Key；204 转 undefined；错误保留可用 run_id | ApiError、api<T> | App、Vite/Nginx 代理、FastAPI detail；泛型只做类型声明，无运行时 JSON schema 校验 | 请求头/错误格式、返回约定、代理路径改变 | F；重点 api.test；真实链路 E |
 | [frontend/src/types.ts](../frontend/src/types.ts) | 前端接口形状和状态，和后端 Pydantic/实际 JSON 共同构成契约 | Energy、StarInput、Star、Proposal、Reflection、Quest、Match、AgentRequest、Run、Preference、PreferenceData、Stats、Relation | App/components/api 的类型参数；非自动生成 | 后端入参/返回字段、枚举或前端需要显示字段改变；Run.state 是前端用到的部分，不等于全部数据库 state | F；接口/状态变化 B/E |
 | [frontend/src/styles.css](../frontend/src/styles.css) | 原生 CSS 的配色、卡片、轨迹、CSS 陪伴、焦点、弹窗和响应式；末尾还有可读性覆盖规则 |  :root 变量；.companion、.orbit-art、.star-grid、.runs-layout、.modal；600/850/1150/1450px 媒体查询 | App/components className、OrbitArt 内联 SVG 色值；无 Tailwind 配置 | UI-001/002 视觉、布局、字体/对比度或移动导航改变 | F、E；桌面/移动截图和人工视觉/键盘复核；单测不能证明审美或对比度 |
@@ -134,7 +136,7 @@ Java 对照：Pydantic 类近似 DTO + Bean Validation，FastAPI Depends 近似�
 | --- | --- | --- |
 | home | 我的星屿 | 最近 Star、真实统计、收集/探索入口；refresh 的 /stars 和 /stats |
 | collect | 收集星星 | 原始文字/来源输入；generate(collect)；StarEditor/sourceLocked 的草稿审批；手动表单直接 POST /stars |
-| archive | 星星档案 | /stars?q= 搜索得到 searchIds；本地类别/状态筛选；StarCard 打开编辑 Modal |
+| archive | 星星档案 | /stars?q= 搜索得到 searchIds；本地类别/状态筛选；StarCard 默认只读详情，明确选择后进入编辑 |
 | relations | 兴趣轨道 | /relations 真实边与理由；点击关联 Star 打开档案编辑 |
 | explore | 微型探索 | 时间/预算/精力；generate(explore)；依据/不确定性；decision 接受/放下、ProposalEditor 修改候选 |
 | quests | 体验手记 | /quests；accepted 体验可 PUT 修改和 POST reflections；completed/skipped 展示真实反馈 |

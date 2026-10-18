@@ -4,6 +4,7 @@ import {
   ListInput,
   ProposalEditor,
   StarEditor,
+  StarDetails,
   ProposalFacts,
   split,
 } from "./components";
@@ -23,6 +24,66 @@ const star: StarInput = {
   energy_level: null,
   status: "collected",
 };
+describe("星星只读详情的真实字段与安全文本", () => {
+  const saved = {
+    ...star,
+    id: "star",
+    created_at: "2026-10-18T00:00:00Z",
+    updated_at: "2026-10-18T01:00:00Z",
+  };
+  it("分别呈现原文和描述；未知值不变成零，空原因不补写", () => {
+    render(<StarDetails star={{ ...saved, description: "整理后的内容" }} />);
+    expect(screen.getByText("我想看海")).toBeVisible();
+    expect(screen.getByText("整理后的内容")).toBeVisible();
+    expect(screen.getAllByText("尚未记录")).toHaveLength(3);
+    expect(screen.queryByText("0 元")).not.toBeInTheDocument();
+    expect(screen.queryByText("兴趣原因")).not.toBeInTheDocument();
+    expect(document.querySelector("input,textarea,select")).toBeNull();
+  });
+  it("只显示真实已填值，预算 0 和来源含义准确", () => {
+    render(
+      <StarDetails
+        star={{
+          ...saved,
+          estimated_minutes: 12,
+          estimated_budget: 0,
+          energy_level: "low",
+          interest_reason: "想看真实的海",
+          source_reference: "https://example.com/notes",
+        }}
+      />,
+    );
+    expect(screen.getByText("12 分钟")).toBeVisible();
+    expect(screen.getByText("0 元")).toBeVisible();
+    expect(screen.getByText("想看真实的海")).toBeVisible();
+    expect(screen.getByText("低 · 轻轻一点")).toBeVisible();
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "https://example.com/notes",
+    );
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "rel",
+      "noopener noreferrer",
+    );
+  });
+  it("用户内容是安全文本，非 http/https 来源不可点击，无内部字段名", () => {
+    const { container } = render(
+      <StarDetails
+        star={{
+          ...saved,
+          original_text: '<img src=x onerror="alert(1)">',
+          source_reference: "javascript:alert(1)",
+        }}
+      />,
+    );
+    expect(screen.getByText('<img src=x onerror="alert(1)">')).toBeVisible();
+    expect(container.querySelector("img,script")).toBeNull();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(
+      /original_text|estimated_budget|energy_level|source_reference/,
+    );
+  });
+});
 const proposal: Proposal = {
   title: "写问题",
   description: "记录好奇",

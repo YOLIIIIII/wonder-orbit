@@ -107,11 +107,13 @@ try {
   await page.getByText("这份好奇已加入星星档案。").waitFor();
   const next = page.getByRole("region", { name: "保存后的下一步" });
   await next.getByRole("button", { name: "查看这颗星星" }).click();
-  const savedEditor = page.getByRole("dialog");
-  await savedEditor.getByLabel("标题", { exact: true }).waitFor();
+  const savedEditor = page.getByRole("dialog", { name: "星星详情" });
+  await savedEditor
+    .getByRole("heading", { name: starTitle, exact: true })
+    .waitFor();
   assert.equal(
-    await savedEditor.getByLabel("标题", { exact: true }).inputValue(),
-    starTitle,
+    await savedEditor.getByLabel("标题", { exact: true }).count(),
+    0,
   );
   await savedEditor.getByRole("button", { name: "关闭弹窗" }).click();
   await page.getByRole("button", { name: new RegExp(starTitle) }).waitFor();

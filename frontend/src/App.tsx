@@ -25,6 +25,7 @@ import {
   ProposalEditor,
   ProposalFacts,
   StarCard,
+  StarDetails,
   StarEditor,
   energyNames,
   numeric,
@@ -183,7 +184,19 @@ export default function App() {
     displayedRunIds.current.selected = run?.run_id || null;
     updateSelectedRun(run);
   }
-  const [selectedStar, setSelectedStar] = useState<Star | null>(null);
+  const [selectedStar, updateSelectedStar] = useState<Star | null>(null);
+  const [starEditing, setStarEditing] = useState(false);
+  const starViewVersion = useRef(0);
+  const starContent = useRef<HTMLDivElement>(null);
+  const wasEditingStar = useRef(false);
+  const starOpener = useRef<HTMLElement | null>(null);
+  function setSelectedStar(star: Star | null, opener?: HTMLElement) {
+    if (star && selectedStar?.id !== star.id)
+      starOpener.current = opener || (document.activeElement as HTMLElement);
+    starViewVersion.current += 1;
+    setStarEditing(false);
+    updateSelectedStar(star);
+  }
   const [minutes, setMinutes] = useState("15");
   const [budget, setBudget] = useState("");
   const [energy, setEnergy] = useState<Energy>("low");
@@ -251,6 +264,16 @@ export default function App() {
   useEffect(() => {
     refresh().catch((e) => setError(e.message));
   }, [refresh]);
+  useEffect(() => {
+    if (wasEditingStar.current !== starEditing) {
+      starContent.current
+        ?.querySelector<HTMLElement>(
+          starEditing ? "input" : "[data-star-title]",
+        )
+        ?.focus();
+    }
+    wasEditingStar.current = starEditing;
+  }, [starEditing]);
   useEffect(() => {
     if (!focusTarget || focusTarget.page !== page || busy) return;
     const target = document.getElementById(focusTarget.id);
@@ -361,18 +384,21 @@ export default function App() {
         presentRun(retried, true);
     });
   }
-  function viewStar(id: string) {
+  function viewStar(id: string, navigate = true) {
     const version = navigation.current;
+    const opener = document.activeElement as HTMLElement;
     act(async () => {
       const star = await api<Star>("/stars/" + encodeURIComponent(id));
       if (version !== navigation.current) return;
       if (star.id !== id) throw new Error("暂未找到这颗星星，请刷新后重试。");
-      setQuery("");
-      setSearchIds(null);
-      setCategory("");
-      setStarStatus("");
-      setPage("archive");
-      setSelectedStar(star);
+      if (navigate) {
+        setQuery("");
+        setSearchIds(null);
+        setCategory("");
+        setStarStatus("");
+        setPage("archive");
+      }
+      setSelectedStar(star, opener);
     });
   }
   function viewQuest(id: string) {
@@ -1024,11 +1050,8 @@ export default function App() {
                     key={link.from_id + link.to_id}
                   >
                     <button
-                      onClick={() =>
-                        setSelectedStar(
-                          stars.find((s) => s.id === link.from_id) || null,
-                        )
-                      }
+                      disabled={busy}
+                      onClick={() => viewStar(link.from_id, false)}
                     >
                       <StarIcon size={20} />
                       {link.from_title}
@@ -1040,11 +1063,8 @@ export default function App() {
                       ))}
                     </div>
                     <button
-                      onClick={() =>
-                        setSelectedStar(
-                          stars.find((s) => s.id === link.to_id) || null,
-                        )
-                      }
+                      disabled={busy}
+                      onClick={() => viewStar(link.to_id, false)}
                     >
                       <StarIcon size={20} />
                       {link.to_title}
@@ -1225,11 +1245,8 @@ export default function App() {
                               <button
                                 key={id}
                                 className="chip"
-                                onClick={() =>
-                                  setSelectedStar(
-                                    stars.find((s) => s.id === id) || null,
-                                  )
-                                }
+                                disabled={busy}
+                                onClick={() => viewStar(id, false)}
                               >
                                 {stars.find((s) => s.id === id)?.title || id}
                               </button>
@@ -1751,46 +1768,101 @@ export default function App() {
       {selectedStar && (
         <Modal
           returnFocusId={"star-card-" + selectedStar.id}
-          error={error}
-          title="编辑兴趣星星"
+          returnFocusTo={starOpener.current}
+          error={starEditing ? error : undefined}
+          title={starEditing ? "编辑兴趣星星" : "星星详情"}
           onClose={() => setSelectedStar(null)}
         >
-          <StarEditor
-            key={selectedStar.id}
-            initial={
-              Object.fromEntries(
-                Object.entries(selectedStar).filter(
-                  ([key]) => !["id", "created_at", "updated_at"].includes(key),
-                ),
-              ) as unknown as StarInput
-            }
-            disabled={busy}
-            onSave={(v) =>
-              act(async () => {
-                await api("/stars/" + selectedStar.id, "PUT", v);
-                setSelectedStar(null);
-                setNotice("星星已更新。");
-              })
-            }
-          />
-          <button
-            className="danger text-button"
-            disabled={busy}
-            onClick={() => {
-              if (
-                window.confirm(
-                  "确定删除这颗星星？已被探索引用的星星需保留，可改为归档。",
-                )
-              )
-                act(async () => {
-                  await api("/stars/" + selectedStar.id, "DELETE");
-                  setSelectedStar(null);
-                  setNotice("星星已删除。");
-                });
-            }}
-          >
-            删除这颗星星
-          </button>
+          <div ref={starContent}>
+            {starEditing ? (
+              <>
+                <StarEditor
+                  key={selectedStar.id}
+                  initial={
+                    Object.fromEntries(
+                      Object.entries(selectedStar).filter(
+                        ([key]) =>
+                          !["id", "created_at", "updated_at"].includes(key),
+                      ),
+                    ) as unknown as StarInput
+                  }
+                  disabled={busy}
+                  onSave={(v) =>
+                    act(async () => {
+                      const version = starViewVersion.current;
+                      const id = selectedStar.id;
+                      const updated = await api<Star>(
+                        "/stars/" + encodeURIComponent(id),
+                        "PUT",
+                        v,
+                      );
+                      if (updated.id !== id)
+                        throw new Error("更新结果尚未确认，请刷新后查看。");
+                      setStars((previous) =>
+                        previous.map((star) =>
+                          star.id === id ? updated : star,
+                        ),
+                      );
+                      if (version === starViewVersion.current)
+                        setSelectedStar(updated);
+                      setNotice("星星已更新。");
+                    })
+                  }
+                />
+                <div className="button-row">
+                  <button
+                    className="secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      setError("");
+                      setStarEditing(false);
+                    }}
+                  >
+                    取消编辑
+                  </button>
+                  <button
+                    className="danger text-button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "确定删除这颗星星？已被探索引用的星星需保留，可改为归档。",
+                        )
+                      )
+                        act(async () => {
+                          const version = starViewVersion.current;
+                          await api(
+                            "/stars/" + encodeURIComponent(selectedStar.id),
+                            "DELETE",
+                          );
+                          if (version === starViewVersion.current)
+                            setSelectedStar(null);
+                          setNotice("星星已删除。");
+                        });
+                    }}
+                  >
+                    删除这颗星星
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <StarDetails star={selectedStar} />
+                <button
+                  className="primary"
+                  data-edit-star
+                  disabled={busy}
+                  onClick={() => {
+                    setError("");
+                    setNotice("");
+                    setStarEditing(true);
+                  }}
+                >
+                  编辑星星
+                </button>
+              </>
+            )}
+          </div>
         </Modal>
       )}
       {editingProposal && (
@@ -2005,12 +2077,14 @@ function Modal({
   children,
   error,
   returnFocusId,
+  returnFocusTo,
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   error?: string;
   returnFocusId?: string;
+  returnFocusTo?: HTMLElement | null;
 }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -2019,10 +2093,11 @@ function Modal({
       ?.querySelector<HTMLElement>("input, textarea, select, button")
       ?.focus();
     return () => {
-      if (previous?.isConnected && previous !== document.body) previous.focus();
+      const target = returnFocusTo || previous;
+      if (target?.isConnected && target !== document.body) target.focus();
       else if (returnFocusId) document.getElementById(returnFocusId)?.focus();
     };
-  }, [returnFocusId]);
+  }, [returnFocusId, returnFocusTo]);
   return (
     <div
       className="modal-backdrop"
@@ -2041,7 +2116,7 @@ function Modal({
           if (e.key === "Tab") {
             const items = Array.from(
               ref.current?.querySelectorAll<HTMLElement>(
-                "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)",
+                "a[href], button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)",
               ) || [],
             );
             if (e.shiftKey && document.activeElement === items[0]) {

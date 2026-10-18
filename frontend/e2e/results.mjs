@@ -216,11 +216,14 @@ export async function verifyResults(page, base, artifact) {
   for (let i = 0; i < 2; i++) {
     await page.getByRole("button", { name: "查看这颗星星" }).click();
     await idle();
-    const dialog = page.getByRole("dialog");
-    assert.equal(
-      await dialog.getByLabel("标题", { exact: true }).inputValue(),
-      (await read("/stars/" + decision.star_id)).title,
-    );
+    const dialog = page.getByRole("dialog", { name: "星星详情" });
+    await dialog
+      .getByRole("heading", {
+        name: (await read("/stars/" + decision.star_id)).title,
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(await dialog.getByLabel("标题", { exact: true }).count(), 0);
     assert.equal(await page.getByLabel("搜索星星").inputValue(), "");
     assert.equal(await page.getByLabel("星星状态筛选").inputValue(), "");
     await dialog.getByRole("button", { name: "关闭弹窗" }).click();
@@ -271,10 +274,227 @@ export async function verifyResults(page, base, artifact) {
     await nav("微型探索");
   }
   assert.deepEqual(await counts(), afterAccept);
+  await verifyStarReading(page, base, artifact);
   console.log(
     "PASS: UX-002 current result focus/reduced motion, persisted recovery, navigation cancellation, exact Star/Quest IDs, no duplicate writes; " +
       (process.env.E2E_INJECTED_FAILURE === "true"
         ? "real failed run retry verified"
         : "failure/retry fixture skipped"),
+  );
+}
+
+async function verifyStarReading(page, base, artifact) {
+  const read = async (path) =>
+    (await page.request.get(base + "/api" + path)).json();
+  const nav = async (name) =>
+    page
+      .getByRole("navigation", { name: "主导航" })
+      .getByRole("button", { name: new RegExp("^" + name) })
+      .click();
+  const idle = async () =>
+    page.getByText("正在处理，请稍候…").waitFor({ state: "hidden" });
+  let target = (await read("/stars"))[0];
+  const writes = [];
+  const record = (request) => {
+    if (["POST", "PUT", "DELETE"].includes(request.method()))
+      writes.push(request.method() + " " + request.url());
+  };
+  page.on("request", record);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const entry of ["我的星屿", "星星档案", "兴趣轨道", "微型探索"]) {
+      await nav(entry);
+      const trigger =
+        entry === "我的星屿" || entry === "星星档案"
+          ? page.locator("#star-card-" + target.id)
+          : entry === "兴趣轨道"
+            ? page
+                .locator(".relation-card")
+                .getByRole("button", { name: target.title, exact: true })
+                .first()
+            : page
+                .locator(".rationale")
+                .getByRole("button", { name: target.title, exact: true })
+                .first();
+      const count = writes.length;
+      await trigger.click();
+      await idle();
+      const detail = page.getByRole("dialog", { name: "星星详情" });
+      await detail
+        .getByRole("heading", { name: target.title, exact: true })
+        .waitFor();
+      assert.equal(await detail.locator("input,textarea,select").count(), 0);
+      assert.equal(
+        await detail.getByRole("button", { name: "删除这颗星星" }).count(),
+        0,
+      );
+      const rect = await detail.boundingBox();
+      assert.ok(
+        rect &&
+          rect.x >= 0 &&
+          rect.x + rect.width <= width &&
+          rect.y >= 0 &&
+          rect.y + rect.height <= 900,
+      );
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth,
+        ),
+        false,
+      );
+      await detail.getByRole("button", { name: "关闭弹窗" }).click();
+      assert.equal(
+        await trigger.evaluate((el) => el === document.activeElement),
+        true,
+        `${entry} ${width}px 关闭后应恢复原查看入口焦点`,
+      );
+      assert.equal(writes.length, count, "查看与关闭不写 API");
+    }
+    await nav("星星档案");
+    await page.locator("#star-card-" + target.id).click();
+    const detail = page.getByRole("dialog", { name: "星星详情" });
+    const count = writes.length;
+    await detail.getByRole("button", { name: "编辑星星" }).click();
+    const editor = page.getByRole("dialog", { name: "编辑兴趣星星" });
+    assert.equal(
+      await editor
+        .getByLabel("标题", { exact: true })
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await editor.getByLabel("标题", { exact: true }).fill("取消这次修改");
+    await editor.getByRole("button", { name: "取消编辑" }).click();
+    await detail
+      .getByRole("heading", { name: target.title, exact: true })
+      .waitFor();
+    assert.equal(writes.length, count, "取消编辑不写 API");
+    await detail.getByRole("button", { name: "编辑星星" }).click();
+    assert.equal(
+      await editor.getByLabel("标题", { exact: true }).inputValue(),
+      target.title,
+    );
+    const title = "海洋阅读测试 " + width;
+    const description =
+      "记录好奇，保留真实来源。\n".repeat(50) + "海".repeat(500);
+    await editor.getByLabel("标题", { exact: true }).fill(title);
+    await editor.getByLabel("整理后的描述").fill(description);
+    await editor
+      .getByLabel("参考链接（可选）", { exact: true })
+      .fill("https://example.com/notes?topic=" + "curiosity".repeat(30));
+    await page.route(
+      "**/api/stars/" + target.id,
+      (route) =>
+        route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "E2E 模拟编辑保存失败" }),
+        }),
+      { times: 1 },
+    );
+    await editor.getByRole("button", { name: "确认保存星星" }).click();
+    await editor
+      .getByRole("alert")
+      .filter({ hasText: "E2E 模拟编辑保存失败" })
+      .waitFor();
+    await idle();
+    assert.equal(
+      await editor.getByLabel("标题", { exact: true }).inputValue(),
+      title,
+    );
+    assert.equal((await read("/stars/" + target.id)).title, target.title);
+    await editor.getByRole("button", { name: "确认保存星星" }).click();
+    await idle();
+    target = await read("/stars/" + target.id);
+    assert.equal(target.title, title);
+    assert.equal(target.description, description);
+    const heading = detail.getByRole("heading", { name: title, exact: true });
+    await heading.waitFor();
+    assert.equal(
+      await heading.evaluate((el) => el === document.activeElement),
+      true,
+    );
+    assert.equal(await detail.locator("input,textarea,select").count(), 0);
+    assert.equal(
+      await detail.evaluate((el) => el.scrollWidth > el.clientWidth),
+      false,
+    );
+    assert.ok(
+      await detail.evaluate((el) => el.scrollHeight > el.clientHeight),
+      "长详情应可滚动",
+    );
+    const close = detail.getByRole("button", { name: "关闭弹窗" });
+    await close.focus();
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await detail
+        .getByRole("link")
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await detail
+        .getByRole("button", { name: "编辑星星" })
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await close.evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await heading.focus();
+    await page.screenshot({ path: `${artifact}/star-reading-${width}.png` });
+    await page.keyboard.press("Escape");
+    assert.equal(
+      await page
+        .locator("#star-card-" + target.id)
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+  }
+  // 引用保护仍来自真实后端；明确编辑后可归档。
+  const referencedId = (await read("/quests"))[0].based_on_star_ids[0];
+  await nav("星星档案");
+  await page.locator("#star-card-" + referencedId).click();
+  await page.getByRole("button", { name: "编辑星星", exact: true }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "删除这颗星星" }).click();
+  await idle();
+  const editor = page.getByRole("dialog", { name: "编辑兴趣星星" });
+  await editor.getByRole("alert").waitFor();
+  await editor
+    .getByRole("combobox", { name: /^状态/ })
+    .selectOption("archived");
+  await editor.getByRole("button", { name: "确认保存星星" }).click();
+  await idle();
+  assert.equal((await read("/stars/" + referencedId)).status, "archived");
+  await page
+    .getByRole("dialog", { name: "星星详情" })
+    .getByRole("button", { name: "关闭弹窗" })
+    .click();
+  // 新手动记录无引用，删除仍可正常完成。
+  await nav("收集星星");
+  await page.getByRole("button", { name: "手动填写" }).click();
+  await page.getByLabel("标题", { exact: true }).fill("用于删除验证的临时兴趣");
+  await page.getByLabel("原始文字", { exact: true }).fill("E2E 独立库临时数据");
+  await page.getByRole("button", { name: "确认保存星星" }).click();
+  await idle();
+  await page.getByRole("button", { name: "查看这颗星星" }).click();
+  await idle();
+  await page.getByRole("button", { name: "编辑星星", exact: true }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "删除这颗星星" }).click();
+  await idle();
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  assert.equal(
+    (await read("/stars")).some(
+      (star) => star.title === "用于删除验证的临时兴趣",
+    ),
+    false,
+  );
+  page.off("request", record);
+  console.log(
+    "PASS: all Star viewing entries read-only; edit/cancel/server-confirmed save/failure recovery; long text/link focus at 1440/390; deletion and archive protection",
   );
 }
