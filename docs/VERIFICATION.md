@@ -382,3 +382,81 @@ Windows / PowerShell，复用项目 Python 3.12.15、Node 22.23.3 和已安装�
 本轮 CI 在普通推送后核对并于最终汇报给出链接与真实 Job/PG 结果，后续反馈轮再补记，避免为写入同一次 CI 结果额外触发构建。当前 M2；剩余 P1 为 UX-001/002/003、INFRA-001/002、AGENT-001、EVAL-001，待本轮用户体验后按原顺序推进，修正后人工验收不能先记完成。
 
 提交前复核：.cache/ux003_feedback_doccheck.py 通过 283 个本地 Markdown 链接/锚点、28 个任务索引/详情状态及 14 个 IDEA ID 检查；变更限定 10 个预期文件，后端/Schema/依赖/迁移/ROADMAP 未修改。已审阅代码 diff，git diff --check 通过；最后浏览器截图补充后重跑 format:check/lint 均通过。临时测试前后端已停止，个人数据库哈希保持不变。GitHub 连接器再次确认远程 main 仍为 a04b35e；普通 Git 网络仍待现有代理恢复，不用连接器文件写入替代普通推送。
+
+
+<a id="ux-001-20261018"></a>
+
+## 2026-10-18：UX-001 首次使用与状态引导
+
+### 开发前基线、反馈与范围
+
+本地 main、HEAD 与实际 fetch 后的 origin/main 均为 1614dc47cef684fffa5c126e747ecd78e8ca64d1，工作区干净，Git 身份为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>。沙箱访问用户提供的 12450 代理失败，获准权限后命令级代理 fetch 成功；不改全局配置。
+
+UX-003 用户最新原话：“感觉这次改动之后可读性还可以，等我之后多用用再感受一下，我们先继续接下来的开发吧。”记录为可读性达到愿意继续推进的阶段性反馈，未推断用户做过键盘/预算/完整示例测试。代码/规则映射、组件、浏览器、远程 CI 已有证据，但验收标准中“人工按示例提交并记录结果”尚无具体记录，因此 Backlog 保留 in_progress；本轮明确授权不阻塞独立 UX-001。旧测试不是本轮重跑。
+
+唯一业务范围 UX-001：真实状态的基础引导、可反复打开的使用指南、实际保存成功后的普通页面入口。UX-002 的自动定位/精确跳转/失败恢复/跨页面待审批恢复，以及 UX-004/005、模型/数据结构扩展均不实施。AGENTS 同步新增三问复盘约定。
+
+### 实施前状态—页面行为对照
+
+| 真实状态与来源 | 本轮目标行为 | 验收边界 |
+| --- | --- | --- |
+| refresh 七类数据尚未成功连接 | 不将初始空数组当作确定的空档案，不显示假成功/首次引导 | 连接错误仍可见，不宣称已有数据 |
+| /stars 返回 0 个正式 Star（不含草稿） | 首页主入口“收集第一颗星星”，解释星星与探索依据；复用原空状态，不重复堆入口 | 不生成演示记录，不增加统计 |
+| 有 status 非 archived 的实际 Star | 首页主入口微型探索，说明依据真实收藏和明确偏好；仍可继续收集 | 不强制顺序，不预言关键词一定有匹配 |
+| 只有 archived Star | 说明归档不参与推荐，先查看档案恢复兴趣或继续收集 | 依据 retrieval.search/include_archived=False，不误称无星星 |
+| collect / awaiting_decision，含 draft，且没有 star 决定 | 结果附近明确草稿已生成未入档，可检查/修改/确认/放下 | 正式计数不变；不实现自动滚动 |
+| collect 决定 approved=False | 显示已放下、未加入档案，不给保存后的下一步 | 不创建 Star |
+| 明确审批成功且返回实际 star_id，或手动 POST /stars 成功返回 id | 提供查看档案/开始探索的基础页面入口 | 导航不调用写 API，不做精确 ID 深链 |
+| 生成或保存请求失败 | 不显示本次已保存或虚假下一步 | 保留现有错误/API/审批边界，失败恢复仍归 UX-002 |
+| 任意页面，Mock/模型/未连接 | 原生可收起指南“星屿怎么使用”，简述四步及接受后去手记 | 不强制观看，不写永久状态；Mock 仅为规则模拟，不重复 UX-003 范围/预算帮助 |
+
+
+### 实际实现与测试证据
+
+修改：frontend/src/App.tsx、styles.css、App.test.tsx、frontend/e2e/smoke.mjs；AGENTS.md、README.md、ROADMAP.md、CHANGELOG.md、docs/IDEA_LOG.md、PRODUCT_BACKLOG.md、PROJECT_GUIDE.md、VERIFICATION.md。仅前端引导与文档/测试，不更改后端/API/Schema/依赖/迁移；无新重要源码文件。UsageGuide/SavedStarNextStep 留在 App 内，普通切页不调用正式写 API。
+
+| 本轮检查 | 实际命令/环境 | 结果 |
+| --- | --- | --- |
+| 后端 pytest | `.venv/Scripts/python.exe -m pytest -q -rs --basetemp=.cache/ux001-pytest`；conftest 强制 Mock/空 Key，每例独立 SQLite | passed：52 passed；skipped：本机 TEST_POSTGRES_URL 未配置，PG 1 项跳过 |
+| Ruff lint | `.venv/Scripts/ruff.exe check backend evals` | passed |
+| Ruff format | `.venv/Scripts/ruff.exe format --check backend evals` | passed：21 files already formatted |
+| 前端格式/lint/类型 | `npm run format:check` / `npm run lint` / `npm run typecheck` | passed |
+| 前端 Vitest | `npm run test` | passed：3 files，30 tests（App 21、components 7、api 2） |
+| 前端构建 | `npm run build` | passed：tsc -b + Vite，1581 modules |
+| 浏览器闭环 | Node 22 执行 `e2e/smoke.mjs`，E2E_ALLOW_WRITE=true，base=http://127.0.0.1:5178，artifact=项目/.cache/ux001-e2e，PLAYWRIGHT_BROWSERS_PATH=项目/.cache/browsers | passed：新库为空→待确认→浏览器拦截一次批准模拟 503（后端未写）→真实放下→正式计数仍 0→重新生成并批准→下一步普通导航计数仍 1→搜索/关联/探索接受/修改/反馈/偏好/足迹；无 pageerror |
+| 桌面/窄屏 | 同一闭环 1440/390px，首页/收集/探索/偏好；原生指南 Enter 展开、Space 收起及已有关联帮助 | passed：收起/展开均无横向溢出，截图保存于上述忽略目录 |
+| 本机 PG / Docker / 真实模型 | 服务环境与调用额度未具备，亦不在本轮范围 | not run；本机 PG skipped 不计通过 |
+| 用户 UX-001 首次使用体验 | 必须由用户本人体验 | not run，Backlog 保留 in_progress |
+
+Windows / PowerShell，复用项目 Python 3.12.15、Node 22.23.3 和锁定依赖；npm 由项目 Node 启动 D:/Soft/Node/node_modules/npm/bin/npm-cli.js，PATH 优先 Node 22、缓存 .cache/npm。首轮前端 28 passed / 2 failed：新增查询同时命中隐藏指南/首页文案，模型模式标签也与实际既有文本不一致；修正查询定位后完整 format/lint/typecheck/test/build 通过 30 项，未删除断言或降低要求。首轮失败后 build 因前置测试退出未运行，最终轮 build 已实际执行；不把失败轮部分结果计为通过。
+
+组件覆盖：空档案、已收藏/探索中的 Star、仅归档、未连接；草稿不算正式 Star、放下不算已保存、审批成功有下一步、保存失败/新生成失败无旧成功误报；手动保存成功/失败；反复导航不增加正式写入；指南在 Mock/模型模式可重复开关。仅归档与手动路径由组件验证，不冒称全部在浏览器单独跑过。
+
+### 数据隔离与开发视觉检查
+
+启动器为被忽略的 .cache/ux003_server.py（复用本机测试辅助，未提交）：启动前断言新库不存在、解析路径在项目 .cache 内，强制 Mock/空 Key，从应用实际 engine.url.database 再核对 **D:/Projects/wonder-orbit/.cache/ux001-browser-20261018.db** 后才迁移。后端仅本机 8018，临时 Vite 5178 的 /api 明确代理到 8018，不复用日常个人服务。
+
+浏览器启动后还断言实际 /api/stars 返回空列表，避免将已有数据当作首次使用。失败通过浏览器仅一次拦截批准请求模拟（非后端故障注入），随后真实拒绝/批准均访问隔离后端；使用实际接口计数验证没有额外 Star。个人 wonder.db 未读取业务内容或写测试数据，运行前后文件 SHA-256 均为 F9AC010495FF365B8BA422EAC251DEB38B0CCA7FA50CC6890D40E119F1058C9B。
+
+已查看 home-before.png、我的星屿-guide-390.png、收集星星-1440.png：首页单一主引导、指南焦点与四步可读、保存后的两个普通入口可见，原配色/品牌保留，无浮层。截图为开发核对，不能代替用户体验通过。
+
+### 待用户体验与剩余边界
+
+1. 打开首页与“星屿怎么使用”，确认能理解星星是什么、为什么要先收集，以及 Mock 只是规则模拟；指南可收起、重复打开。
+2. 若当前档案为空，使用主入口收集第一颗星星；生成后手动下滑到结果，确认提示未入档，可修改或暂不保存。放下后应仍无新星星。不要为验收删除个人档案；非空场景可直接检查已有兴趣的探索引导，空状态自动化使用隔离库已有证据。
+3. 重新整理并确认，检查“查看星星档案 / 开始微型探索”两个入口；已有星星首页不再强调第一颗。只有归档时，应提示恢复或继续收集。
+4. 接受小体验后，按指南到体验手记记录感受；窄屏约 390px 再查看引导、指南开关和基础入口。反馈流畅度与是否仍有不清楚的下一步。
+
+不包含自动滚动/精确 ID 跳转/跨页审批恢复/新失败恢复，也不扩展 UX-004/005。UX-003 当前可读性已获阶段性正面反馈，但“人工按示例提交并记录结果”的具体证据仍缺，不替用户填已执行记录。当前 M2，未修 P0 无已知实证，未完成 P1 仍 7 项；UX-001 用户体验后建议 UX-002，不自动续做。
+
+### 本轮三问复盘
+
+- 为什么用户需要这次改动？IDEA-001 的真实反馈是闭环下一步不清楚；页面现在直接解释星星/审批/探索，并在实际保存后给可点击入口。是否足够清楚仍等用户首次体验，不能用自动化代替。
+- 它在 AI Agent 系统中解决了什么问题？这是 UI/UX 工程对生成结果、用户审批、正式持久化边界的准确表达；Mock/模型、草稿/正式 Star、归档/推荐状态不再混同。未改模型、工具、推理或检索能力，没有模型效果提升结论。
+- 我们通过这次开发学到了什么？引导必须同时看真实 Star、归档状态和运行决定，不能用“无错误”推断已保存；导航入口应只切页，浏览器实际计数才能验证不重复写。测试也需区分隐藏指南与可见文案，使用准确查询；原生可收起指南已能满足本轮键盘与窄屏需求，无须新增引导依赖或持久化表。
+
+本轮提交推送后将核对真实 CI 并在最终汇报给出 Job/PG 证据；按连续迭代方式留待下一轮补记，不为记录同一次 CI 额外触发构建。
+
+上一轮 CI 独立补记：本轮通过 GitHub 连接器重新读取 [运行 39116179321](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39116179321) 的 Job 与 backend 日志，提交为 1614dc47cef684fffa5c126e747ecd78e8ca64d1；backend 117642320130 / frontend 117642320320 均 success。普通 pytest 为 52 passed / 1 skipped，独立 PG 命令实际 1 passed in 0.18s。此为 UX-003 交付的远程证据，不是本轮 UX-001 重跑，也不证明完整 Docker/PG 回滚或真实模型已验收。
+
+本轮静态复核：.cache/ux001_doccheck.py 检查 284 个本地 Markdown 链接/锚点、28 个任务索引/详情状态、14 个 IDEA ID，均通过；12 个预期变更文件，未改 backend/app、Schema、依赖或迁移。UX-001/003 保持 in_progress，UX-002 尚未实施，UX-004/005 为候选；P1 仍为 7 项。git diff --check 通过，已检查业务 diff；临时测试前后端已停止，测试库与截图保留在忽略目录，个人数据库哈希保持不变。

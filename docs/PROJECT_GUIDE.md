@@ -10,6 +10,8 @@
 
 2026-10-18 局部更新：UX-003 将探索/偏好的完整填写规则放入原生 details/summary，默认保留关键短提示；App 内 draftFieldNames 只映射草稿 missing_fields 的展示（未知 key 用通用中文），不改变底层数据或审批。样式仅新增 .form-help 与 .draft-fields，未调整页面职责、启动命令或调用链；浏览器脚本增加 Enter/Space/点击与展开后窄屏检查。五项真实用户反馈及未来候选由 IDEA_LOG/Backlog 跟踪，本手册不另列待办。
 
+2026-10-18（UX-001）局部更新：App 内新增 UsageGuide 与 SavedStarNextStep，分别负责可重开内联四步说明、实际保存后的普通导航；首页依据 refresh 成功后的真实 stars 及归档状态，结果依据 Run 状态/决定和返回 ID。generate 开始新收集时清除旧成功展示，手动保存与审批成功后才显示下一步。API、后端、Schema、启动命令保持不变；不加入自动滚动/深链/跨页审批恢复。App.test 与 smoke.mjs 覆盖这些状态，验证证据和三问复盘见 VERIFICATION；AGENTS 新增每轮三问约定。
+
 ## 一、整体地图与阅读入口
 
 ```text
@@ -99,7 +101,7 @@ Java 对照：Pydantic 类近似 DTO + Bean Validation，FastAPI Depends 近似�
 | --- | --- | --- | --- | --- | --- |
 | [frontend/index.html](../frontend/index.html) | 中文页面、viewport/theme 元信息、#root 与 /src/main.tsx 入口 | root DOM、module script | Vite → main.tsx；Nginx 提供构建结果 | 页面元信息、挂载点或静态入口改变 | F、E；容器 D |
 | [frontend/src/main.tsx](../frontend/src/main.tsx) | 挂载 App，加载全局 CSS，启用 React.StrictMode | ReactDOM.createRoot、App | index.html root、App.tsx、styles.css | 挂载/全局 provider 或启动样式改变 | F、E |
-| [frontend/src/App.tsx](../frontend/src/App.tsx) | 八个页面、服务器数据刷新、草稿/候选审批、错误/运行恢复、星星与反馈弹窗；页面未拆成独立文件 | App；refresh、act、openRun、generate、decision；PageTitle、ResultHeading、Modal；pages、blankStar、initialPreferences | api、types、components、全部相应 /api 端点；页面明细见下表 | 输入提示、引导、页面交互/状态、反馈和可见审计改变；UX-001/002/003 的主要位置 | F；重点 App.test、组件测试；完整行为 E，审批变化 B |
+| [frontend/src/App.tsx](../frontend/src/App.tsx) | 八个页面、服务器数据刷新、草稿/候选审批、错误/运行恢复、星星与反馈弹窗；页面未拆成独立文件 | App；refresh、act、openRun、generate、decision；UsageGuide、SavedStarNextStep、PageTitle、ResultHeading、Modal；pages、blankStar、initialPreferences | api、types、components、全部相应 /api 端点；页面明细见下表 | 输入提示、引导、页面交互/状态、反馈和可见审计改变；UX-001/002/003 的主要位置 | F；重点 App.test、组件测试；完整行为 E，审批变化 B |
 | [frontend/src/components.tsx](../frontend/src/components.tsx) | 通用编辑/展示；保留未输入数值为 null；列表按中英文逗号/换行拆分；编辑体验只提交 Proposal 字段 | split、numeric、energyNames、statusNames、ListInput、OrbitArt、Empty、StarCard、StarEditor、ProposalEditor、ProposalFacts | App、types；ListInput 有自己的 raw 字符串，不把尾随逗号立即吞掉 | 字段说明、表单输入/锁定、标签、预算展示、可替换 SVG 改变 | F；重点 components.test；与 schema/数据语义有关加 B/E |
 | [frontend/src/api.ts](../frontend/src/api.ts) | fetch('/api' + path)，JSON 请求及可选 Idempotency-Key；204 转 undefined；错误保留可用 run_id | ApiError、api<T> | App、Vite/Nginx 代理、FastAPI detail；泛型只做类型声明，无运行时 JSON schema 校验 | 请求头/错误格式、返回约定、代理路径改变 | F；重点 api.test；真实链路 E |
 | [frontend/src/types.ts](../frontend/src/types.ts) | 前端接口形状和状态，和后端 Pydantic/实际 JSON 共同构成契约 | Energy、StarInput、Star、Proposal、Reflection、Quest、Match、AgentRequest、Run、Preference、PreferenceData、Stats、Relation | App/components/api 的类型参数；非自动生成 | 后端入参/返回字段、枚举或前端需要显示字段改变；Run.state 是前端用到的部分，不等于全部数据库 state | F；接口/状态变化 B/E |

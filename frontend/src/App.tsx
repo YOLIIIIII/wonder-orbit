@@ -13,7 +13,6 @@ import {
   Settings2,
   Sparkles,
   Star as StarIcon,
-  Telescope,
   X,
   Activity,
 } from "lucide-react";
@@ -125,6 +124,7 @@ export default function App() {
   const [reference, setReference] = useState("");
   const [manual, setManual] = useState(false);
   const [draftRun, setDraftRun] = useState<Run | null>(null);
+  const [savedStarId, setSavedStarId] = useState<string | null>(null);
   const [exploreRun, setExploreRun] = useState<Run | null>(null);
   const [selectedRun, setSelectedRun] = useState<Run | null>(null);
   const [selectedStar, setSelectedStar] = useState<Star | null>(null);
@@ -196,6 +196,10 @@ export default function App() {
     setPage("runs");
   }
   async function generate(request: AgentRequest) {
+    if (request.request_type === "collect") {
+      setDraftRun(null);
+      setSavedStarId(null);
+    }
     const run = await api<Run>(
       "/agent/runs",
       "POST",
@@ -224,7 +228,12 @@ export default function App() {
     const updated = await api<Run>("/agent/runs/" + run.run_id);
     if (isStar) {
       setDraftRun(updated);
-      if (approved) {
+      if (
+        approved &&
+        updated.decisions.star?.approved &&
+        updated.decisions.star.star_id
+      ) {
+        setSavedStarId(updated.decisions.star.star_id);
         setText("");
         setNotice("这份好奇已加入星星档案。");
       }
@@ -244,6 +253,15 @@ export default function App() {
       (!category || s.category === category) &&
       (!starStatus || s.status === starStatus),
   );
+  const connected = mock !== null;
+  const hasStars = stars.length > 0;
+  const canExplore = stars.some((star) => star.status !== "archived");
+  const draftDecision = draftRun?.decisions.star;
+  const draftPending =
+    draftRun?.request_type === "collect" &&
+    draftRun.status === "awaiting_decision" &&
+    !!draftRun.state.draft &&
+    !draftDecision;
   const header = pages.find((p) => p.id === page)!;
   return (
     <div className="app-shell">
@@ -340,6 +358,7 @@ export default function App() {
               正在处理，请稍候…
             </div>
           )}
+          <UsageGuide mock={mock} />
           {page === "home" && (
             <>
               <section className="hero">
@@ -353,25 +372,45 @@ export default function App() {
                     一座小小的<span>星屿。</span>
                   </h1>
                   <p>
-                    收藏一闪而过的念头，连接那些微小的喜欢。
-                    <br />
-                    从一颗星星开始，走进一次刚刚好的探索。
+                    {!connected
+                      ? "连接档案后，会根据已保存的兴趣给你下一步提示。"
+                      : !hasStars
+                        ? "星星是你收藏的兴趣或好奇。从收藏第一颗星星开始，探索才有真实依据。"
+                        : canExplore
+                          ? "从已有兴趣开始微型探索，参考实际收藏内容和你的明确偏好；也可以继续收集。"
+                          : "你已收藏过兴趣，但归档星星不参与推荐。可先到档案恢复一颗星星，或继续收集。"}
                   </p>
                   <div className="hero-actions">
                     <button
                       className="primary"
-                      onClick={() => setPage("collect")}
+                      onClick={() =>
+                        setPage(
+                          connected && hasStars
+                            ? canExplore
+                              ? "explore"
+                              : "archive"
+                            : "collect",
+                        )
+                      }
                     >
                       <Plus size={17} />
-                      收集一颗星星
+                      {connected && hasStars
+                        ? canExplore
+                          ? "开始微型探索"
+                          : "查看星星档案"
+                        : connected
+                          ? "收集第一颗星星"
+                          : "收集一颗星星"}
                     </button>
-                    <button
-                      className="text-button"
-                      onClick={() => setPage("explore")}
-                    >
-                      开始微型探索
-                      <ArrowRight size={17} />
-                    </button>
+                    {connected && hasStars && (
+                      <button
+                        className="text-button"
+                        onClick={() => setPage("collect")}
+                      >
+                        继续收集星星
+                        <ArrowRight size={17} />
+                      </button>
+                    )}
                   </div>
                 </div>
                 <OrbitArt />
@@ -380,19 +419,21 @@ export default function App() {
                 <div>
                   <StarIcon />
                   <span>
-                    <strong>{stats.stars}</strong>颗兴趣星星
+                    <strong>{connected ? stats.stars : "—"}</strong>颗兴趣星星
                   </span>
                 </div>
                 <div>
                   <Network />
                   <span>
-                    <strong>{stats.categories.length}</strong>个兴趣类别
+                    <strong>{connected ? stats.categories.length : "—"}</strong>
+                    个兴趣类别
                   </span>
                 </div>
                 <div>
                   <Compass />
                   <span>
-                    <strong>{stats.completed}</strong>次完成的体验
+                    <strong>{connected ? stats.completed : "—"}</strong>
+                    次完成的体验
                   </span>
                 </div>
                 <p>所有数字来自你的真实档案。</p>
@@ -410,50 +451,23 @@ export default function App() {
                   <ArrowUpRight size={17} />
                 </button>
               </div>
-              {stars.length ? (
-                <div className="star-grid">
-                  {stars.slice(0, 3).map((s) => (
-                    <StarCard
-                      key={s.id}
-                      star={s}
-                      onOpen={() => setSelectedStar(s)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <Empty
-                  title="你的第一颗星星，正在路上"
-                  text="一段文字、一个想法、一件想试的小事，都可以从这里开始。"
-                  action={
-                    <button
-                      className="text-button"
-                      onClick={() => setPage("collect")}
-                    >
-                      收藏第一份好奇
-                      <ArrowRight size={16} />
-                    </button>
-                  }
-                />
-              )}
-              <section className="invitation">
-                <span className="invitation-icon">
-                  <Telescope size={30} />
-                </span>
-                <div>
-                  <span className="eyebrow">A SMALL ADVENTURE</span>
-                  <h3>今天，留一点时间给喜欢的事。</h3>
-                  <p>
-                    告诉星屿你有多少时间和精力，从已有兴趣里寻找一个小体验。
-                  </p>
-                </div>
-                <button
-                  className="secondary"
-                  onClick={() => setPage("explore")}
-                >
-                  看看可以做什么
-                  <ArrowRight size={16} />
-                </button>
-              </section>
+              {connected &&
+                (hasStars ? (
+                  <div className="star-grid">
+                    {stars.slice(0, 3).map((s) => (
+                      <StarCard
+                        key={s.id}
+                        star={s}
+                        onOpen={() => setSelectedStar(s)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Empty
+                    title="从收藏第一颗星星开始"
+                    text="先在上方收集一份好奇，检查并确认草稿；保存后，再从已有兴趣里寻找小体验。"
+                  />
+                ))}
               <div className="home-footer">
                 ✦ 好奇没有标准答案，探索也不需要打卡。
               </div>
@@ -483,7 +497,10 @@ export default function App() {
                       disabled={busy}
                       onSave={(v) =>
                         act(async () => {
-                          await api("/stars", "POST", v);
+                          setSavedStarId(null);
+                          setDraftRun(null);
+                          const saved = await api<Star>("/stars", "POST", v);
+                          setSavedStarId(saved.id);
                           setManual(false);
                           setNotice("星星已保存。");
                         })
@@ -571,16 +588,35 @@ export default function App() {
                 <section className="panel result-panel">
                   <ResultHeading
                     run={draftRun}
+                    title={
+                      draftDecision
+                        ? draftDecision.approved
+                          ? "保存结果"
+                          : "已放下的草稿"
+                        : draftPending
+                          ? "草稿待确认"
+                          : "整理状态"
+                    }
                     onView={() => openRun(draftRun)}
                   />
-                  {draftRun.decisions.star ? (
-                    <p>
-                      {draftRun.decisions.star.approved
-                        ? "这张草稿已保存到档案。"
-                        : "这张草稿已放下。"}
-                    </p>
-                  ) : (
+                  {draftDecision ? (
                     <>
+                      <p>
+                        {draftDecision.approved && draftDecision.star_id
+                          ? "这张草稿已保存到档案。"
+                          : draftDecision.approved
+                            ? "保存结果尚未确认，请刷新档案查看。"
+                            : "这张草稿已放下，没有加入正式档案。"}
+                      </p>
+                      {savedStarId && draftDecision.approved && (
+                        <SavedStarNextStep onNavigate={setPage} />
+                      )}
+                    </>
+                  ) : draftPending ? (
+                    <>
+                      <p className="flow-note" role="status">
+                        草稿已经生成，还没有加入正式档案。请检查、修改后确认保存，也可以暂不保存。
+                      </p>
                       <div className="soft-note">
                         {draftRun.state.draft?.questions.join(" ")}
                         {!!draftRun.state.draft?.missing_fields.length && (
@@ -619,7 +655,15 @@ export default function App() {
                         暂不保存
                       </button>
                     </>
+                  ) : (
+                    <p>本次整理尚无可确认的草稿，请查看运行状态。</p>
                   )}
+                </section>
+              )}
+              {savedStarId && !draftRun && (
+                <section className="panel result-panel">
+                  <p>星星已保存到档案。</p>
+                  <SavedStarNextStep onNavigate={setPage} />
                 </section>
               )}
             </>
@@ -755,6 +799,21 @@ export default function App() {
                 title="一次刚刚好的微型探索"
                 text="从真实兴趣出发，让时间、预算和精力决定这次探索的大小。"
               />
+              {connected && !canExplore && (
+                <section className="panel flow-note" aria-label="探索前的准备">
+                  <p>
+                    {hasStars
+                      ? "归档星星不会用于推荐。请在档案中将一颗星星改为已收藏，或继续收集。"
+                      : "探索需要已有的兴趣依据。请先收集并确认一颗星星，再用档案里的关键词探索。"}
+                  </p>
+                  <button
+                    className="secondary"
+                    onClick={() => setPage(hasStars ? "archive" : "collect")}
+                  >
+                    {hasStars ? "查看星星档案" : "去收集第一颗星星"}
+                  </button>
+                </section>
+              )}
               <section className="panel">
                 <form
                   onSubmit={(e) => {
@@ -1544,6 +1603,58 @@ export default function App() {
     </div>
   );
 }
+function UsageGuide({ mock }: { mock: boolean | null }) {
+  return (
+    <details className="usage-guide">
+      <summary>星屿怎么使用</summary>
+      <ol>
+        <li>
+          <strong>收集兴趣：</strong>
+          星星是你收藏的兴趣或好奇，先写下一段原始想法。
+        </li>
+        <li>
+          <strong>编辑并确认：</strong>
+          整理先生成草稿，检查、修改后确认，才加入正式档案；也可以放下。
+        </li>
+        <li>
+          <strong>微型探索：</strong>
+          从未归档的星星和明确偏好出发，寻找小体验；候选需要你接受。
+        </li>
+        <li>
+          <strong>记录真实感受：</strong>
+          接受体验后到“体验手记”，记录完成或没有执行的感受。
+        </li>
+      </ol>
+      <p>
+        {mock === null
+          ? "连接后可查看当前生成模式。"
+          : mock
+            ? "当前为 Mock 模式：内容由规则模拟生成，不代表真实大模型理解。"
+            : "当前为模型模式：整理和候选仍需你检查、确认。"}
+      </p>
+    </details>
+  );
+}
+function SavedStarNextStep({
+  onNavigate,
+}: {
+  onNavigate: (page: "archive" | "explore") => void;
+}) {
+  return (
+    <div className="next-step" role="region" aria-label="保存后的下一步">
+      <p>接下来，可以查看星星档案，或从已收藏的兴趣开始微型探索。</p>
+      <div className="button-row">
+        <button className="secondary" onClick={() => onNavigate("archive")}>
+          查看星星档案
+        </button>
+        <button className="text-button" onClick={() => onNavigate("explore")}>
+          开始微型探索
+          <ArrowRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
 function PageTitle({
   eyebrow,
   title,
@@ -1561,12 +1672,20 @@ function PageTitle({
     </div>
   );
 }
-function ResultHeading({ run, onView }: { run: Run; onView: () => void }) {
+function ResultHeading({
+  run,
+  onView,
+  title = "待确认结果",
+}: {
+  run: Run;
+  onView: () => void;
+  title?: string;
+}) {
   return (
     <div className="panel-heading">
       <h3>
         <Sparkles size={18} />
-        待确认结果
+        {title}
         <span className="chip">
           {run.mode === "mock" ? "Mock · 规则生成" : "模型生成"}
         </span>

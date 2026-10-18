@@ -1329,6 +1329,35 @@ svg {
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
+.usage-guide {
+  color: var(--deep);
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0 0 22px;
+}
+.usage-guide summary {
+  width: fit-content;
+  min-height: 44px;
+  padding: 10px 0;
+}
+.usage-guide ol {
+  padding-left: 24px;
+  margin: 8px 0;
+}
+.usage-guide li + li {
+  margin-top: 6px;
+}
+.usage-guide p,
+.flow-note,
+.next-step p {
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.next-step {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+}
 .form-help {
   color: #705c80;
   font-size: 14px;

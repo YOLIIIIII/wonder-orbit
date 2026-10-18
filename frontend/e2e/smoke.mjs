@@ -22,11 +22,21 @@ const starTitle = "深海的微光";
 try {
   await page.goto(base);
   await page.getByText("Mock 模式 · 规则生成").waitFor();
+  assert.deepEqual(
+    await (await page.request.get(`${base}/api/stars`)).json(),
+    [],
+    "首次引导必须使用全新隔离空库",
+  );
+  await page
+    .getByRole("button", { name: "收集第一颗星星", exact: true })
+    .waitFor();
   await page.screenshot({
     path: artifact + "/home-before.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: /^收集星星/ }).click();
+  await page
+    .getByRole("button", { name: "收集第一颗星星", exact: true })
+    .click();
   await page
     .getByText(/一次整理生成一张可编辑草稿，确认后才会加入正式档案/)
     .waitFor();
@@ -38,6 +48,47 @@ try {
   await page.getByRole("button", { name: "整理成草稿" }).click();
   await page.getByText("正在处理，请稍候…").waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "确认保存星星" }).waitFor();
+  await page.getByText(/草稿已经生成，还没有加入正式档案/).waitFor();
+  assert.equal(
+    (await (await page.request.get(`${base}/api/stars`)).json()).length,
+    0,
+  );
+  // 只在浏览器拦截一次批准请求，模拟失败；真实后端仍没有正式写入。
+  await page.route(
+    "**/api/agent/runs/*/decision",
+    (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "E2E 模拟保存失败" }),
+      }),
+    { times: 1 },
+  );
+  await page.getByRole("button", { name: "确认保存星星" }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "E2E 模拟保存失败" })
+    .waitFor();
+  assert.equal(
+    await page.getByRole("region", { name: "保存后的下一步" }).count(),
+    0,
+  );
+  assert.equal(
+    (await (await page.request.get(`${base}/api/stars`)).json()).length,
+    0,
+  );
+  await page.getByRole("button", { name: "暂不保存" }).click();
+  await page.getByText("这张草稿已放下，没有加入正式档案。").waitFor();
+  assert.equal(
+    (await (await page.request.get(`${base}/api/stars`)).json()).length,
+    0,
+  );
+  await page.getByRole("button", { name: "我的星屿", exact: true }).click();
+  await page
+    .getByRole("button", { name: "收集第一颗星星", exact: true })
+    .click();
+  await page.getByRole("button", { name: "整理成草稿" }).click();
+  await page.getByText(/草稿已经生成，还没有加入正式档案/).waitFor();
   const draftNote = await page.locator(".soft-note").textContent();
   assert.match(draftNote, /兴趣原因、预计时间、预计预算、所需精力/);
   assert.doesNotMatch(
@@ -53,6 +104,24 @@ try {
     .fill("发光的生物、安静的深海，还有它们不为人知的故事。");
   await page.getByRole("button", { name: "确认保存星星" }).click();
   await page.getByText("这份好奇已加入星星档案。").waitFor();
+  const next = page.getByRole("region", { name: "保存后的下一步" });
+  await next.getByRole("button", { name: "查看星星档案" }).click();
+  await page.getByRole("button", { name: new RegExp(starTitle) }).waitFor();
+  await page.getByRole("button", { name: "我的星屿", exact: true }).click();
+  await page
+    .getByRole("button", { name: "开始微型探索", exact: true })
+    .waitFor();
+  await page.getByRole("button", { name: "继续收集星星", exact: true }).click();
+  await page
+    .getByRole("region", { name: "保存后的下一步" })
+    .getByRole("button", { name: "开始微型探索" })
+    .click();
+  assert.equal(
+    (await (await page.request.get(`${base}/api/stars`)).json()).length,
+    1,
+    "下一步导航不能重复创建星星",
+  );
+  await page.getByRole("button", { name: /^收集星星/ }).click();
 
   // 第二颗真实星星与第一颗共享海洋标签。
   await page.getByLabel("你最近对什么感到好奇？").fill(marker + " 星空和海洋");
@@ -131,7 +200,7 @@ try {
   await page.screenshot({ path: artifact + "/home-after.png", fullPage: true });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const name of ["收集星星", "微型探索", "我的偏好"]) {
+    for (const name of ["我的星屿", "收集星星", "微型探索", "我的偏好"]) {
       await page.getByRole("button", { name: new RegExp("^" + name) }).click();
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth > window.innerWidth,
@@ -141,7 +210,25 @@ try {
         path: `${artifact}/${name}-${width}.png`,
         fullPage: true,
       });
-      if (name !== "收集星星") {
+      const guide = page.locator("details.usage-guide");
+      const guideToggle = guide.locator("summary");
+      await guideToggle.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await guide.evaluate((el) => el.open), true);
+      await guide.getByText(/不代表真实大模型理解/).waitFor();
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > window.innerWidth,
+        ),
+        false,
+      );
+      await page.screenshot({
+        path: `${artifact}/${name}-guide-${width}.png`,
+        fullPage: true,
+      });
+      await page.keyboard.press("Space");
+      assert.equal(await guide.evaluate((el) => el.open), false);
+      if (name === "微型探索" || name === "我的偏好") {
         const help = page.locator("details.form-help");
         const toggle = help.locator("summary");
         assert.equal(await help.evaluate((el) => el.open), false);
