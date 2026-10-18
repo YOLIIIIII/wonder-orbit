@@ -102,9 +102,50 @@ const initialPreferences: PreferenceData = {
   },
   candidates: [],
 };
+const hasId = (id: unknown): id is string =>
+  typeof id === "string" && id.trim().length > 0;
+function hasPendingResult(run: Run) {
+  if (run.status !== "awaiting_decision") return false;
+  if (run.request_type === "collect")
+    return !!run.state.draft && !run.decisions.star;
+  return (
+    run.request_type === "explore" &&
+    !!run.state.proposals?.some((_, i) => !run.decisions[String(i)])
+  );
+}
+function hasClarification(run: Run) {
+  return (
+    run.status === "awaiting_decision" &&
+    run.request_type === "explore" &&
+    !run.state.proposals?.length &&
+    !!run.state.questions?.length
+  );
+}
+function canRetry(run: Run) {
+  return (
+    run.status === "failed" &&
+    ["collect", "explore"].includes(run.request_type) &&
+    !Object.keys(run.decisions).length &&
+    run.state.request?.request_type === run.request_type
+  );
+}
 
 export default function App() {
-  const [page, setPage] = useState<Page>("home");
+  const [page, updatePage] = useState<Page>("home");
+  const navigation = useRef(0);
+  const activePage = useRef<Page>("home");
+  const operationActive = useRef(false);
+  const displayedRunIds = useRef<Record<string, string | null>>({});
+  const [focusTarget, setFocusTarget] = useState<{
+    page: Page;
+    id: string;
+  } | null>(null);
+  function setPage(next: Page) {
+    navigation.current += 1;
+    activePage.current = next;
+    setFocusTarget(null);
+    updatePage(next);
+  }
   const [stars, setStars] = useState<Star[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
@@ -120,15 +161,28 @@ export default function App() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorRunId, setErrorRunId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [text, setText] = useState("");
   const [source, setSource] = useState<"manual" | "paste" | "link">("paste");
   const [reference, setReference] = useState("");
   const [manual, setManual] = useState(false);
-  const [draftRun, setDraftRun] = useState<Run | null>(null);
+  const [draftRun, updateDraftRun] = useState<Run | null>(null);
   const [savedStarId, setSavedStarId] = useState<string | null>(null);
-  const [exploreRun, setExploreRun] = useState<Run | null>(null);
-  const [selectedRun, setSelectedRun] = useState<Run | null>(null);
+  const [exploreRun, updateExploreRun] = useState<Run | null>(null);
+  const [selectedRun, updateSelectedRun] = useState<Run | null>(null);
+  function setDraftRun(run: Run | null) {
+    displayedRunIds.current.collect = run?.run_id || null;
+    updateDraftRun(run);
+  }
+  function setExploreRun(run: Run | null) {
+    displayedRunIds.current.explore = run?.run_id || null;
+    updateExploreRun(run);
+  }
+  function setSelectedRun(run: Run | null) {
+    displayedRunIds.current.selected = run?.run_id || null;
+    updateSelectedRun(run);
+  }
   const [selectedStar, setSelectedStar] = useState<Star | null>(null);
   const [minutes, setMinutes] = useState("15");
   const [budget, setBudget] = useState("");
@@ -159,9 +213,36 @@ export default function App() {
       api<PreferenceData>("/preferences"),
       api<{ mock_mode: boolean }>("/health"),
     ]);
+    // 列表最多 50 项；较旧但仍在查看的运行也要读取真实服务器状态。
+    const missingIds = [
+      ...new Set(Object.values(displayedRunIds.current)),
+    ].filter((id): id is string => !!id && !r.some((run) => run.run_id === id));
+    const currentRuns = [
+      ...r,
+      ...(await Promise.all(
+        missingIds.map((id) =>
+          api<Run>("/agent/runs/" + encodeURIComponent(id)),
+        ),
+      )),
+    ];
     setStars(s);
     setQuests(q);
     setRuns(r);
+    updateDraftRun((previous) =>
+      previous
+        ? currentRuns.find((run) => run.run_id === previous.run_id) || null
+        : null,
+    );
+    updateExploreRun((previous) =>
+      previous
+        ? currentRuns.find((run) => run.run_id === previous.run_id) || null
+        : null,
+    );
+    updateSelectedRun((previous) =>
+      previous
+        ? currentRuns.find((run) => run.run_id === previous.run_id) || null
+        : null,
+    );
     setRelations(links);
     setStats(counts);
     setPreferences(pref);
@@ -170,46 +251,159 @@ export default function App() {
   useEffect(() => {
     refresh().catch((e) => setError(e.message));
   }, [refresh]);
+  useEffect(() => {
+    if (!focusTarget || focusTarget.page !== page || busy) return;
+    const target = document.getElementById(focusTarget.id);
+    setFocusTarget(null);
+    if (
+      !target ||
+      guideOpen ||
+      selectedStar ||
+      editingProposal ||
+      feedbackQuest
+    )
+      return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
+  }, [
+    focusTarget,
+    page,
+    busy,
+    guideOpen,
+    selectedStar,
+    editingProposal,
+    feedbackQuest,
+  ]);
   async function act(operation: () => Promise<void>) {
-    if (busy) return;
+    if (operationActive.current) return;
+    operationActive.current = true;
     setBusy(true);
     setError("");
+    setErrorRunId(null);
     setNotice("");
     try {
       await operation();
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "请求失败");
-      if (e instanceof ApiError && e.runId) {
-        const failed = await api<Run>("/agent/runs/" + e.runId).catch(
-          () => null,
-        );
-        if (failed) {
-          setSelectedRun(failed);
-          setPage("runs");
-        }
-      }
+      if (e instanceof ApiError && hasId(e.runId)) setErrorRunId(e.runId);
     } finally {
+      operationActive.current = false;
       setBusy(false);
     }
   }
   function openRun(run: Run) {
-    setSelectedRun(run);
-    setPage("runs");
+    viewRun(run.run_id);
+  }
+  function viewRun(id: string) {
+    const version = navigation.current;
+    act(async () => {
+      const current = await api<Run>("/agent/runs/" + encodeURIComponent(id));
+      if (version !== navigation.current) return;
+      setSelectedRun(current);
+      setPage("runs");
+    });
+  }
+  function presentRun(run: Run, navigate: boolean) {
+    const destination = run.request_type === "collect" ? "collect" : "explore";
+    if (destination === "collect") {
+      setDraftRun(run);
+      setSavedStarId(null);
+      setManual(false);
+    } else setExploreRun(run);
+    if (navigate) setPage(destination);
+    if (
+      activePage.current === destination &&
+      (hasPendingResult(run) || hasClarification(run))
+    )
+      setFocusTarget({
+        page: destination,
+        id: destination + "-result-" + run.run_id,
+      });
+  }
+  function restoreRun(run: Run) {
+    const version = navigation.current;
+    act(async () => {
+      const current = await api<Run>(
+        "/agent/runs/" + encodeURIComponent(run.run_id),
+      );
+      if (version !== navigation.current) return;
+      setSelectedRun(current);
+      if (!hasPendingResult(current) && !hasClarification(current))
+        throw new Error("这次运行已无待确认结果，请查看最新运行状态。");
+      presentRun(current, true);
+    });
+  }
+  function retryRun(run: Run) {
+    const version = navigation.current;
+    act(async () => {
+      const current = await api<Run>(
+        "/agent/runs/" + encodeURIComponent(run.run_id),
+      );
+      if (version !== navigation.current) return;
+      setSelectedRun(current);
+      if (!canRetry(current))
+        throw new Error("运行状态已变化，当前不能重试生成。请刷新后查看。");
+      const retried = await api<Run>(
+        "/agent/runs/" + encodeURIComponent(current.run_id) + "/retry",
+        "POST",
+      );
+      if (!hasId(retried.run_id) || retried.run_id === current.run_id)
+        throw new Error("未取得新的生成运行，请刷新足迹核对结果。");
+      if (version !== navigation.current) return;
+      setSelectedRun(retried);
+      if (hasPendingResult(retried) || hasClarification(retried))
+        presentRun(retried, true);
+    });
+  }
+  function viewStar(id: string) {
+    const version = navigation.current;
+    act(async () => {
+      const star = await api<Star>("/stars/" + encodeURIComponent(id));
+      if (version !== navigation.current) return;
+      if (star.id !== id) throw new Error("暂未找到这颗星星，请刷新后重试。");
+      setQuery("");
+      setSearchIds(null);
+      setCategory("");
+      setStarStatus("");
+      setPage("archive");
+      setSelectedStar(star);
+    });
+  }
+  function viewQuest(id: string) {
+    const version = navigation.current;
+    act(async () => {
+      // 后端现有只读列表已包含完整 Quest；不新增单项路由。
+      const current = await api<Quest[]>("/quests");
+      if (version !== navigation.current) return;
+      if (!current.some((quest) => quest.id === id))
+        throw new Error(
+          "暂未找到这次体验，请刷新后再次点击查看。不会重新接受候选。",
+        );
+      setQuests(current);
+      setPage("quests");
+      setFocusTarget({ page: "quests", id: "quest-" + id });
+    });
   }
   async function generate(request: AgentRequest) {
+    const version = navigation.current;
+    setFocusTarget(null);
     if (request.request_type === "collect") {
       setDraftRun(null);
       setSavedStarId(null);
-    }
+    } else setExploreRun(null);
     const run = await api<Run>(
       "/agent/runs",
       "POST",
       request,
       crypto.randomUUID(),
     );
-    if (request.request_type === "collect") setDraftRun(run);
-    else setExploreRun(run);
+    if (version === navigation.current) presentRun(run, false);
   }
   async function decision(
     run: Run,
@@ -242,9 +436,13 @@ export default function App() {
     } else {
       setExploreRun(updated);
       setNotice(
-        approved
+        approved &&
+          updated.decisions[String(index)]?.approved &&
+          hasId(updated.decisions[String(index)].quest_id)
           ? "已接受。可以在体验手记中记录结果。"
-          : "已放下这个候选，随时可以重新探索。",
+          : !approved && updated.decisions[String(index)]?.approved === false
+            ? "已放下这个候选，随时可以重新探索。"
+            : "审批结果尚未确认，请刷新运行状态查看。",
       );
     }
     setEditingProposal(null);
@@ -354,7 +552,21 @@ export default function App() {
         <div className="main-content">
           {error && (
             <div className="alert" role="alert">
-              {error}
+              <div>
+                {error}
+                {errorRunId && (
+                  <p>
+                    本次运行：
+                    <button
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => viewRun(errorRunId)}
+                    >
+                      {errorRunId} · 查看运行详情
+                    </button>
+                  </p>
+                )}
+              </div>
               <button aria-label="关闭错误" onClick={() => setError("")}>
                 <X size={16} />
               </button>
@@ -531,9 +743,13 @@ export default function App() {
                           setSavedStarId(null);
                           setDraftRun(null);
                           const saved = await api<Star>("/stars", "POST", v);
-                          setSavedStarId(saved.id);
+                          setSavedStarId(hasId(saved.id) ? saved.id : null);
                           setManual(false);
-                          setNotice("星星已保存。");
+                          setNotice(
+                            hasId(saved.id)
+                              ? "星星已保存。"
+                              : "保存结果尚未确认，请刷新档案查看。",
+                          );
                         })
                       }
                     />
@@ -616,7 +832,13 @@ export default function App() {
                 </aside>
               </div>
               {draftRun && (
-                <section className="panel result-panel">
+                <section
+                  className="panel result-panel"
+                  id={"collect-result-" + draftRun.run_id}
+                  tabIndex={-1}
+                  role="region"
+                  aria-label="本次收集结果"
+                >
                   <ResultHeading
                     run={draftRun}
                     title={
@@ -639,9 +861,14 @@ export default function App() {
                             ? "保存结果尚未确认，请刷新档案查看。"
                             : "这张草稿已放下，没有加入正式档案。"}
                       </p>
-                      {savedStarId && draftDecision.approved && (
-                        <SavedStarNextStep onNavigate={setPage} />
-                      )}
+                      {hasId(draftDecision.star_id) &&
+                        draftDecision.approved && (
+                          <SavedStarNextStep
+                            disabled={busy}
+                            onView={() => viewStar(draftDecision.star_id!)}
+                            onExplore={() => setPage("explore")}
+                          />
+                        )}
                     </>
                   ) : draftPending ? (
                     <>
@@ -691,10 +918,14 @@ export default function App() {
                   )}
                 </section>
               )}
-              {savedStarId && !draftRun && (
+              {hasId(savedStarId) && !draftRun && (
                 <section className="panel result-panel">
                   <p>星星已保存到档案。</p>
-                  <SavedStarNextStep onNavigate={setPage} />
+                  <SavedStarNextStep
+                    disabled={busy}
+                    onView={() => viewStar(savedStarId)}
+                    onExplore={() => setPage("explore")}
+                  />
                 </section>
               )}
             </>
@@ -945,9 +1176,20 @@ export default function App() {
                 </form>
               </section>
               {exploreRun && (
-                <section className="result-panel">
+                <section
+                  className="result-panel"
+                  id={"explore-result-" + exploreRun.run_id}
+                  tabIndex={-1}
+                  role="region"
+                  aria-label="本次探索结果"
+                >
                   <ResultHeading
                     run={exploreRun}
+                    title={
+                      hasClarification(exploreRun)
+                        ? "还需要一点信息"
+                        : "探索结果"
+                    }
                     onView={() => openRun(exploreRun)}
                   />
                   {exploreRun.state.questions?.map((q) => (
@@ -955,6 +1197,12 @@ export default function App() {
                       {q}
                     </p>
                   ))}
+                  {!exploreRun.state.proposals?.length &&
+                    !exploreRun.state.questions?.length && (
+                      <p className="soft-note">
+                        本次没有可查看的候选或澄清，请查看运行详情。
+                      </p>
+                    )}
                   <div className="proposal-grid">
                     {exploreRun.state.proposals?.map((proposal, i) => (
                       <section className="panel proposal" key={i}>
@@ -996,9 +1244,28 @@ export default function App() {
                         </details>
                         {exploreRun.decisions[String(i)] ? (
                           <div className="decision-label">
-                            {exploreRun.decisions[String(i)].approved
-                              ? "✓ 已接受，请到体验手记记录结果"
-                              : "已放下这个候选"}
+                            {exploreRun.decisions[String(i)].approved &&
+                            hasId(exploreRun.decisions[String(i)].quest_id)
+                              ? "✓ 已接受，可以开始这次体验"
+                              : exploreRun.decisions[String(i)].approved
+                                ? "审批结果尚未确认，请刷新运行状态查看。"
+                                : "已放下这个候选"}
+                            {exploreRun.decisions[String(i)].approved &&
+                              hasId(
+                                exploreRun.decisions[String(i)].quest_id,
+                              ) && (
+                                <button
+                                  className="secondary"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    viewQuest(
+                                      exploreRun.decisions[String(i)].quest_id!,
+                                    )
+                                  }
+                                >
+                                  查看这次体验
+                                </button>
+                              )}
                           </div>
                         ) : (
                           <div className="button-row">
@@ -1065,7 +1332,14 @@ export default function App() {
               )}
               <div className="quest-list">
                 {quests.map((quest) => (
-                  <section className="panel" key={quest.id}>
+                  <section
+                    className="panel quest-target"
+                    key={quest.id}
+                    id={"quest-" + quest.id}
+                    tabIndex={-1}
+                    role="region"
+                    aria-label={quest.title}
+                  >
                     <div className="panel-heading">
                       <h3>{quest.title}</h3>
                       <span className="chip">{statusNames[quest.status]}</span>
@@ -1139,7 +1413,8 @@ export default function App() {
                         selectedRun?.run_id === run.run_id ? "selected" : ""
                       }
                       key={run.run_id}
-                      onClick={() => setSelectedRun(run)}
+                      disabled={busy}
+                      onClick={() => openRun(run)}
                     >
                       <span className="chip">
                         {run.mode === "mock" ? "Mock" : "模型"}
@@ -1192,43 +1467,30 @@ export default function App() {
                           </li>
                         ))}
                       </ol>
-                      {selectedRun.status === "failed" &&
-                        selectedRun.request_type !== "reflection" && (
-                          <button
-                            className="secondary"
-                            disabled={busy}
-                            onClick={() =>
-                              act(async () => {
-                                const run = await api<Run>(
-                                  "/agent/runs/" +
-                                    selectedRun.run_id +
-                                    "/retry",
-                                  "POST",
-                                );
-                                setSelectedRun(run);
-                                if (run.request_type === "collect")
-                                  setDraftRun(run);
-                                else setExploreRun(run);
-                              })
-                            }
-                          >
-                            重试生成
-                          </button>
-                        )}
-                      {selectedRun.status === "awaiting_decision" && (
+                      {canRetry(selectedRun) && (
+                        <button
+                          className="secondary"
+                          disabled={busy}
+                          onClick={() => retryRun(selectedRun)}
+                        >
+                          重试生成
+                        </button>
+                      )}
+                      {selectedRun.status === "running" && (
+                        <p className="soft-note">
+                          运行可能仍在执行，请稍后刷新状态。这里不会自动重试。
+                        </p>
+                      )}
+                      {(hasPendingResult(selectedRun) ||
+                        hasClarification(selectedRun)) && (
                         <button
                           className="primary"
-                          onClick={() => {
-                            if (selectedRun.request_type === "collect") {
-                              setDraftRun(selectedRun);
-                              setPage("collect");
-                            } else {
-                              setExploreRun(selectedRun);
-                              setPage("explore");
-                            }
-                          }}
+                          disabled={busy}
+                          onClick={() => restoreRun(selectedRun)}
                         >
-                          打开待确认结果
+                          {hasClarification(selectedRun)
+                            ? "查看澄清提示"
+                            : "打开待确认结果"}
                         </button>
                       )}
                       <details>
@@ -1488,6 +1750,7 @@ export default function App() {
       </main>
       {selectedStar && (
         <Modal
+          returnFocusId={"star-card-" + selectedStar.id}
           error={error}
           title="编辑兴趣星星"
           onClose={() => setSelectedStar(null)}
@@ -1671,18 +1934,22 @@ function UsageGuide({ mock }: { mock: boolean | null }) {
   );
 }
 function SavedStarNextStep({
-  onNavigate,
+  onView,
+  onExplore,
+  disabled,
 }: {
-  onNavigate: (page: "archive" | "explore") => void;
+  onView: () => void;
+  onExplore: () => void;
+  disabled: boolean;
 }) {
   return (
     <div className="next-step" role="region" aria-label="保存后的下一步">
       <p>接下来，可以查看星星档案，或从已收藏的兴趣开始微型探索。</p>
       <div className="button-row">
-        <button className="secondary" onClick={() => onNavigate("archive")}>
-          查看星星档案
+        <button className="secondary" disabled={disabled} onClick={onView}>
+          查看这颗星星
         </button>
-        <button className="text-button" onClick={() => onNavigate("explore")}>
+        <button className="text-button" disabled={disabled} onClick={onExplore}>
           开始微型探索
           <ArrowRight size={16} />
         </button>
@@ -1737,11 +2004,13 @@ function Modal({
   onClose,
   children,
   error,
+  returnFocusId,
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   error?: string;
+  returnFocusId?: string;
 }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -1749,8 +2018,11 @@ function Modal({
     ref.current
       ?.querySelector<HTMLElement>("input, textarea, select, button")
       ?.focus();
-    return () => previous?.focus();
-  }, []);
+    return () => {
+      if (previous?.isConnected && previous !== document.body) previous.focus();
+      else if (returnFocusId) document.getElementById(returnFocusId)?.focus();
+    };
+  }, [returnFocusId]);
   return (
     <div
       className="modal-backdrop"

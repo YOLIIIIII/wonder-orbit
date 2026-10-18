@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
+import { verifyResults } from "./results.mjs";
 
 // 对专用临时数据库执行真实写入，避免把测试兴趣混入个人档案。
 if (process.env.E2E_ALLOW_WRITE !== "true")
@@ -105,7 +106,14 @@ try {
   await page.getByRole("button", { name: "确认保存星星" }).click();
   await page.getByText("这份好奇已加入星星档案。").waitFor();
   const next = page.getByRole("region", { name: "保存后的下一步" });
-  await next.getByRole("button", { name: "查看星星档案" }).click();
+  await next.getByRole("button", { name: "查看这颗星星" }).click();
+  const savedEditor = page.getByRole("dialog");
+  await savedEditor.getByLabel("标题", { exact: true }).waitFor();
+  assert.equal(
+    await savedEditor.getByLabel("标题", { exact: true }).inputValue(),
+    starTitle,
+  );
+  await savedEditor.getByRole("button", { name: "关闭弹窗" }).click();
   await page.getByRole("button", { name: new RegExp(starTitle) }).waitFor();
   await page.getByRole("button", { name: "我的星屿", exact: true }).click();
   const coreActions = page.getByRole("group", { name: "首页核心功能" });
@@ -384,6 +392,7 @@ try {
       }
     }
   }
+  await verifyResults(page, base, artifact);
   assert.deepEqual(failures, [], "不应出现浏览器脚本异常");
   console.log(
     "PASS: collection → draft approval → archive/search → relations → proposal approval → edit → reflection → preference confirmation → audit; desktop/mobile",

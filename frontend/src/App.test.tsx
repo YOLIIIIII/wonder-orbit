@@ -55,6 +55,8 @@ function backend(
     if (path === "/stars") return stars;
     if (path === "/stats")
       return { stars: stars.length, quests: 0, completed: 0, categories: [] };
+    if (path === "/stars/star-1")
+      return stars.find((star) => star.id === "star-1");
     if (path === "/health") return { mock_mode: mock };
     if (path === "/preferences")
       return { ...pref, explicit: { ...pref.explicit, max_budget: maxBudget } };
@@ -89,6 +91,8 @@ function collectionBackend(failSave = false) {
   mockedApi.mockImplementation(async (path, method = "GET", body) => {
     if (path === "/health") return { mock_mode: true };
     if (path === "/preferences") return pref;
+    if (path === "/stars/star-1")
+      return stars.find((star) => star.id === "star-1");
     if (path === "/stats")
       return { stars: stars.length, quests: 0, completed: 0, categories: [] };
     if (path === "/stars") {
@@ -162,7 +166,8 @@ describe("后端数据与操作边界", () => {
     backend();
     const defaultBackend = mockedApi.getMockImplementation()!;
     mockedApi.mockImplementation(async (path, ...args) =>
-      path === "/agent/runs"
+      (path === "/agent/runs" && args[0] === "POST") ||
+      path === "/agent/runs/run-1"
         ? {
             run_id: "run-1",
             request_type: "collect",
@@ -501,7 +506,9 @@ describe("后端数据与操作边界", () => {
     await collectDraft();
     fireEvent.click(screen.getByRole("button", { name: "确认保存星星" }));
     const next = await screen.findByRole("region", { name: "保存后的下一步" });
-    fireEvent.click(within(next).getByRole("button", { name: "查看星星档案" }));
+    fireEvent.click(within(next).getByRole("button", { name: "查看这颗星星" }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "关闭弹窗" }));
     expect(
       screen.getByRole("button", { name: /海洋.*深海发光/ }),
     ).toBeVisible();

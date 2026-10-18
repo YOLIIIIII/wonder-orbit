@@ -14,6 +14,10 @@
 
 2026-10-18（UX-001 人工反馈修正二）局部更新：UsageGuide 现在仅负责四步/模式说明内容，由 App 的 guideOpen 临时状态和所有页面共用的顶栏“使用指南”按钮打开既有 Modal；正文原内联指南已移除。Modal 沿用焦点循环、Escape/关闭/遮罩关闭与焦点恢复，CSS 约束网格列以防窄屏被 650px 固定宽度撑出。home 的 hero-actions 在有未归档 Star 时展示两个同尺寸按钮；无连接/无正式 Star/仅归档及保存后的状态逻辑不变，按钮仍只 setPage。未新增重要源码文件、依赖、API、Schema 或持久化；App.test 与 smoke.mjs 覆盖八页、模式/状态、键盘与双尺寸浏览器行为。历史内联方案见上段，最新证据及三问复盘见 [修正二验证](VERIFICATION.md#ux-001-feedback2-20261018)。
 
+2026-10-18（UX-002）局部更新：App 的 setPage 维护本次页面导航序号，generate/presentRun/restoreRun/retryRun 以真实 run_id 提交一次性 focusTarget，useEffect 等 DOM 与 busy 结束后聚焦/滚动，切页取消、有 Modal 时丢弃定位，减少动画时使用 auto。viewStar 读取 /stars/{id}、清除过滤后打开现有 Modal；StarCard 有稳定 DOM ID，跨页 Modal 关闭后回到对应卡片。viewQuest 使用现有 /quests 按 quest_id 核对后定位手记，不新增反馈或路由。refresh 同步服务器决定，对仍在查看但不在最近 50 项列表中的运行额外按 ID 读取；失败提示保留 run_id，恢复和 retry 前再次 GET 核对。running 不猜后端超时，重试限无决定的 failed 生成，不改变后端规则/Schema/依赖。
+
+新增 App.results.test.tsx 专门测试结果/焦点/ID/恢复边界，test-setup.ts 仅补 JSDOM scrollIntoView mock；新增 e2e/results.mjs 由 smoke.mjs 调用，负责真实双尺寸定位、恢复、精确导航及计数检查。可选 E2E_INJECTED_FAILURE=true 只用于带一次性 Mock timeout 的隔离启动器；没有该 fixture 时明确跳过故障段，正常闭环继续。新增文件职责与执行证据见下表及 [UX-002 验证](VERIFICATION.md#ux-002-20261018)；不加入新工作流、工具、checkpointer 或模型。
+
 ## 一、整体地图与阅读入口
 
 ```text
@@ -41,7 +45,7 @@ wonder-orbit/
 │  ├─ src/components.tsx / styles.css  编辑器、展示组件和样式
 │  ├─ src/api.ts / types.ts            fetch 包装 / 编译期契约
 │  ├─ src/*.test.ts* / test-setup.ts    组件和请求层测试
-│  ├─ e2e/smoke.mjs                   写入隔离库的浏览器闭环
+│  ├─ e2e/smoke.mjs → results.mjs     隔离库闭环 → 结果定位/精确导航/恢复
 │  ├─ package.json / package-lock.json / vite.config.ts
 │  └─ tsconfig.json / eslint.config.js / Dockerfile / nginx.conf / .dockerignore
 ├─ scripts/dev.ps1 / web.ps1           Windows 启动入口
@@ -108,7 +112,9 @@ Java 对照：Pydantic 类近似 DTO + Bean Validation，FastAPI Depends 近似�
 | [frontend/src/api.ts](../frontend/src/api.ts) | fetch('/api' + path)，JSON 请求及可选 Idempotency-Key；204 转 undefined；错误保留可用 run_id | ApiError、api<T> | App、Vite/Nginx 代理、FastAPI detail；泛型只做类型声明，无运行时 JSON schema 校验 | 请求头/错误格式、返回约定、代理路径改变 | F；重点 api.test；真实链路 E |
 | [frontend/src/types.ts](../frontend/src/types.ts) | 前端接口形状和状态，和后端 Pydantic/实际 JSON 共同构成契约 | Energy、StarInput、Star、Proposal、Reflection、Quest、Match、AgentRequest、Run、Preference、PreferenceData、Stats、Relation | App/components/api 的类型参数；非自动生成 | 后端入参/返回字段、枚举或前端需要显示字段改变；Run.state 是前端用到的部分，不等于全部数据库 state | F；接口/状态变化 B/E |
 | [frontend/src/styles.css](../frontend/src/styles.css) | 原生 CSS 的配色、卡片、轨迹、CSS 陪伴、焦点、弹窗和响应式；末尾还有可读性覆盖规则 |  :root 变量；.companion、.orbit-art、.star-grid、.runs-layout、.modal；600/850/1150/1450px 媒体查询 | App/components className、OrbitArt 内联 SVG 色值；无 Tailwind 配置 | UI-001/002 视觉、布局、字体/对比度或移动导航改变 | F、E；桌面/移动截图和人工视觉/键盘复核；单测不能证明审美或对比度 |
-| [frontend/src/test-setup.ts](../frontend/src/test-setup.ts) | 导入 Vitest 的 jest-dom 断言扩展 | @testing-library/jest-dom/vitest | vite.config.ts 的 setupFiles、组件测试 | 测试初始化与断言环境改变 | F（至少 Vitest + 类型/lint） |
+| [frontend/src/test-setup.ts](../frontend/src/test-setup.ts) | 导入 jest-dom 断言，补 JSDOM 缺失的 scrollIntoView mock；真实几何由浏览器验证 | @testing-library/jest-dom/vitest、vi.fn | vite.config.ts 的 setupFiles、组件测试 | 测试初始化与断言环境改变 | F（至少 Vitest + 类型/lint） |
+| [frontend/src/App.results.test.tsx](../frontend/src/App.results.test.tsx) | UX-002 一次性定位、页面/Modal 焦点边界、真实 ID 导航、过期/失败/重试/恢复 | 状态化 server fixture、scrollIntoView 调用、真实 API 方法/次数断言 | App、api、types、test-setup、Testing Library；无真实网络 | 结果衔接或恢复状态改变 | F；几何/实际 DB 计数另用 E |
+| [frontend/e2e/results.mjs](../frontend/e2e/results.mjs) | 被 smoke 调用的双尺寸结果定位/Tab/减少动画、刷新恢复、精确 Star/Quest 与无重复写检查 | verifyResults；E2E_INJECTED_FAILURE 可选隔离故障 fixture | Playwright page、已核验的隔离后端；不自行启动服务 | ID、结果区域、导航/错误/恢复改变 | F lint/format + E；无故障 fixture 时明确 skip，不能宣称真实 retry 已测 |
 | [frontend/src/App.test.tsx](../frontend/src/App.test.tsx) | 模拟 api，检查空档案/Mock、审批边界、连接失败；UX-003 单草稿/链接提示、5 元偏好下空/0/8 元请求、偏好空值和范围 | backend(mock, maxBudget) 辅助函数；含参数化用例；vi.mock api | App、api、Testing Library；不是服务集成测试 | 页面状态或交互边界改变 | F；增加覆盖需要的状态而不是宣称新引导已测 |
 | [frontend/src/components.test.tsx](../frontend/src/components.test.tsx) | 检查未知值/来源锁、ListInput 分隔、ProposalEditor 方案字段与多行输入、空值/0 元、输入说明和 Schema 范围 | 固定 star/proposal fixture；清空再保存与可访问说明断言 | ListInput、StarEditor、ProposalEditor、ProposalFacts | 编辑器、拆分规则或金额展示改变 | F；真实提交规则仍由 B/E 验证 |
 | [frontend/src/api.test.ts](../frontend/src/api.test.ts) | 检查批准请求体/幂等头与失败 ApiError 的 runId | 两个 it；vi.stubGlobal(fetch) | api、ApiError；模拟 Response | 请求/错误处理改变 | F；不是在线服务成功证据 |

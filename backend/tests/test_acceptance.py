@@ -5,8 +5,32 @@ from sqlalchemy import func, select
 
 from app.config import Settings
 from app.model_adapter import ModelAdapter, ModelFailure
-from app.models import AgentRun, Reflection, Star
+from app.models import AgentRun, Reflection, Star, now
 from app.schemas import AgentRequest
+
+
+def test_retry_does_not_bypass_active_running_guard(client, db):
+    response = client.post("/api/agent/runs", json={"request_type": "collect", "text": "海洋"})
+    run_id = response.json()["run_id"]
+    record = db.get(AgentRun, run_id)
+    record.status, record.started_at = "running", now()
+    db.commit()
+    before = db.scalar(select(func.count()).select_from(AgentRun))
+    retry = client.post(f"/api/agent/runs/{run_id}/retry")
+    assert retry.status_code == 409
+    assert "仍可能在执行" in retry.json()["detail"]
+    assert db.scalar(select(func.count()).select_from(AgentRun)) == before
+    assert client.get("/api/stars").json() == []
+
+
+@pytest.mark.parametrize("approved", [True, False])
+def test_decided_generation_cannot_be_retried(client, db, approved):
+    run = client.post("/api/agent/runs", json={"request_type": "collect", "text": "海洋"}).json()
+    decision = client.post(f"/api/agent/runs/{run['run_id']}/decision", json={"approved": approved})
+    assert decision.status_code == 200
+    assert client.post(f"/api/agent/runs/{run['run_id']}/retry").status_code == 409
+    assert db.scalar(select(func.count()).select_from(AgentRun)) == 1
+    assert len(client.get("/api/stars").json()) == int(approved)
 
 
 def test_failed_generation_key_does_not_return_created(client, db, monkeypatch):

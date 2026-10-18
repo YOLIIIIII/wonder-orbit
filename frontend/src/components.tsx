@@ -151,7 +151,7 @@ export function Empty({
 }
 export function StarCard({ star, onOpen }: { star: Star; onOpen: () => void }) {
   return (
-    <button className="star-card" onClick={onOpen}>
+    <button className="star-card" id={"star-card-" + star.id} onClick={onOpen}>
       <div className="card-top">
         <span className="star-tile">
           <StarIcon size={21} />

@@ -1369,6 +1369,18 @@ svg {
   line-height: 1.7;
   margin: 0;
 }
+.result-panel,
+.quest-target {
+  scroll-margin-top: 24px;
+}
+.result-panel:focus-visible,
+.quest-target:focus-visible {
+  outline: 3px solid #d4b367;
+  outline-offset: 3px;
+}
+.decision-label .secondary {
+  margin: 10px 0 0;
+}
 .usage-guide ol {
   padding-left: 24px;
   margin: 8px 0;

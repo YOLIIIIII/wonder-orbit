@@ -528,3 +528,85 @@ guideOpen 仅为本次 React 临时状态，初值 false；按钮有帮助图标
 - 为什么用户需要这次改动？IDEA-001 两条真实反馈说明：找到帮助不该牺牲首页连续性，已有兴趣也仍需持续收集。本轮收起正文占位、顶栏随时打开，两个按钮接近的可发现性仍需用户体验确认。
 - 它在 AI Agent 系统中解决了什么问题？改进的是 UI/UX 与工作流状态展示：帮助解释真实四步、Mock/模型与审批边界，首页按正式未归档 Star 提供路径；不改变推理、检索、工具或模型能力，没有智能效果提升结论。
 - 我们通过这次开发学到了什么？App 的页面入口视觉可调整而不改变审批/持久化；复用 Modal 仍需在真实窄屏检查 CSS 网格的最小宽度。App.test 验证三种模式和状态，smoke.mjs 用真实焦点、几何边界及 Star/Quest 计数补足 JSDOM 的局限，首轮失败直接定位并修复了裁切问题。
+
+<a id="ux-002-20261018"></a>
+
+## 2026-10-18：UX-002 操作结果与流程衔接
+
+开发前本地 main 与实际 fetch 的 origin/main 均为 943e8052e2b3524cbf641f9f27ea5ac8233d3b23，工作区干净，Git 作者正确；命令级代理 12450 在沙箱失败、正常权限 fetch 成功，不改全局配置。已阅读规定文档与前后端相关源码。以下先记录实施前状态/验收边界，后续追加实际实现和测试，不把目标当通过。
+
+UX-001 阶段性验收：本次用户原话“并且我也体验了一下，两处改动都还不错，我们继续接下来的开发吧”，明确对应顶栏指南弹窗与首页双核心入口。结合先前“整体不错”、既有空档案/归档/审批状态测试、隔离首次闭环与双尺寸指南检查，当前范围验收条件已具备，Backlog 关闭 UX-001。未推断用户亲测所有键盘/空档案/390px。UX-003 仍缺具体人工按示例提交记录，单独保留。
+
+### 实施前状态—操作—目标结果—写入边界
+
+| 状态 | 用户操作 | 目标结果 | API 写入边界 |
+| --- | --- | --- | --- |
+| collect / explore 新生成成功 | 整理 / 寻找 | DOM 提交后一次性定位本轮 run_id 的草稿/候选/澄清顶部并程序性聚焦；减少动画偏好无平滑动画 | 仅原生成 POST，定位无请求 |
+| 生成失败 / 请求后用户切页 | 等待 / 导航 | 不定位旧结果、不拉回页面；错误关联真实 run_id | 无额外写入 |
+| 审批成功且有真实 star_id / 手动保存返回 id | 查看这颗星星 | GET 目标、清除档案搜索/筛选、复用编辑 Modal；读取失败可原入口重试 | 只读，不重放保存 |
+| 每个候选已批准且有 quest_id | 查看这次体验 | GET /quests 按 ID 核对后定位自己的卡片；不自动打开反馈表单 | 只读，不重放审批/反馈 |
+| 拒绝 / 保存失败 / 无可核验 ID | 查看结果 | 不出现虚假精确成功入口 | 不新增正式记录 |
+| failed 的 collect/explore，且无决定、有效原请求 | 重试生成 | 先 GET 核对，POST retry 返回新 run_id，保留原失败，定位新结果 | 只新建生成运行，不自动批准 |
+| running / 已决定 / reflection | 查看运行 | 不提供生成重试；running 不猜后端保护期 | 不绕过后端重试限制 |
+| 刷新后真实 awaiting_decision，存在未决定草稿/候选 | 打开待确认结果 | GET 对应 run_id 再核对，进入正确页面并定位；无有效结果不展示假入口 | 只读，审批仍由用户触发 |
+| 仅有澄清、无可审批候选 | 查看澄清提示 | 定位真实问题，避免假称待审批 | 只读 |
+| 普通 refresh / 无关状态变化 / 弹窗打开 | 刷新 / 帮助 | 不重复抢滚动/焦点，不破坏 Modal 焦点管理 | 仅现有读取 |
+
+### 实际实现与 ID / 焦点依据
+
+App 的 setPage 同步递增导航序号，生成/只读导航/恢复/重试分别记录操作起点；异步返回前如用户切过页（包括切走又回来），不跳页、不定位。生成开始清除旧结果，只有新运行的有效草稿/候选/澄清才能提交 focusTarget；useEffect 等结果 DOM 提交并且 busy 结束后执行一次，随后清空。结果区 tabIndex=-1、区域名称明确，以 preventScroll 聚焦再 scrollIntoView(block=start)，scroll-margin-top=24px；prefers-reduced-motion:reduce 使用 auto，其余 smooth，不依赖固定延时。没有足够底部空间时遵从浏览器最大滚动边界，仍让提示可见；不添加大块空白。Modal 存在时丢弃自动定位，不破坏关闭后焦点恢复。
+
+正式 Star 的精确入口来自成功审批后 GET /agent/runs/{id} 的 decisions.star.star_id，手动路径使用 POST /stars 返回 id；不根据 notice 文本猜测。查看时 GET /stars/{id}，核对 ID、清空关键词/搜索结果/类别/状态过滤，复用档案页及编辑 Modal；关闭后原按钮如已卸载，回到对应 StarCard 的稳定 DOM ID。每个候选只取自己 decisions[index] 的 quest_id；当前无单个 Quest GET 路由，因此读取现有 /quests 列表核对目标后定位卡片，不默认打开反馈表单。目标缺失给可恢复提示并保留原入口，不改为打开其他记录，不重新审批。
+
+错误显示真实 ApiError.runId 及详情入口，用户主动查看才进入足迹。运行详情、打开待确认、retry 都先 GET 核对状态；只有 collect/explore、failed、无决定且有原请求时提供重试。running 不猜测可变的后端超时配置，不暴露绕过保护的操作；后端仍是最终裁决，重试失败的新 run_id 也能进入详情。重试成功核对返回的新 run_id，保留旧失败运行，定位新结果而不批准。awaiting_decision 需有未决定草稿/候选才显示“打开待确认结果”；只有问题时显示“查看澄清提示”，无内容或已决定不假称待审批。
+
+refresh 同步当前草稿/候选/足迹详情的服务器决定；对仍在查看但不在最近 50 项列表中的 run_id 额外 GET，避免沿用过期本地成功/待确认。没有新增分页或跨重启 checkpointer。operationActive ref 补足 busy 的同步点击保护，后端原幂等/指纹/事务/约束仍原样保留；定位与导航不写正式记录。
+
+### 实际命令、自动化与失败重跑
+
+Windows / PowerShell，项目 Python 3.12.15、Node 22.23.3 和已有锁定依赖；npm 由项目 Node 执行 D:/Soft/Node/node_modules/npm/bin/npm-cli.js，进程 PATH 优先项目 Node，缓存 .cache/npm。本轮正常权限执行，未把旧轮成绩当本轮重跑。
+
+| 本轮检查 | 实际命令/环境 | 结果 |
+| --- | --- | --- |
+| pytest | `.venv/Scripts/python.exe -m pytest -q -rs --basetemp=.cache/ux002-pytest`；conftest 强制 Mock/空 Key，每例独立 SQLite | passed：55 passed；skipped：本机 TEST_POSTGRES_URL 未配置，PG 1 项跳过；11.51s |
+| Ruff | `.venv/Scripts/ruff.exe check backend evals`；`.venv/Scripts/ruff.exe format --check backend evals` | passed；21 files already formatted |
+| 前端格式/lint/类型 | frontend 中 `npm run format:check`、`npm run lint`、`npm run typecheck` | passed |
+| Vitest | `npm run test` | passed：4 files、69 tests（App 31、App.results 29、components 7、api 2），最终 18.39s |
+| build | `npm run build` | passed：tsc -b + Vite，1581 modules，5.31s |
+| 完整浏览器 | Node 22 `e2e/smoke.mjs` → `verifyResults`，E2E_ALLOW_WRITE=true，E2E_INJECTED_FAILURE=true，base 127.0.0.1:5178，PLAYWRIGHT_BROWSERS_PATH=项目/.cache/browsers | 重跑 passed：原搜索/关联/预算/审批/反馈/偏好/足迹闭环，八页指南双尺寸；新生成/澄清、减少动画、refresh 不重复定位、刷新丢失内存后恢复、异步切页取消、真实失败/新运行重试、精确 Star/多 Quest ID 与正式记录/反馈计数不变 |
+| 本机 PostgreSQL / Docker / 真实模型 | 本机服务与调用额度未配置，本轮未扩展环境或模型 | PG skipped；其余 not run，不算通过 |
+| 本轮用户 UX-002 人工体验 | 用户本人实际操作后补记 | not run，Backlog 保留 in_progress |
+
+新增后端 3 个测试检查 running 保护期 409、已批准/拒绝不可重试，运行数与正式 Star 数不变。既有失败重试测试仍检查新 run_id。组件新增 29 例，覆盖两种动画偏好、草稿/候选/澄清、重复生成/失败清除旧结果、切走又返回、Modal、两种保存、过滤清除、多个 Quest、拒绝/缺 ID/目标暂缺恢复、真实 run_id、failed/running/decided/reflection/已有决定的重试边界、过期待审批与最近列表之外的运行。JSDOM 仅模拟 scrollIntoView 调用，实际位置和 Tab 由浏览器核对。
+
+真实失败与重跑记录：首轮组件 65 项通过；补充最近列表之外/过期待审批/缺 star_id 后完整检查 68 项通过。首轮浏览器旧闭环和八页指南通过，但 UX-002 脚本的导航 exact 查询未包含桌面收集按钮里的“＋”，30s timeout，整轮不算通过；改为主导航内前缀查询，保留断言、换全新隔离库重跑完整闭环通过。代码复核将 effect 延后至 busy=false，避免处理提示卸载造成定位位移；没有固定 sleep 或删减检查。随后新增普通 Tab 流程和定位时截图，使用另一份新库核对最终脚本，此次复核在 smoke 保存后读取目标弹窗处超时，日志确认没有发出目标 GET：保存 notice 与下一步已出现、act 的 refresh 仍未完成，快速点击被操作锁忽略。修复 SavedStarNextStep 在 busy 时禁用两条入口，新增延迟 /stats 刷新的回归测试；最终完整前端 69 项和 build 通过。换第四份新库（delivery）完整重跑，包含普通 Tab 的最终脚本通过，无跳过故障段、无 pageerror，未降低要求。
+
+### 隔离数据与变更范围
+
+被忽略的 .cache/ux002_server.py 启动前断言新库不存在、解析路径在项目 .cache，从应用实际 engine.url.database 再核对目标后才 Alembic upgrade head，强制 Mock/空 Key；后端只监听 127.0.0.1:8018，临时 Vite 5178 的 /api 明确代理到 8018。首轮 .cache/ux002-browser-20261018.db，修复重跑 .cache/ux002-browser-retry-20261018.db，追加复核 .cache/ux002-browser-final-20261018.db（保存后快速点击暴露时序缺陷），修复后最终交付库 .cache/ux002-browser-delivery-20261018.db。浏览器开头实际 /api/stars 断言空库，避免把个人数据当测试。
+
+故障仅在此隔离启动器中，对无敏感文本 UX002-E2E-FAIL- 注入一次 ModelFailure(timeout)，请求仍经过真实 FastAPI/LangGraph/审计和 retry API；重试该文本正常 Mock 生成，原失败可 GET。故障不提交、不改变正式适配器/工作流，不使用真实 Key。E2E 脚本没有此 fixture 时明确 SKIP 故障段，其余流程继续；本轮环境明确启用并实际验证，不以配置存在代替执行。
+
+产物分别保留于 .cache/ux002-e2e、ux002-e2e-retry、ux002-e2e-final、ux002-e2e-delivery；库、截图、辅助脚本均不提交。个人 wonder.db 仅核对文件哈希，不读业务内容；测试前 SHA-256 为 55CA7EDCDC1563E045445B5B3BD5BAB182CF0C19E1F1BE4099C416967C02B626，最终运行后哈希与测试前完全一致；临时前后端已停止。
+
+本轮范围为前端 App、components/样式、既有测试/setup/smoke，新 App.results.test.tsx / e2e/results.mjs，以及 backend/tests/test_acceptance.py 的保护测试；后端业务、API、Schema、迁移、依赖/锁文件未修改。同步 IDEA_LOG、Backlog、VERIFICATION、README、CHANGELOG、PROJECT_GUIDE；ROADMAP 仅因 UX-001 当前范围验收、M2 当前任务转 UX-002 更新相关说明，不改变优先级或后续里程碑。
+
+### 上一轮 UX-001 远程证据补记
+
+本轮重新读取 [39123903729](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39123903729) 的实际 Job/日志，提交 943e8052e2b3524cbf641f9f27ea5ac8233d3b23；frontend 117664928473、backend 117664928613 均 completed/success。backend 普通 pytest 52 passed / 1 skipped，独立 `uv run pytest backend/tests/test_postgres.py --override-ini addopts=` **1 passed in 0.17s**。这是上一轮补记，不代表本轮 CI 或完整容器/PG 回滚/并发、真实模型已验收。本轮 push 后将核对两个 Job 与独立 PG，并在最终报告给出真实链接；按连续迭代方式下一轮补记，不为同一构建额外提交。
+
+### 待用户按顺序体验
+
+1. 收集一段兴趣，整理后观察是否自然看到当次“草稿待确认”顶部；从结果继续 Tab 到操作。失败不定位旧结果；可尝试生成后主动切页，返回不应突然拉回。
+2. 确认保存后点“查看这颗星星”，确认正是刚保存的内容，关闭后焦点回到该卡片；原搜索/筛选应解除。手动填写保存也有相同入口，导航不会二次保存。
+3. 进行微型探索，检查候选或真实澄清是否可发现；接受一项后“查看这次体验”定位自己的卡片，再由你选择何时记录感受，不自动声称完成。多项入口各指向自己的体验。
+4. 生成后先不审批，刷新页面，从 Agent 足迹选择对应运行并打开待确认结果；内容/定位应正确。若遇实际生成失败，用真实运行详情查看和适用重试；不要求主动破坏个人数据或配置来制造故障。
+5. 在约 390px 窄屏及系统减少动画设置下体验定位/Tab/弹窗，确认首页双入口、顶栏指南和 UX-003 字段说明未回退。无匹配和各种失败保护已有隔离自动化，不冒称用户亲测。
+
+### 本轮三问复盘
+
+- 为什么用户需要这次改动？用户真实反馈是生成后仍停留在输入区，并希望保存/接受后找回对应记录；本轮把结果、真实记录和下一步连接起来，减少手动寻找，是否自然仍待本人体验。
+- 它在 AI Agent 系统中解决了什么问题？这是 UI/UX 与工作流可靠性的表达：真实 run_id/审批决定/正式 ID 控制入口，恢复不等于重放批准，重试保留审计。没有改变模型理解、推荐质量、工具或检索能力，不宣称智能增强。
+- 我们通过这次开发学到了什么？一次性定位要同时等待 DOM 和处理状态稳定，异步返回还需页面导航版本保护；精确导航不仅要 ID，还要目标存在、过滤和跨页弹窗焦点恢复。JSDOM 调用断言不足以证明滚动，真实浏览器/隔离数据库计数与后端保护测试共同验证边界。
+
+最终复核：已查看 .cache/ux002-e2e-delivery/result-focus-390.png、clarification-1440.png、quest-target-1.png，草稿顶部与真实澄清可见、体验定位正确、原品牌与 UX-003 中文提示保留。完整浏览器最终通过包括 1440/390px 几何边界、正常 Tab、八页指南和减少动画；故障段真实执行。文档检查脚本 .cache/ux002_doccheck.py 已核对 294 个本地链接/锚点、28 个任务索引/详情、14 个 IDEA、6 项未完成 P1、16 个预期文件；git diff --check 与源码/测试 diff 复核通过。个人 wonder.db 前后 SHA-256 相同，未改业务后端/Schema/迁移/依赖；提交前 ls-remote 核对 main 仍为预期基线。
