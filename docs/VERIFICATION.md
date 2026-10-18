@@ -309,3 +309,76 @@ Windows / PowerShell，项目内 Python 3.12.15、Node 22.23.3，复用现有已
 本轮远程 CI 结果在提交推送后核对，并在最终交付中提供链接、SHA、两个 Job 与独立 PG 实际输出；按用户要求留待下轮补记，不为写入本次 CI 结果额外触发一次构建。
 
 提交前静态复核：运行被忽略的 .cache/ux003_doccheck.py，265 个本地 Markdown 文件链接/锚点存在，26 个任务 ID 与索引/详情状态一致，13 个 IDEA ID 未重复，UX-001/002/UI-001 保持 planned，未完成 P1 七项；变更限定上述 14 个文件，backend/app、依赖锁文件与个人 DB 未纳入。已审阅 git diff、git diff --check 通过；重新 fetch origin main 后确认远程与本地基线仍为 172103d，无未知远程变更。测试临时前后端已停止，隔离库/截图保留在忽略目录供复核。
+
+
+<a id="ux-003-feedback-20261018"></a>
+
+## 2026-10-18：UX-003 人工反馈修正
+
+### 来源、基线与范围
+
+用户于 2026-10-18 实际使用后反馈五项问题，并描述截图中的 snake_case 字段名；本轮未收到可读取图片文件，来源按用户文字描述记录，未冒称查看原截图。已读 AGENTS/ROADMAP/IDEA_LOG/Backlog/VERIFICATION/CHANGELOG/导航，核对本地 main 为 a04b35efaebe9c90474a2f8af96b4455515d0838、工作区干净、仓库本地身份正确。GitHub 连接器读取 branches/main 确认远程同 SHA；Git 命令沙箱 DNS 失败，获准权限后直连仍超时，现有本机 7897 代理未运行；已请用户恢复现有代理，用户回复“我会启动现有代理”，继续推进本地工作，不改全局网络配置。
+
+只实施 UX-003 默认短提示/完整规则按需展开、草稿未知字段中文展示。未改后端计算、Schema、原始/结构化数据、API、依赖、迁移、审批/提交调用链；未增加自动滚动/焦点定位、新手引导、统计面板、足迹重设计或真实模型接入。ROADMAP 核对后不变：仍为 M2，开发顺序未调整。
+
+### 五项反馈归档与范围边界
+
+| 用户真实反馈（2026-10-18） | 想法 / 任务 | 本轮处置 |
+| --- | --- | --- |
+| 1. 草稿生成后要下滑找结果，希望自动定位 | IDEA-001 / UX-002 | 记录后续候选定位验收，本轮未实现自动滚动 |
+| 2. 探索/偏好说明长且重复，希望短提示、按需帮助并与引导分工 | IDEA-002 / UX-003；IDEA-001 / UX-001 | 本轮精简与折叠；后续引导未开发 |
+| 3. 担心记录增多难找，希望概览、状态与关键词 | IDEA-009 / DATA-001、UX-004 | 首页统计/档案搜索筛选已有；分页仍待评估，体验记录查找新列 P2 候选，未实施 |
+| 4. 整体闭环不流畅、不清楚，感受不到真正 AI 的作用 | IDEA-001 / UX-001/002；IDEA-005 / AGENT-001、EVAL-001 | 保留真实体验感受，不当作模型评测结论；本轮不接入模型或宣称增强 |
+| 5. 不理解足迹价值，希望通俗解释并保留技术详情 | 新 IDEA-014 / UX-005 | 与已实现事件审计和 IDEA-010 保留策略区分，P2 候选，未重设计 |
+
+草稿未知字段的附加反馈合并 IDEA-002 / UX-003。新增任务为 UX-004/005，新增想法仅 IDEA-014；旧 ID/依赖保留，全部未完成项含 deferred 已复评，优先级和当前顺序未变，无新 P0 证据，未完成 P1 仍为 7 项。
+
+### 前后文案与验收映射
+
+| 原表现 | 本轮表现 | 自动化证据 |
+| --- | --- | --- |
+| 探索字段下多行完整规则 | 时间/预算/精力各一句短提示；预算关键语义始终可见，范围与冲突规则在默认收起的帮助中 | App 参数化空/0/8 元请求不变，说明关联输入；帮助默认关闭、可展开/收起 |
+| 偏好通用规则重复展开、类别标签较长 | 简短常用提示与类别标签；完整范围/严格上限/约束/列表数量在“查看偏好填写规则”中 | 偏好 null、列表和 required/min/max 原提交断言继续通过 |
+| 未知字段直接 join 内部 key | 中文显示并说明不是整理出错、可选项可补充或留空；未知 key 通用中文，重复兜底合并 | App 草稿模拟含四个真实 key、未来 key、constructor，中文可见且无原始 key；未自动审批的断言保留 |
+| 详情无按需访问层次 | 原生 details/summary，键盘/点击可访问，无浮层；14px 帮助文字和草稿字段说明 | 浏览器 Enter 展开、Space 收起、点击切换；1440/390px 收起/展开均无横向溢出 |
+
+### 本轮实际执行
+
+Windows / PowerShell，复用项目 Python 3.12.15、Node 22.23.3 和已安装锁定依赖。下表是本轮实际检查；2026-10-17 结果仅在独立补记中引用。
+
+| 检查 | 实际命令 / 环境 | 结果 |
+| --- | --- | --- |
+| 后端 pytest | `.venv/Scripts/python.exe -m pytest -q -rs --basetemp=.cache/ux003-feedback-pytest-final`；conftest 强制 Mock/空 Key/每例独立 SQLite | passed：52 passed；skipped：本机无 TEST_POSTGRES_URL，PG 1 项跳过 |
+| Ruff lint | `.venv/Scripts/ruff.exe check backend evals` | passed |
+| Ruff format | `.venv/Scripts/ruff.exe format --check backend evals` | passed：21 files already formatted |
+| 前端格式 | `npm run format:check` | passed |
+| 前端 lint | `npm run lint` | passed |
+| 前端类型 | `npm run typecheck` | passed |
+| 前端 Vitest | `npm run test` | passed：3 files / 19 tests（App 10、components 7、api 2） |
+| 前端构建 | `npm run build` | passed：tsc -b / Vite，1581 modules |
+| 独立库浏览器 | `node e2e/smoke.mjs`，E2E_ALLOW_WRITE=true、E2E_BASE_URL=http://127.0.0.1:5178、PLAYWRIGHT_BROWSERS_PATH=项目/.cache/browsers、E2E_ARTIFACT_DIR=项目/.cache/ux003-feedback-e2e | passed：原闭环与空预算/0 元、草稿中文、帮助键盘/点击，三页 1440/390px；无 pageerror，展开后也无横向溢出 |
+| 本机 PG / Docker / 真实模型 | 环境/服务与调用额度未具备，本轮范围不包含 | not run；本机 PG skipped 不计通过 |
+| 本轮修正后用户人工体验 | 必须由用户实际使用确认 | not run；UX-003 保持 in_progress |
+
+前端 npm 命令实际由项目 `.tools/node/node_modules/node/bin/node.exe` 执行 `D:/Soft/Node/node_modules/npm/bin/npm-cli.js run <script>`，PATH 优先项目 Node 22、npm 缓存位于 .cache/npm。初次 pytest 沙箱无输出被主动中止，首次 Vitest 无测试执行（realpath EPERM），首次 build 因 realpath EPERM 失败；按权限流程重跑完整前端检查与独立 basetemp 后通过。失败/中止不计通过；未删除测试或降低要求。没有安装或更改依赖。
+
+### 隔离与视觉检查
+
+被忽略的 .cache/ux003_server.py 启动前断言 DB 文件为新文件、解析路径位于项目 .cache，强制 DATABASE_URL / MOCK_MODE=true / 空 Key，从应用实际 engine.url.database 再核对目标。使用 **D:/Projects/wonder-orbit/.cache/ux003-feedback-browser-20261018.db**，专用后端 8018，临时 Vite 5178 明确代理至 8018，不复用个人应用服务。个人 wonder.db 仅做运行前后 SHA-256 对照，均为 DB295A97ED21302CDA24B9C8809BCEFC8A8B56A4935ADA294C4221AC13A27A20；未查询业务内容或写入测试数据。
+
+截图保留在忽略目录 .cache/ux003-feedback-e2e。已查看微型探索-390.png、我的偏好-help-390.png、draft-fields.png：短提示与完整帮助分层、原有焦点样式可见、中文字段可读，无浮层覆盖。浏览器脚本还保存 1440px 与 390px 的收起/展开截图并检查页面宽度；开发截图复核不替代用户人工验收。
+
+### 上一轮成功 CI 独立补记
+
+本轮通过 GitHub 连接器重新核对 [运行 39033400335](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39033400335)：提交 a04b35efaebe9c90474a2f8af96b4455515d0838，backend（117398324488）/frontend（117398324780）均 completed / success。backend 日志确认普通 pytest 52 passed / 1 skipped；单独 `uv run pytest backend/tests/test_postgres.py --override-ini addopts=` 为 **1 passed in 0.18s**。这是上一轮远程证据，不是本轮重跑，不代表完整 Docker、PG 回滚或并发验收。
+
+### 新一轮待用户体验
+
+1. “微型探索”：常态下查看三项短提示，尤其预算空值仍受偏好上限、0 元明确零预算、同时设置取更低上限；键盘 Tab 到“查看时间、预算和精力规则”，Enter 展开、Space 收起。
+2. “我的偏好”：检查时间、预算、精力、约束说明是否够短；打开完整规则确认范围/有限约束可查。保留原偏好，必要时用 5 元上限试空预算和 0 元，体验后恢复。
+3. “收集星星”：输入单兴趣示例并整理，手动下滑到结果，检查“兴趣原因、预计时间、预计预算、所需精力”中文及可补充/留空说明；确认原审批/保存行为。此轮没有自动定位。
+4. 约 390px 窄屏复核上述页面的收起和展开状态，反馈是否仍过长、重复或难懂；无须测试新手引导/统计/足迹重设计/真实模型，这些尚未实施。
+
+本轮 CI 在普通推送后核对并于最终汇报给出链接与真实 Job/PG 结果，后续反馈轮再补记，避免为写入同一次 CI 结果额外触发构建。当前 M2；剩余 P1 为 UX-001/002/003、INFRA-001/002、AGENT-001、EVAL-001，待本轮用户体验后按原顺序推进，修正后人工验收不能先记完成。
+
+提交前复核：.cache/ux003_feedback_doccheck.py 通过 283 个本地 Markdown 链接/锚点、28 个任务索引/详情状态及 14 个 IDEA ID 检查；变更限定 10 个预期文件，后端/Schema/依赖/迁移/ROADMAP 未修改。已审阅代码 diff，git diff --check 通过；最后浏览器截图补充后重跑 format:check/lint 均通过。临时测试前后端已停止，个人数据库哈希保持不变。GitHub 连接器再次确认远程 main 仍为 a04b35e；普通 Git 网络仍待现有代理恢复，不用连接器文件写入替代普通推送。

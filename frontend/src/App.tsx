@@ -77,6 +77,20 @@ const blankStar: StarInput = {
   energy_level: null,
   status: "collected",
 };
+const draftFieldNames: Record<string, string> = {
+  title: "标题",
+  original_text: "原始文字",
+  description: "整理后的描述",
+  category: "兴趣类别",
+  tags: "标签",
+  interest_reason: "兴趣原因",
+  source_type: "内容来源",
+  source_reference: "参考链接",
+  estimated_minutes: "预计时间",
+  estimated_budget: "预计预算",
+  energy_level: "所需精力",
+  status: "收藏状态",
+};
 const initialPreferences: PreferenceData = {
   explicit: {
     categories: [],
@@ -569,10 +583,22 @@ export default function App() {
                     <>
                       <div className="soft-note">
                         {draftRun.state.draft?.questions.join(" ")}
-                        <p>
-                          未知字段：
-                          {draftRun.state.draft?.missing_fields.join("、")}
-                        </p>
+                        {!!draftRun.state.draft?.missing_fields.length && (
+                          <p className="draft-fields">
+                            尚不清楚：
+                            {[
+                              ...new Set(
+                                draftRun.state.draft.missing_fields.map(
+                                  (field) =>
+                                    Object.hasOwn(draftFieldNames, field)
+                                      ? draftFieldNames[field]
+                                      : "其他待补充信息",
+                                ),
+                              ),
+                            ].join("、")}
+                            。这不表示整理出错，可选信息可补充或留空。
+                          </p>
+                        )}
                       </div>
                       {draftRun.state.draft && (
                         <StarEditor
@@ -768,8 +794,7 @@ export default function App() {
                         onChange={(e) => setMinutes(e.target.value)}
                       />
                       <span className="field-hint" id="explore-minutes-hint">
-                        本次可用的时间上限，1–1440
-                        分钟；留空沿用偏好最长时间。同时设置时取较短上限，仍需达到偏好最短时间。
+                        留空用偏好最长时间；填写本次可用上限。
                       </span>
                     </label>
                     <label>
@@ -785,8 +810,7 @@ export default function App() {
                         onChange={(e) => setBudget(e.target.value)}
                       />
                       <span className="field-hint" id="explore-budget-hint">
-                        0 元表示本次预算为
-                        0。留空不额外设置本次预算，仍遵守“我的偏好”的预算上限；偏好也未设置时不额外限制。同时设置时取更低上限。
+                        留空仍遵守偏好上限；0 元为零预算；同时设置取更低上限。
                       </span>
                     </label>
                     <label>
@@ -804,10 +828,26 @@ export default function App() {
                         ))}
                       </select>
                       <span className="field-hint" id="explore-energy-hint">
-                        本次可用精力上限；与偏好同时设置时取更低等级。
+                        按本次与偏好中的较低精力上限推荐。
                       </span>
                     </label>
                   </div>
+                  <details className="form-help">
+                    <summary>查看时间、预算和精力规则</summary>
+                    <ul>
+                      <li>
+                        时间为 1–1440
+                        分钟，同时设置时取较短上限，仍需达到偏好最短时间；时间冲突会要求澄清。
+                      </li>
+                      <li>
+                        预算为 0–100000
+                        元；本次和偏好均留空时不额外限制，有上限时未知成本无法通过检查。
+                      </li>
+                      <li>
+                        精力按低、中、高比较；偏好未设置时只采用本次选择，不把未设置当作低精力。
+                      </li>
+                    </ul>
+                  </details>
                   <button className="primary" disabled={busy}>
                     <Compass size={17} />
                     寻找小体验
@@ -1135,8 +1175,7 @@ export default function App() {
                 >
                   <div className="field-grid">
                     <label className="wide">
-                      兴趣类别（可选，最多 30 项，每项不超过 80
-                      字，用于候选排序）
+                      兴趣类别（可选，用于候选排序）
                       <ListInput
                         label="兴趣类别（可选）"
                         value={preferences.explicit.categories}
@@ -1169,8 +1208,7 @@ export default function App() {
                         }
                       />
                       <span className="field-hint" id="preferences-time-hint">
-                        时间范围用于每次体验：1–1440
-                        分钟，最长不能小于最短。本次可用时间低于偏好最短时间时，会要求澄清。
+                        每次体验的时间范围，最长不能小于最短。
                       </span>
                     </label>
                     <label>
@@ -1214,8 +1252,7 @@ export default function App() {
                         }
                       />
                       <span className="field-hint" id="preferences-budget-hint">
-                        预算上限为 0–100000 元；留空不额外限制，0
-                        表示仅限无需花费的体验。与本次预算同时设置时取更低上限。
+                        留空不额外限制；0 元仅限无需花费的体验。
                       </span>
                     </label>
                     <label>
@@ -1242,11 +1279,11 @@ export default function App() {
                         ))}
                       </select>
                       <span className="field-hint" id="preferences-energy-hint">
-                        精力偏好是所需精力的上限；未设置表示不额外限制，不代表低精力。
+                        所需精力上限；未设置不额外限制，也不代表低精力。
                       </span>
                     </label>
                     <label className="wide">
-                      明确约束（可选，最多 20 项）
+                      明确约束（可选）
                       <ListInput
                         label="明确约束（可选）"
                         describedBy="preferences-constraints-hint"
@@ -1263,11 +1300,29 @@ export default function App() {
                         className="field-hint"
                         id="preferences-constraints-hint"
                       >
-                        目前只支持“仅室内、不购买、不外出”的免费室内文字记录体验。请按这些原词填写；其他约束尚不能自动验证，会要求澄清。
+                        支持“仅室内、不购买、不外出”；其他约束需澄清。
                       </span>
                     </label>
                   </div>
-
+                  <details className="form-help">
+                    <summary>查看偏好填写规则</summary>
+                    <ul>
+                      <li>
+                        时间为 1–1440 分钟，预算为 0–100000
+                        元；探索时仍需符合偏好时间范围，本次可用时间不足时会要求澄清。
+                      </li>
+                      <li>
+                        本次探索与偏好同时设置时，时间、预算、精力均取更严格的上限；预算均留空时不额外限制。有预算上限时，未知成本无法通过检查。
+                      </li>
+                      <li>
+                        约束请按“仅室内”“不购买”“不外出”原词填写，目前只支持免费的室内文字记录步骤；其他约束尚不能自动验证。
+                      </li>
+                      <li>
+                        兴趣类别最多 30 项，每项不超过 80 字；明确约束最多 20
+                        项。列表支持中英文逗号及换行解析，单行框建议用逗号。
+                      </li>
+                    </ul>
+                  </details>
                   <div className="button-row">
                     <button className="primary" disabled={busy}>
                       保存明确偏好

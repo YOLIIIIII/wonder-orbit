@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -72,7 +73,14 @@ describe("后端数据与操作边界", () => {
                   energy_level: null,
                   status: "collected",
                 },
-                missing_fields: ["interest_reason"],
+                missing_fields: [
+                  "interest_reason",
+                  "estimated_minutes",
+                  "estimated_budget",
+                  "energy_level",
+                  "future_optional_field",
+                  "constructor",
+                ],
                 questions: [],
               },
             },
@@ -89,6 +97,14 @@ describe("后端数据与操作边界", () => {
     expect(
       await screen.findByRole("button", { name: "确认保存星星" }),
     ).toBeInTheDocument();
+    const note = screen.getByText(/尚不清楚：/);
+    expect(note).toBeVisible();
+    expect(note).toHaveTextContent(
+      "尚不清楚：兴趣原因、预计时间、预计预算、所需精力、其他待补充信息。这不表示整理出错，可选信息可补充或留空。",
+    );
+    expect(note.textContent).not.toMatch(
+      /interest_reason|estimated_minutes|estimated_budget|energy_level|future_optional_field|constructor/,
+    );
     expect(
       mockedApi.mock.calls.some(
         ([path, method]) => path === "/stars" && method === "POST",
@@ -169,7 +185,7 @@ describe("后端数据与操作边界", () => {
       fireEvent.click(screen.getByRole("button", { name: "微型探索" }));
       const budget = screen.getByLabelText("本次预算（元，可选）");
       expect(budget).toHaveAccessibleDescription(
-        /0 元表示本次预算为 0.*仍遵守“我的偏好”的预算上限.*偏好也未设置时不额外限制.*同时设置时取更低上限/,
+        /留空仍遵守偏好上限；0 元为零预算；同时设置取更低上限/,
       );
       expect(budget).not.toBeRequired();
       expect(budget).toHaveAttribute("min", "0");
@@ -180,7 +196,7 @@ describe("后端数据与操作边界", () => {
       expect(minutes).toHaveAttribute("min", "1");
       expect(minutes).toHaveAttribute("max", "1440");
       expect(minutes).toHaveAccessibleDescription(
-        /留空沿用偏好最长时间.*仍需达到偏好最短时间/,
+        /留空用偏好最长时间；填写本次可用上限/,
       );
       fireEvent.change(minutes, { target: { value: "" } });
       fireEvent.change(budget, { target: { value: input } });
@@ -209,13 +225,11 @@ describe("后端数据与操作边界", () => {
     const categories = screen.getByLabelText("兴趣类别（可选）");
     const constraints = screen.getByLabelText("明确约束（可选）");
     expect(categories).toHaveAccessibleDescription(/中英文逗号或换行分隔/);
-    expect(constraints).toHaveAccessibleDescription(
-      /其他约束尚不能自动验证，会要求澄清/,
-    );
+    expect(constraints).toHaveAccessibleDescription(/其他约束需澄清/);
     const energy = screen.getByLabelText("精力偏好（可选）");
     expect(energy).toHaveValue("");
     expect(energy).toHaveAccessibleDescription(
-      /未设置表示不额外限制，不代表低精力/,
+      /未设置不额外限制，也不代表低精力/,
     );
     const min = screen.getByLabelText("最短时间（分钟，必填）");
     expect(min).toBeRequired();
@@ -224,7 +238,7 @@ describe("后端数据与操作边界", () => {
     expect(screen.getByLabelText("最长时间（分钟，必填）")).toBeRequired();
     expect(
       screen.getByLabelText("预算上限（元，可选）"),
-    ).toHaveAccessibleDescription(/留空不额外限制，0 表示仅限无需花费/);
+    ).toHaveAccessibleDescription(/留空不额外限制；0 元仅限无需花费/);
     fireEvent.change(categories, { target: { value: "自然，文字,观察" } });
     fireEvent.change(constraints, {
       target: { value: "仅室内，不购买,不外出" },
@@ -242,5 +256,35 @@ describe("后端数据与操作边界", () => {
         }),
       ),
     );
+  });
+  it.each([
+    ["微型探索", "查看时间、预算和精力规则", /本次和偏好均留空时不额外限制/],
+    ["我的偏好", "查看偏好填写规则", /目前只支持免费的室内文字记录步骤/],
+  ])("%s 默认只展示短提示，完整规则可按需展开", async (page, summary, rule) => {
+    backend();
+    render(<App />);
+    await screen.findByText("Mock 模式 · 规则生成");
+    fireEvent.click(screen.getByRole("button", { name: page }));
+    const toggle = screen.getByText(summary);
+    const help = toggle.closest("details")!;
+    // 原生 summary 提供键盘激活语义；真实 Enter/Space 操作由浏览器测试验证。
+    expect(toggle.tagName).toBe("SUMMARY");
+    expect(help).not.toHaveAttribute("open");
+    expect(within(help).getByText(rule)).not.toBeVisible();
+    expect(
+      screen.getByLabelText(
+        page === "微型探索" ? "本次预算（元，可选）" : "预算上限（元，可选）",
+      ),
+    ).toBeVisible();
+    fireEvent.click(toggle);
+    expect(help).toHaveAttribute("open");
+    expect(within(help).getByText(rule)).toBeVisible();
+    fireEvent.click(toggle);
+    expect(help).not.toHaveAttribute("open");
+    expect(
+      mockedApi.mock.calls.some(
+        ([, method]) => method === "POST" || method === "PUT",
+      ),
+    ).toBe(false);
   });
 });

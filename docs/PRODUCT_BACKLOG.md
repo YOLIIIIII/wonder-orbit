@@ -1,13 +1,13 @@
 # 产品待办与迭代队列
 
-更新日期：2026-10-17（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
+更新日期：2026-10-18（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
 
 ## 已交付基线与当前范围
 
 - Star CRUD、单草稿确认、关键词/标签检索、真实关联、LangGraph/受控工具、审批、反馈、候选偏好确认、Mock、运行审计与基础 Web UI 已实现，详见 README 和既有验收。不会重新列为待实现。
 - PostgreSQL、容器、真实模型和 CI 已有实现/配置；CI 修复后的远程 backend/frontend 均通过，独立 PG 集成实际 1 passed。PG 回滚/并发、完整容器与真实模型仍缺验收；语义检索、多草稿是待评估/待实现。
-- 2026-10-17 UX-003 本地回归后端 52 passed / 1 skipped、前端 17 passed；隔离 SQLite 浏览器闭环通过。本机 PostgreSQL 仍缺服务，上一轮远程证据独立补记于 VERIFICATION。
-- 本轮仅实施 UX-003，附带核对 INFRA-003 远程成功证据并收尾；不实施 UX-001/002、UI-001 或新 Agent 功能，不改数据模型/依赖。用户已授权必要检查通过后 commit、普通 push origin/main 及远程 CI；UX-003 人工体验尚待用户执行。
+- 2026-10-18 本轮回归后端 52 passed / 1 skipped、前端 19 passed；独立 SQLite 浏览器闭环与原生帮助的键盘/点击验证通过。本机 PostgreSQL 仍缺服务，上一轮远程成功证据与本轮实证分开记录于 VERIFICATION。
+- 本轮为 2026-10-18 UX-003 人工反馈后的文案修正：默认短提示/按需完整帮助，草稿未知字段中文化。用户已实际体验上一轮并反馈，本轮修正仍待新一轮体验；不实施自动滚动、UX-001/002、统计面板、足迹重设计或真实模型接入，不改后端逻辑/Schema/依赖。用户明确授权必要检查通过后 commit、普通 push origin/main 和 CI 核对。
 
 ## 状态与完成规则
 
@@ -47,6 +47,8 @@
 
 2026-10-17（UX-003 开发前/交付复评）：核对全部未完成项，含 UI-002、UI-003、AGENT-006、INFRA-006 的 deferred 触发条件；未出现新的 P0 或足以提高实验/重构项优先级的证据。INFRA-003 已取得两个 Job 成功及独立 PG 1 passed 的远程证据，按既有 CI 范围收尾，PG 回滚/容器/并发仍分别留给 INFRA-001/002/004。执行顺序从临时 CI 收尾恢复 **UX-003 → UX-001 → UX-002**；其余 P1/P2/P3、依赖和简单替代方案维持，不扩大本轮范围。未完成 P1 为 7 项（UX-001/002/003、INFRA-001/002、AGENT-001、EVAL-001），无已证实未修 P0；先等用户体验 UX-003，再建议 UX-001。
 
+2026-10-18：结合五项真实体验反馈，重新审视全部未完成任务（含 deferred）。UX-003 继续 P1，先解决长说明和内部名称；UX-001/002 的 P1 与既有依赖/顺序保持，自动定位只记入 UX-002 的后续范围。已有档案统计/筛选/搜索不重做；新增体验记录查找 UX-004 与过程说明 UX-005 为 P2 / proposed，需要具体样例与范围评估，暂不排入实施。模型价值反馈增强 AGENT-001/EVAL-001 的证据需求，不等于已有服务/额度授权；其余数据库/容器/检索/并发/导出/恢复/素材/部署任务的成本、风险、依赖与简单替代方案维持，无新 P0 证据，未完成 P1 仍为 7 项。本轮唯一代码范围为 UX-003；UX-003 新一轮体验后仍建议 UX-001 → UX-002，条件具备时再推进真实模型与评测。ROADMAP 阶段及开发顺序未变。
+
 ## 任务索引
 
 | ID | 标题 | 优先级 | 状态 | 想法 |
@@ -55,6 +57,8 @@
 | [UX-001](#ux-001) | 首次使用与空状态的下一步引导 | P1 | planned | [IDEA-001](IDEA_LOG.md#idea-001) |
 | [UX-002](#ux-002) | 审批结果、体验手记与失败恢复衔接 | P1 | planned | [IDEA-001](IDEA_LOG.md#idea-001) |
 | [UX-003](#ux-003) | 输入示例、格式、未知值与约束文案校准 | P1 | in_progress | [IDEA-002](IDEA_LOG.md#idea-002) |
+| [UX-004](#ux-004) | 评估体验记录的概览与查找 | P2 | proposed | [IDEA-009](IDEA_LOG.md#idea-009) |
+| [UX-005](#ux-005) | 评估面向用户的执行过程说明 | P2 | proposed | [IDEA-014](IDEA_LOG.md#idea-014) |
 | [UI-001](#ui-001) | 视觉层级、可读性与移动端导航打磨 | P2 | planned | [IDEA-003](IDEA_LOG.md#idea-003) |
 | [UI-002](#ui-002) | 替换用户正式原创陪伴素材 | P3 | deferred | [IDEA-003](IDEA_LOG.md#idea-003) |
 | [INFRA-001](#infra-001) | 验证 PostgreSQL 迁移与现有集成测试 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
@@ -114,6 +118,8 @@
 - 相关文档或代码位置：frontend/src/App.tsx 首页/collect；frontend/src/components.tsx Empty；frontend/src/App.test.tsx；frontend/e2e/smoke.mjs。
 - 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
 
+2026-10-18 反馈关联：用户反馈 4（流程仍不清楚）及反馈 2（与新手引导分工）追加至 IDEA-001/002；后续引导需解释下一步，字段常用规则由 UX-003 提供。本轮不实施。
+
 ### UX-002
 
 **审批结果、体验手记与失败恢复衔接**
@@ -131,6 +137,8 @@
 - 相关文档或代码位置：frontend/src/App.tsx decision/quests/runs；frontend/src/api.ts；backend/tests/test_acceptance.py；frontend/e2e/smoke.mjs。
 - 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
 
+2026-10-18 反馈关联：用户反馈 1：生成草稿后需要下滑寻找结果。纳入后续候选范围与验收：生成成功可发现结果，键盘/移动端定位可用且不重复提交；取消/失败不错误定位。是否滚动及焦点方案实施前确认，不在本轮实现；既有依赖不变。
+
 ### UX-003
 
 **输入示例、格式、未知值与约束文案校准**
@@ -147,6 +155,42 @@
 - 原始想法：[IDEA-002](IDEA_LOG.md#idea-002)。
 - 相关文档或代码位置：frontend/src/App.tsx collect/explore/preferences；frontend/src/components.tsx ListInput/StarEditor/ProposalEditor；backend/app/schemas.py；backend/app/tools.py。
 - 证据/交付记录：2026-10-17，代码与文案交付，前端 17 passed、后端 52 passed / 1 skipped，格式/lint/类型/build、隔离浏览器闭环与 1440/390px 检查通过；原文/规则/新文案/测试映射及真实失败重试记录见 [VERIFICATION](VERIFICATION.md#ux-003-fields)，交付见 [CHANGELOG](../CHANGELOG.md)。**待用户人工体验验收**，保留 in_progress；自动化通过不代表体验已验收。
+
+2026-10-18 反馈关联：用户实际体验发现说明过长/重复和未知字段英文暴露，本轮仅修正文案展示：关键短提示常显、完整规则原生折叠、未知字段中文化；验收包含键盘展开、空值/0/较低预算上限、提交值不变、未知字段兜底、桌面/窄屏检查。本轮后端 52 passed / 1 skipped，前端 19 passed，Ruff 与前端格式/lint/类型/build 通过；独立浏览器闭环、1440/390px 布局及原生帮助 Enter/Space/点击通过。实际记录与待体验步骤见 [VERIFICATION](VERIFICATION.md#ux-003-feedback-20261018)。旧 2026-10-17 自动化通过不代表本轮体验已通过；保持 in_progress，等待新一轮用户人工体验。
+
+### UX-004
+
+**评估体验记录的概览与查找**
+
+- 描述与问题背景：用户担心记录变多不好找；首页统计与档案搜索/类别/状态筛选已存在，体验手记尚无对应查找能力。
+- 优先级：P2。
+- 状态：proposed。
+- 预期用户价值：更容易找回过去体验及反馈。
+- 技术价值（AI Agent 求职）：查询/筛选契约、真实数据与展示一致性。
+- 预计实现成本：M。
+- 主要风险：虚构统计、范围膨胀、筛选结果误作全量；无实际大数据量证据。
+- 前置依赖：先明确体验记录需查的字段与真实场景；评估现有列表/档案入口等简单替代方案，分页依赖与 DATA-001 分开评估。
+- 验收标准：先形成与现有能力的差异和验收方案后再转 planned；若实施，统计来自真实数据且空数据为零，关键词/状态组合与边界有组件/API/隔离浏览器证据，不以本项记录表示已开发面板。
+- 原始想法：[IDEA-009](IDEA_LOG.md#idea-009)。
+- 相关文档或代码位置：frontend/src/App.tsx quests；backend/app/main.py；docs/VERIFICATION.md。
+- 证据/交付记录：2026-10-18 只记录用户真实反馈与待评估范围，未实施，不能计为交付。
+
+### UX-005
+
+**评估面向用户的执行过程说明**
+
+- 描述与问题背景：用户不理解 Agent 足迹价值，希望普通语言解释执行过程并保留技术详情；已有节点/工具事件，不重复建设审计。
+- 优先级：P2。
+- 状态：proposed。
+- 预期用户价值：知道系统做了什么、为什么要自己确认和如何查看结果。
+- 技术价值（AI Agent 求职）：公开执行事件到可理解展示的映射、可追溯性。
+- 预计实现成本：M。
+- 主要风险：把事件编造成思考过程或能力承诺，隐藏错误/审批边界；过度重设计。
+- 前置依赖：先收集足迹理解样例；与 UX-001/002 术语协同，比较现有页面简短用途解释与重新组织页面的成本，未授权本轮实施。
+- 验收标准：评估方案后再转 planned；若实施，普通说明只引用真实公开结果/事件，失败/Mock/待确认准确，技术详情仍可键盘访问，不保存或展示隐藏推理；组件/隔离 E2E 与用户体验留证。
+- 原始想法：[IDEA-014](IDEA_LOG.md#idea-014)。
+- 相关文档或代码位置：frontend/src/App.tsx runs；backend/app/workflow.py；docs/PROJECT_GUIDE.md。
+- 证据/交付记录：2026-10-18 只记录用户真实反馈与待评估范围，未实施，不能计为交付。
 
 ### UI-001
 
@@ -250,6 +294,8 @@
 - 相关文档或代码位置：backend/app/model_adapter.py；backend/app/workflow.py；backend/tests/test_acceptance.py；evals/run_live.py；.env.example。
 - 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
 
+2026-10-18 反馈关联：用户反馈 4 的 AI 价值感受关联 IDEA-005；仍需真实服务与明确额度，未在本轮接入或调用。
+
 ### EVAL-001
 
 **建立版本化案例与人工复核 Agent 基线**
@@ -266,6 +312,8 @@
 - 原始想法：[IDEA-005](IDEA_LOG.md#idea-005)。
 - 相关文档或代码位置：evals/cases.json；evals/run_live.py；evals/README.md；backend/tests/test_mvp.py；docs/VERIFICATION.md。
 - 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
+
+2026-10-18 反馈关联：用户反馈“尚不能感受到真正 AI 的作用”作为后续人工复核问题来源，不当作模型质量基线或已证明的提升；本轮不实施。
 
 ### AGENT-002
 
@@ -368,6 +416,8 @@
 - 原始想法：[IDEA-009](IDEA_LOG.md#idea-009)。
 - 相关文档或代码位置：backend/app/main.py；backend/app/retrieval.py；frontend/src/App.tsx。
 - 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
+
+2026-10-18 反馈关联：用户反馈 3 提供增长担忧，尚无实际规模/性能证据；档案已有统计/筛选/搜索不列为新功能，体验手记概览/查找另见 UX-004，本项分页范围仍待评估。
 
 ### UI-003
 

@@ -1329,6 +1329,27 @@ svg {
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
+.form-help {
+  color: #705c80;
+  font-size: 14px;
+  line-height: 1.6;
+  border-top: 1px solid #e7dfef;
+  margin: 0 0 18px;
+  padding-top: 8px;
+}
+.soft-note .draft-fields {
+  font-size: 14px;
+}
+.form-help summary {
+  padding: 10px 0;
+}
+.form-help ul {
+  padding-left: 22px;
+  margin: 8px 0;
+}
+.form-help li + li {
+  margin-top: 8px;
+}
 .field-grid > label {
   min-width: 0;
 }

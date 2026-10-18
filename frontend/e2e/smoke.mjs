@@ -38,6 +38,15 @@ try {
   await page.getByRole("button", { name: "整理成草稿" }).click();
   await page.getByText("正在处理，请稍候…").waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "确认保存星星" }).waitFor();
+  const draftNote = await page.locator(".soft-note").textContent();
+  assert.match(draftNote, /兴趣原因、预计时间、预计预算、所需精力/);
+  assert.doesNotMatch(
+    draftNote,
+    /interest_reason|estimated_minutes|estimated_budget|energy_level/,
+  );
+  await page
+    .locator(".soft-note")
+    .screenshot({ path: `${artifact}/draft-fields.png` });
   await page.getByLabel("标题", { exact: true }).fill(starTitle);
   await page
     .getByLabel("整理后的描述")
@@ -74,7 +83,7 @@ try {
   await page.getByLabel("可用时间（分钟，可选）").fill("10");
   const budget = page.getByLabel("本次预算（元，可选）");
   assert.equal(await budget.inputValue(), "");
-  await page.getByText(/仍遵守“我的偏好”的预算上限/).waitFor();
+  await page.getByText(/留空仍遵守偏好上限/).waitFor();
   const blankBudgetRequest = page.waitForRequest(
     (req) => req.method() === "POST" && req.url().endsWith("/api/agent/runs"),
   );
@@ -132,6 +141,41 @@ try {
         path: `${artifact}/${name}-${width}.png`,
         fullPage: true,
       });
+      if (name !== "收集星星") {
+        const help = page.locator("details.form-help");
+        const toggle = help.locator("summary");
+        assert.equal(await help.evaluate((el) => el.open), false);
+        await toggle.focus();
+        await page.keyboard.press("Enter");
+        assert.equal(
+          await help.evaluate((el) => el.open),
+          true,
+          "Enter 应展开帮助",
+        );
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > window.innerWidth,
+          ),
+          false,
+        );
+        await page.screenshot({
+          path: `${artifact}/${name}-help-${width}.png`,
+          fullPage: true,
+        });
+        await page.keyboard.press("Space");
+        assert.equal(
+          await help.evaluate((el) => el.open),
+          false,
+          "Space 应收起帮助",
+        );
+        await toggle.click();
+        assert.equal(
+          await help.evaluate((el) => el.open),
+          true,
+          "点击应展开帮助",
+        );
+        await toggle.click();
+      }
     }
   }
   assert.deepEqual(failures, [], "不应出现浏览器脚本异常");
