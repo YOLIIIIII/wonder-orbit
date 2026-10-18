@@ -233,6 +233,11 @@ describe("后端数据与操作边界", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("服务连接失败"),
     );
     expect(screen.getByText("等待后端连接")).toBeInTheDocument();
+    const actions = screen.getByRole("group", { name: "首页核心功能" });
+    expect(within(actions).getAllByRole("button")).toHaveLength(1);
+    expect(
+      within(actions).getByRole("button", { name: "收集一颗星星" }),
+    ).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "收集第一颗星星" }),
     ).not.toBeInTheDocument();
@@ -403,7 +408,7 @@ describe("后端数据与操作边界", () => {
     ).toBe(false);
   });
   it.each(["collected", "exploring"] as const)(
-    "已有 %s 星星时主引导改为探索，仍可继续收集",
+    "已有 %s 星星时收集与探索都有明确按钮，导航不写入",
     async (status) => {
       backend(true, null, [{ ...savedStar, status }]);
       render(<App />);
@@ -411,11 +416,28 @@ describe("后端数据与操作边界", () => {
       expect(
         screen.queryByRole("button", { name: "收集第一颗星星" }),
       ).not.toBeInTheDocument();
+      const actions = screen.getByRole("group", { name: "首页核心功能" });
+      for (const name of ["收集星星", "微型探索"]) {
+        const button = within(actions).getByRole("button", { name });
+        expect(button).toBeVisible();
+        expect(button).toHaveClass("hero-core-action");
+        expect(button).not.toHaveClass("text-button");
+      }
+      expect(within(actions).getAllByRole("button")).toHaveLength(2);
       expect(
-        screen.getByRole("button", { name: "开始微型探索" }),
+        screen.getByText(/随时收集新的好奇.*体验又能带来新的好奇/),
       ).toBeVisible();
-      expect(screen.getByText(/参考实际收藏内容和你的明确偏好/)).toBeVisible();
-      fireEvent.click(screen.getByRole("button", { name: "继续收集星星" }));
+      fireEvent.click(
+        within(actions).getByRole("button", { name: "微型探索" }),
+      );
+      expect(screen.getByLabelText("今天想靠近哪份好奇？")).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "我的星屿" }));
+      fireEvent.click(
+        within(screen.getByRole("group", { name: "首页核心功能" })).getByRole(
+          "button",
+          { name: "收集星星" },
+        ),
+      );
       expect(screen.getByLabelText("你最近对什么感到好奇？")).toBeVisible();
       expect(
         mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
@@ -428,8 +450,12 @@ describe("后端数据与操作边界", () => {
     await screen.findByText("Mock 模式 · 规则生成");
     expect(screen.getByText(/归档星星不参与推荐/)).toBeVisible();
     expect(screen.getByRole("button", { name: "查看星星档案" })).toBeVisible();
+    const actions = screen.getByRole("group", { name: "首页核心功能" });
     expect(
-      screen.queryByRole("button", { name: "开始微型探索" }),
+      within(actions).getByRole("button", { name: "继续收集星星" }),
+    ).toBeVisible();
+    expect(
+      within(actions).queryByRole("button", { name: "微型探索" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "微型探索" }));
     expect(
@@ -556,29 +582,96 @@ describe("后端数据与操作边界", () => {
       ).toHaveLength(1);
     },
   );
-  it.each([true, false])(
-    "使用指南可重复打开且反映模式（Mock=%s）",
+  it.each([true, false, null])(
+    "顶栏指南可重复打开关闭、管理焦点且反映真实模式（Mock=%s）",
     async (mock) => {
-      backend(mock);
-      render(<App />);
-      await screen.findByText(mock ? "Mock 模式 · 规则生成" : "模型服务已连接");
-      const toggle = screen.getByText("星屿怎么使用");
-      const guide = toggle.closest("details")!;
-      expect(guide).not.toHaveAttribute("open");
-      for (let i = 0; i < 2; i++) {
+      if (mock === null) mockedApi.mockRejectedValue(new Error("连接失败"));
+      else backend(mock);
+      const { container } = render(<App />);
+      if (mock === null) await screen.findByRole("alert");
+      else
+        await screen.findByText(
+          mock ? "Mock 模式 · 规则生成" : "模型服务已连接",
+        );
+      const toggle = screen.getByRole("button", { name: "使用指南" });
+      expect(toggle.closest(".topbar")).not.toBeNull();
+      expect(container.querySelector(".main-content .usage-guide")).toBeNull();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      for (const closeMethod of ["Escape", "button", "backdrop"]) {
+        toggle.focus();
         fireEvent.click(toggle);
+        const guide = screen.getByRole("dialog", { name: "星屿怎么使用" });
+        const close = within(guide).getByRole("button", { name: "关闭弹窗" });
+        expect(close).toHaveFocus();
+        fireEvent.keyDown(close, { key: "Tab" });
+        expect(close).toHaveFocus();
+        fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+        expect(close).toHaveFocus();
+        expect(within(guide).getAllByRole("listitem")).toHaveLength(4);
         expect(within(guide).getByText(/接受体验后到“体验手记”/)).toBeVisible();
         expect(
           within(guide).getByText(
-            mock ? /不代表真实大模型理解/ : /当前为模型模式/,
+            mock === null
+              ? /连接后可查看当前生成模式/
+              : mock
+                ? /不代表真实大模型理解/
+                : /当前为模型模式.*仍需你检查、确认/,
           ),
         ).toBeVisible();
-        fireEvent.click(toggle);
-        expect(guide).not.toHaveAttribute("open");
+        fireEvent.click(within(guide).getByRole("heading"));
+        expect(guide).toBeVisible();
+        if (closeMethod === "Escape")
+          fireEvent.keyDown(close, { key: "Escape" });
+        else if (closeMethod === "button") fireEvent.click(close);
+        else fireEvent.click(guide.parentElement!);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(toggle).toHaveFocus();
       }
       expect(
         mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
       ).toBe(true);
     },
   );
+  it.each([
+    "我的星屿",
+    "收集星星",
+    "星星档案",
+    "兴趣轨道",
+    "微型探索",
+    "体验手记",
+    "Agent 足迹",
+    "我的偏好",
+  ])("%s 页面均可从顶栏打开指南，关闭后保留页面", async (name) => {
+    backend();
+    render(<App />);
+    await screen.findByText("Mock 模式 · 规则生成");
+    const nav = screen.getByRole("navigation", { name: "主导航" });
+    fireEvent.click(
+      within(nav).getByRole("button", { name: new RegExp("^" + name) }),
+    );
+    const toggle = screen.getByRole("button", { name: "使用指南" });
+    fireEvent.click(toggle);
+    expect(screen.getByRole("dialog", { name: "星屿怎么使用" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "关闭弹窗" }));
+    expect(
+      within(nav).getByRole("button", { name: new RegExp("^" + name) }),
+    ).toHaveClass("active");
+    expect(
+      mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
+    ).toBe(true);
+  });
+  it("打开指南不清除收集输入或待确认草稿，也不提交表单", async () => {
+    collectionBackend();
+    render(<App />);
+    await collectDraft();
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "未保存的修改" },
+    });
+    const calls = mockedApi.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "使用指南" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.getByLabelText("标题")).toHaveValue("未保存的修改");
+    expect(screen.getByText(/草稿已经生成，还没有加入正式档案/)).toBeVisible();
+    expect(mockedApi.mock.calls).toHaveLength(calls);
+  });
 });

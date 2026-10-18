@@ -460,3 +460,71 @@ Windows / PowerShell，复用项目 Python 3.12.15、Node 22.23.3 和锁定依�
 上一轮 CI 独立补记：本轮通过 GitHub 连接器重新读取 [运行 39116179321](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39116179321) 的 Job 与 backend 日志，提交为 1614dc47cef684fffa5c126e747ecd78e8ca64d1；backend 117642320130 / frontend 117642320320 均 success。普通 pytest 为 52 passed / 1 skipped，独立 PG 命令实际 1 passed in 0.18s。此为 UX-003 交付的远程证据，不是本轮 UX-001 重跑，也不证明完整 Docker/PG 回滚或真实模型已验收。
 
 本轮静态复核：.cache/ux001_doccheck.py 检查 284 个本地 Markdown 链接/锚点、28 个任务索引/详情状态、14 个 IDEA ID，均通过；12 个预期变更文件，未改 backend/app、Schema、依赖或迁移。UX-001/003 保持 in_progress，UX-002 尚未实施，UX-004/005 为候选；P1 仍为 7 项。git diff --check 通过，已检查业务 diff；临时测试前后端已停止，测试库与截图保留在忽略目录，个人数据库哈希保持不变。
+
+<a id="ux-001-feedback2-20261018"></a>
+
+## 2026-10-18：UX-001 人工体验反馈修正（二）
+
+### 基线、真实反馈与本轮边界
+
+开发前本地 main/HEAD 为用户预期 2988d376890566a83a32bb166201f99231f662c8，工作区干净；通过用户给定的命令级 HTTP 代理 127.0.0.1:12450 实际 fetch origin main，origin/main 与 HEAD 相同。沙箱首次代理连接失败，按权限流程重试成功，未修改全局 Git 配置。作者沿用 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>。
+
+两条 2026-10-18 用户实际反馈并入 IDEA-001 / UX-001：正文顶部指南占空间、影响连续性；已有星星时探索过强、收集过弱。用户评价整体不错，仍有具体修改与新一轮体验待验收，不将其当作全项验收。实施定位决策单独标注为设计：持续收集与微型行动互相促进。复评全部未完成项含 deferred 后，优先级/阶段/顺序无变化，不改 ROADMAP；未修 P0 无新实证，未完成 P1 仍 7 项。
+
+本轮只改顶栏指南入口、首页双入口与相关样式/测试/文档；后端、Schema、迁移、依赖、模型、API 审批逻辑未变。UX-001/003 的状态只在 Backlog 维护；UX-001 继续等待人工体验，UX-003 原具体人工记录缺口保留。UX-002 自动滚动/精确跳转/恢复、UX-004 统计检索、UX-005 足迹重设计、真实模型均未实施。
+
+### 状态与实现对照
+
+| 真实状态 | 本轮首页/指南行为 | 验证方式 |
+| --- | --- | --- |
+| 后端尚未连接或初始 refresh 失败 | 连接提示和未知计数；不显示“第一颗”或虚构真实档案；指南提示连接后可查看模式 | 组件连接失败与 null 模式 |
+| 已连接、无正式 Star | “收集第一颗星星”，解释探索需要真实兴趣依据 | 组件与新空库浏览器 |
+| 至少一颗 collected / exploring 等未归档 Star | 浅紫“收集星星”/深紫“微型探索”，共同 .hero-core-action 尺寸/权重；桌面并排，窄屏可换行；文案说明持续收集和行动 | 组件两种状态；浏览器实际尺寸/权重、桌面同排与导航计数 |
+| 只有 archived Star | 保留归档不参与推荐的提示，查看档案恢复或继续收集；不呈现可探索双按钮 | 组件 |
+| 待确认草稿 / 拒绝 / 保存失败 | 仍不当作正式 Star 或成功保存；现有审批/保存后引导不变 | 组件与隔离浏览器失败/放下/批准 |
+| 所有八页、Mock/模型/未连接 | 顶栏状态、帮助、刷新分组；指南内容仅在复用 Modal 打开时出现，原正文 details 与空白占位移除；四步与模式原语义保留 | 八页组件/浏览器；三种模式组件 |
+
+guideOpen 仅为本次 React 临时状态，初值 false；按钮有帮助图标、文字和 accessible name“使用指南”、aria-haspopup=dialog。Modal 沿用对话框语义、初始聚焦关闭按钮、Tab/Shift+Tab 循环、Escape/显式关闭/点击遮罩关闭并恢复帮助入口焦点；点击内容不关闭，不自动打开，不写持久化状态。收集页打开帮助后未保存的修改和待确认草稿保留，没有新请求。首页按钮只 setPage，不调用写 API。
+
+### 本轮实际命令与结果
+
+环境：Windows / PowerShell、项目 Python 3.12.15 / Node 22.23.3 与已有锁定依赖。npm 由项目 Node 启动 D:/Soft/Node/node_modules/npm/bin/npm-cli.js，当前进程 PATH 优先项目 Node，缓存 .cache/npm。
+
+| 检查 | 实际命令/环境 | 最终结果 |
+| --- | --- | --- |
+| 后端 pytest | `.venv/Scripts/python.exe -m pytest -q -rs --basetemp=.cache/ux001-feedback2-pytest`；conftest 强制 Mock、空 Key、隔离 SQLite | passed：52 passed；skipped：本机缺 TEST_POSTGRES_URL，PG 1 项跳过，11.61s |
+| Ruff | `.venv/Scripts/ruff.exe check backend evals`；`.venv/Scripts/ruff.exe format --check backend evals` | passed；21 files already formatted |
+| 前端格式/lint/类型 | frontend 中 `npm run format:check`、`npm run lint`、`npm run typecheck` | passed |
+| Vitest | `npm run test` | passed：3 files、40 tests（App 31、components 7、api 2）；样式/E2E 定稿轮 19.87s，补强未连接/仅归档断言后再核对格式/lint/类型与 40 项测试，13.59s |
+| build | `npm run build` | passed：tsc -b + Vite，1581 modules，4.15s |
+| 隔离浏览器完整闭环 | `node e2e/smoke.mjs`；E2E_ALLOW_WRITE=true；E2E_BASE_URL=http://127.0.0.1:5178；项目 .cache/browsers | passed：收集→拦截模拟批准失败→真实放下→重新生成/批准→档案/搜索/关联→探索空预算/0 元→接受/编辑/反馈→偏好确认→足迹；无 pageerror |
+| 1440px / 390px | 同一浏览器脚本，八页各检查布局、顶栏三个操作无重叠且在屏幕内；指南 Enter 打开、Tab/Shift+Tab、三种关闭与恢复焦点；首页双按钮尺寸/文字权重与实际 Star/Quest 计数 | passed；展开/关闭不新增横向溢出，指南边界完全位于视口；原 UX-003 字段帮助 Enter/Space/点击继续通过 |
+| 本机 PG / Docker / 真实模型 | 本机服务/额度未配置，且不在本轮实现范围 | PG skipped；其余 not run，不记通过 |
+| 用户新一轮人工体验 | 必须由用户本人操作、评价 | not run，等待体验，不关闭 UX-001 |
+
+失败、修复与重试：首轮沙箱 Vitest 报 realpath spy.js EPERM，0 tests、3 unhandled errors；提升运行权限后完整检查 40 项通过。首轮浏览器已通过业务闭环与桌面八页，但在 390px 首页指南边界断言失败，截图显示原 Modal 的 650px 固定宽度撑开隐式网格，文字与关闭按钮裁切；不算浏览器通过。修复 .modal-backdrop 的 minmax(0,1fr) 网格列及 Modal min-width/居中，保留全部断言；另建全新隔离库重跑完整闭环与 16 个页面/尺寸组合通过。样式/E2E 最终变更后再次完整执行前端格式/lint/typecheck/40 tests/build，均通过；未删测试或降低要求。
+
+### 数据隔离、视觉核对与文档范围
+
+被忽略的启动器 .cache/ux001_feedback2_server.py 在迁移前断言目标新库不存在、路径位于项目 .cache，并将应用实际 engine.url.database 与目标解析路径比对，强制 Mock/空 Key。首轮库为 D:/Projects/wonder-orbit/.cache/ux001-feedback2-browser-20261018.db；修复后新库为 **D:/Projects/wonder-orbit/.cache/ux001-feedback2-browser-retry-20261018.db**。后端仅本机 8018，临时 Vite 5178 的 /api 显式代理到 8018。浏览器启动后还检查 /api/stars 实际为空，不把旧数据当首次体验。
+
+失败截图留 .cache/ux001-feedback2-e2e；最终截图留 .cache/ux001-feedback2-e2e-retry。已实际查看最终“我的星屿-1440.png”“我的星屿-390.png”“我的星屿-guide-390.png”：原星球与配色保留、正文自然开始、双按钮可见、窄屏指南关闭按钮与四步完整显示。截图为开发核对，不能代替用户验收。个人 wonder.db 仅核对文件哈希、不读业务内容；前后 SHA-256 一致，均为 55CA7EDCDC1563E045445B5B3BD5BAB182CF0C19E1F1BE4099C416967C02B626；首次沙箱 Get-FileHash 报占用，正常权限复核成功。测试写入仅发生于上述两份隔离库。
+
+改动文件：frontend/src/App.tsx、styles.css、App.test.tsx、frontend/e2e/smoke.mjs；README.md、CHANGELOG.md、docs/IDEA_LOG.md、PRODUCT_BACKLOG.md、PROJECT_GUIDE.md、VERIFICATION.md。共 10 个预期文件，无新增重要源码文件；ROADMAP 的阶段/顺序不变，AGENTS 无需修改。临时库/截图/辅助启动器保持忽略，不提交。.cache/ux001_feedback2_doccheck.py 已检查 287 个本地 Markdown 链接/锚点、28 个任务索引/详情状态、14 个 IDEA ID、7 项未完成 P1 及预期文件集合，均通过；git diff --check 与业务/文档 diff 复核通过，无后端/Schema/锁文件/数据库/临时文件混入。临时前后端已停止；提交前再次 ls-remote 核对 origin/main 仍为基线，Git 本地作者身份正确。
+
+### 上一轮 UX-001 远程 CI 成功补记（不是本轮重跑）
+
+本轮通过 GitHub 连接器重新读取 [运行 39118235192](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39118235192) 的 Job 和日志，属于基线提交 2988d376890566a83a32bb166201f99231f662c8。backend Job 117648310266 与 frontend Job 117648310079 均 completed / success；backend 普通 pytest 52 passed / 1 skipped，独立 `uv run pytest backend/tests/test_postgres.py --override-ini addopts=` 实际 **1 passed in 0.19s**；frontend 30 tests passed、build success。此补记只证明上一轮远程运行，不证明本轮或完整 Compose/PG 回滚/并发、真实模型通过。本轮推送后的 CI 将在最终报告给出真实链接与日志结果，下一轮再补记，不为记录同次构建再提交。
+
+### 待用户体验
+
+1. 桌面首页确认正文不再有顶部折叠指南占位，视觉是否连续；顶栏能否自然找到“使用指南”。在收集、探索、偏好等页面重复打开，查看四步与真实模式说明是否清楚。
+2. 用关闭按钮、Escape、点击弹窗外部关闭；Tab/Shift+Tab 应留在弹窗，关闭后回到帮助入口。编辑收集内容时打开/关闭，确认输入不丢失。
+3. 有未归档 Star 时，首页两个按钮是否同样容易发现，是否理解可以继续收集也可以行动；分别进入收集/探索，确认只是正常切页。无需为测试删除个人数据；空档案/仅归档/未连接的状态已有自动化覆盖。
+4. 在约 390px 窄屏检查模式/帮助/刷新不拥挤，指南关闭按钮、四步和首页双入口完整可用；原草稿确认、保存和 UX-003 帮助是否仍自然。报告仍不清楚或不顺畅之处。
+
+### 本轮三问复盘
+
+- 为什么用户需要这次改动？IDEA-001 两条真实反馈说明：找到帮助不该牺牲首页连续性，已有兴趣也仍需持续收集。本轮收起正文占位、顶栏随时打开，两个按钮接近的可发现性仍需用户体验确认。
+- 它在 AI Agent 系统中解决了什么问题？改进的是 UI/UX 与工作流状态展示：帮助解释真实四步、Mock/模型与审批边界，首页按正式未归档 Star 提供路径；不改变推理、检索、工具或模型能力，没有智能效果提升结论。
+- 我们通过这次开发学到了什么？App 的页面入口视觉可调整而不改变审批/持久化；复用 Modal 仍需在真实窄屏检查 CSS 网格的最小宽度。App.test 验证三种模式和状态，smoke.mjs 用真实焦点、几何边界及 Star/Quest 计数补足 JSDOM 的局限，首轮失败直接定位并修复了裁切问题。

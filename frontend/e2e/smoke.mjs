@@ -108,10 +108,13 @@ try {
   await next.getByRole("button", { name: "查看星星档案" }).click();
   await page.getByRole("button", { name: new RegExp(starTitle) }).waitFor();
   await page.getByRole("button", { name: "我的星屿", exact: true }).click();
-  await page
-    .getByRole("button", { name: "开始微型探索", exact: true })
+  const coreActions = page.getByRole("group", { name: "首页核心功能" });
+  await coreActions
+    .getByRole("button", { name: "微型探索", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: "继续收集星星", exact: true }).click();
+  await coreActions
+    .getByRole("button", { name: "收集星星", exact: true })
+    .click();
   await page
     .getByRole("region", { name: "保存后的下一步" })
     .getByRole("button", { name: "开始微型探索" })
@@ -200,8 +203,20 @@ try {
   await page.screenshot({ path: artifact + "/home-after.png", fullPage: true });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const name of ["我的星屿", "收集星星", "微型探索", "我的偏好"]) {
-      await page.getByRole("button", { name: new RegExp("^" + name) }).click();
+    for (const name of [
+      "我的星屿",
+      "收集星星",
+      "星星档案",
+      "兴趣轨道",
+      "微型探索",
+      "体验手记",
+      "Agent 足迹",
+      "我的偏好",
+    ]) {
+      await page
+        .getByRole("navigation", { name: "主导航" })
+        .getByRole("button", { name: new RegExp("^" + name) })
+        .click();
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth > window.innerWidth,
       );
@@ -210,11 +225,97 @@ try {
         path: `${artifact}/${name}-${width}.png`,
         fullPage: true,
       });
-      const guide = page.locator("details.usage-guide");
-      const guideToggle = guide.locator("summary");
+      assert.equal(await page.locator(".main-content .usage-guide").count(), 0);
+      const guideToggle = page.getByRole("button", {
+        name: "使用指南",
+        exact: true,
+      });
+      const toolbar = page.locator(".topbar-actions");
+      const boxes = await Promise.all(
+        [
+          toolbar.locator(".mode-label"),
+          guideToggle,
+          toolbar.getByRole("button", { name: "刷新后端数据" }),
+        ].map((el) => el.boundingBox()),
+      );
+      for (let i = 0; i < boxes.length; i++) {
+        const box = boxes[i];
+        assert.ok(
+          box && box.x >= 0 && box.x + box.width <= width,
+          "顶栏操作应在屏幕内",
+        );
+        if (i > 0)
+          assert.ok(
+            boxes[i - 1].x + boxes[i - 1].width <= box.x,
+            "顶栏操作不得重叠",
+          );
+      }
+      if (name === "我的星屿") {
+        const actions = page.getByRole("group", { name: "首页核心功能" });
+        const buttons = actions.locator(".hero-core-action");
+        assert.equal(await buttons.count(), 2);
+        const rects = await buttons.evaluateAll((els) =>
+          els.map((el) => {
+            const { x, y, width, height } = el.getBoundingClientRect();
+            return {
+              x,
+              y,
+              width,
+              height,
+              weight: getComputedStyle(el).fontWeight,
+            };
+          }),
+        );
+        for (const rect of rects)
+          assert.ok(rect.width >= 130 && rect.height >= 44);
+        assert.equal(rects[0].width, rects[1].width);
+        assert.equal(rects[0].height, rects[1].height);
+        assert.equal(rects[0].weight, rects[1].weight);
+        if (width === 1440) assert.equal(rects[0].y, rects[1].y);
+        const before = await Promise.all(
+          ["stars", "quests"].map(
+            async (resource) =>
+              (await (await page.request.get(`${base}/api/${resource}`)).json())
+                .length,
+          ),
+        );
+        for (const label of ["收集星星", "微型探索"]) {
+          await actions
+            .getByRole("button", { name: label, exact: true })
+            .click();
+          await page
+            .getByRole("navigation", { name: "主导航" })
+            .getByRole("button", { name: "我的星屿", exact: true })
+            .click();
+        }
+        const after = await Promise.all(
+          ["stars", "quests"].map(
+            async (resource) =>
+              (await (await page.request.get(`${base}/api/${resource}`)).json())
+                .length,
+          ),
+        );
+        assert.deepEqual(after, before, "首页导航不创建 Star 或 Quest");
+      }
       await guideToggle.focus();
       await page.keyboard.press("Enter");
-      assert.equal(await guide.evaluate((el) => el.open), true);
+      const guide = page.getByRole("dialog", { name: "星屿怎么使用" });
+      await guide.waitFor();
+      const close = guide.getByRole("button", { name: "关闭弹窗" });
+      assert.equal(
+        await close.evaluate((el) => el === document.activeElement),
+        true,
+      );
+      await page.keyboard.press("Tab");
+      assert.equal(
+        await close.evaluate((el) => el === document.activeElement),
+        true,
+      );
+      await page.keyboard.press("Shift+Tab");
+      assert.equal(
+        await close.evaluate((el) => el === document.activeElement),
+        true,
+      );
       await guide.getByText(/不代表真实大模型理解/).waitFor();
       assert.equal(
         await page.evaluate(
@@ -226,8 +327,26 @@ try {
         path: `${artifact}/${name}-guide-${width}.png`,
         fullPage: true,
       });
-      await page.keyboard.press("Space");
-      assert.equal(await guide.evaluate((el) => el.open), false);
+      const dialogBox = await guide.boundingBox();
+      assert.ok(
+        dialogBox && dialogBox.x >= 0 && dialogBox.x + dialogBox.width <= width,
+      );
+      assert.ok(dialogBox.y >= 0 && dialogBox.y + dialogBox.height <= 900);
+      await page.keyboard.press("Escape");
+      await guide.waitFor({ state: "hidden" });
+      assert.equal(
+        await guideToggle.evaluate((el) => el === document.activeElement),
+        true,
+      );
+      await guideToggle.click();
+      await close.click();
+      await guideToggle.click();
+      await page.locator(".modal-backdrop").click({ position: { x: 3, y: 3 } });
+      await guide.waitFor({ state: "hidden" });
+      assert.equal(
+        await guideToggle.evaluate((el) => el === document.activeElement),
+        true,
+      );
       if (name === "微型探索" || name === "我的偏好") {
         const help = page.locator("details.form-help");
         const toggle = help.locator("summary");

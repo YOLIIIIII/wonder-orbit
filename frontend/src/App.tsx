@@ -6,6 +6,7 @@ import {
   Check,
   Compass,
   Heart,
+  CircleHelp,
   Home,
   Network,
   Plus,
@@ -116,6 +117,7 @@ export default function App() {
   });
   const [preferences, setPreferences] = useState(initialPreferences);
   const [mock, setMock] = useState<boolean | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -321,22 +323,33 @@ export default function App() {
             {header.name}
             <small>A Personal Curiosity Agent</small>
           </span>
-          <span className="mode-label">
-            {mock === null ? "未连接" : mock ? "Mock" : "Live"}
-          </span>
-          <button
-            className="quiet"
-            disabled={busy}
-            onClick={() =>
-              act(async () => {
-                await refresh();
-                setNotice("档案已刷新。");
-              })
-            }
-            aria-label="刷新后端数据"
-          >
-            <RefreshCw size={17} />
-          </button>
+          <div className="topbar-actions">
+            <span className="mode-label">
+              {mock === null ? "未连接" : mock ? "Mock" : "Live"}
+            </span>
+            <button
+              className="quiet guide-button"
+              aria-label="使用指南"
+              aria-haspopup="dialog"
+              onClick={() => setGuideOpen(true)}
+            >
+              <CircleHelp size={18} />
+              <span>使用指南</span>
+            </button>
+            <button
+              className="quiet"
+              disabled={busy}
+              onClick={() =>
+                act(async () => {
+                  await refresh();
+                  setNotice("档案已刷新。");
+                })
+              }
+              aria-label="刷新后端数据"
+            >
+              <RefreshCw size={17} />
+            </button>
+          </div>
         </header>
         <div className="main-content">
           {error && (
@@ -358,7 +371,6 @@ export default function App() {
               正在处理，请稍候…
             </div>
           )}
-          <UsageGuide mock={mock} />
           {page === "home" && (
             <>
               <section className="hero">
@@ -377,39 +389,58 @@ export default function App() {
                       : !hasStars
                         ? "星星是你收藏的兴趣或好奇。从收藏第一颗星星开始，探索才有真实依据。"
                         : canExplore
-                          ? "从已有兴趣开始微型探索，参考实际收藏内容和你的明确偏好；也可以继续收集。"
+                          ? "随时收集新的好奇，也让已有兴趣慢慢变成小行动。微型探索参考真实收藏和明确偏好，体验又能带来新的好奇。"
                           : "你已收藏过兴趣，但归档星星不参与推荐。可先到档案恢复一颗星星，或继续收集。"}
                   </p>
-                  <div className="hero-actions">
-                    <button
-                      className="primary"
-                      onClick={() =>
-                        setPage(
-                          connected && hasStars
-                            ? canExplore
-                              ? "explore"
-                              : "archive"
-                            : "collect",
-                        )
-                      }
-                    >
-                      <Plus size={17} />
-                      {connected && hasStars
-                        ? canExplore
-                          ? "开始微型探索"
-                          : "查看星星档案"
-                        : connected
-                          ? "收集第一颗星星"
-                          : "收集一颗星星"}
-                    </button>
-                    {connected && hasStars && (
-                      <button
-                        className="text-button"
-                        onClick={() => setPage("collect")}
-                      >
-                        继续收集星星
-                        <ArrowRight size={17} />
-                      </button>
+                  <div
+                    className="hero-actions"
+                    role="group"
+                    aria-label="首页核心功能"
+                  >
+                    {connected && canExplore ? (
+                      <>
+                        <button
+                          className="secondary hero-core-action"
+                          onClick={() => setPage("collect")}
+                        >
+                          <Plus size={17} />
+                          收集星星
+                        </button>
+                        <button
+                          className="primary hero-core-action"
+                          onClick={() => setPage("explore")}
+                        >
+                          <Compass size={17} />
+                          微型探索
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="primary"
+                          onClick={() =>
+                            setPage(
+                              connected && hasStars ? "archive" : "collect",
+                            )
+                          }
+                        >
+                          <Plus size={17} />
+                          {connected && hasStars
+                            ? "查看星星档案"
+                            : connected
+                              ? "收集第一颗星星"
+                              : "收集一颗星星"}
+                        </button>
+                        {connected && hasStars && (
+                          <button
+                            className="text-button"
+                            onClick={() => setPage("collect")}
+                          >
+                            继续收集星星
+                            <ArrowRight size={17} />
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -1526,6 +1557,11 @@ export default function App() {
           />
         </Modal>
       )}
+      {guideOpen && (
+        <Modal title="星屿怎么使用" onClose={() => setGuideOpen(false)}>
+          <UsageGuide mock={mock} />
+        </Modal>
+      )}
       {feedbackQuest && (
         <Modal
           error={error}
@@ -1605,8 +1641,7 @@ export default function App() {
 }
 function UsageGuide({ mock }: { mock: boolean | null }) {
   return (
-    <details className="usage-guide">
-      <summary>星屿怎么使用</summary>
+    <div className="usage-guide">
       <ol>
         <li>
           <strong>收集兴趣：</strong>
@@ -1632,7 +1667,7 @@ function UsageGuide({ mock }: { mock: boolean | null }) {
             ? "当前为 Mock 模式：内容由规则模拟生成，不代表真实大模型理解。"
             : "当前为模型模式：整理和候选仍需你检查、确认。"}
       </p>
-    </details>
+    </div>
   );
 }
 function SavedStarNextStep({

@@ -12,6 +12,8 @@
 
 2026-10-18（UX-001）局部更新：App 内新增 UsageGuide 与 SavedStarNextStep，分别负责可重开内联四步说明、实际保存后的普通导航；首页依据 refresh 成功后的真实 stars 及归档状态，结果依据 Run 状态/决定和返回 ID。generate 开始新收集时清除旧成功展示，手动保存与审批成功后才显示下一步。API、后端、Schema、启动命令保持不变；不加入自动滚动/深链/跨页审批恢复。App.test 与 smoke.mjs 覆盖这些状态，验证证据和三问复盘见 VERIFICATION；AGENTS 新增每轮三问约定。
 
+2026-10-18（UX-001 人工反馈修正二）局部更新：UsageGuide 现在仅负责四步/模式说明内容，由 App 的 guideOpen 临时状态和所有页面共用的顶栏“使用指南”按钮打开既有 Modal；正文原内联指南已移除。Modal 沿用焦点循环、Escape/关闭/遮罩关闭与焦点恢复，CSS 约束网格列以防窄屏被 650px 固定宽度撑出。home 的 hero-actions 在有未归档 Star 时展示两个同尺寸按钮；无连接/无正式 Star/仅归档及保存后的状态逻辑不变，按钮仍只 setPage。未新增重要源码文件、依赖、API、Schema 或持久化；App.test 与 smoke.mjs 覆盖八页、模式/状态、键盘与双尺寸浏览器行为。历史内联方案见上段，最新证据及三问复盘见 [修正二验证](VERIFICATION.md#ux-001-feedback2-20261018)。
+
 ## 一、整体地图与阅读入口
 
 ```text

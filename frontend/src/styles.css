@@ -263,6 +263,27 @@ main {
   color: #a197ac;
   letter-spacing: 1px;
 }
+.topbar > span {
+  min-width: 0;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.topbar-actions .quiet {
+  min-width: 44px;
+  min-height: 44px;
+}
+.topbar-actions .guide-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
 .main-content {
   max-width: 1330px;
   margin: auto;
@@ -313,9 +334,19 @@ main {
 }
 .hero-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 21px;
   align-items: center;
   margin-top: 23px;
+}
+.hero-actions .hero-core-action {
+  min-width: 136px;
+  min-height: 46px;
+  padding: 12px 19px;
+  font-weight: 500;
+}
+.hero-core-action.secondary {
+  background: #f0e8f8;
 }
 .primary,
 .secondary {
@@ -995,6 +1026,7 @@ li {
   backdrop-filter: blur(4px);
   z-index: 10;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 25px;
 }
@@ -1004,6 +1036,8 @@ li {
   border: 1px solid #e5dcec;
   width: 650px;
   max-width: 100%;
+  min-width: 0;
+  justify-self: center;
   max-height: 90vh;
   overflow: auto;
   padding: 30px;
@@ -1333,12 +1367,7 @@ svg {
   color: var(--deep);
   font-size: 14px;
   line-height: 1.7;
-  margin: 0 0 22px;
-}
-.usage-guide summary {
-  width: fit-content;
-  min-height: 44px;
-  padding: 10px 0;
+  margin: 0;
 }
 .usage-guide ol {
   padding-left: 24px;
@@ -1388,8 +1417,6 @@ svg {
   color: #76508e;
   padding: 4px 9px;
   border-radius: 20px;
-  margin-left: auto;
-  margin-right: 14px;
 }
 .hero-copy p,
 .page-title p,
