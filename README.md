@@ -48,7 +48,7 @@ cd D:\Projects\wonder-orbit
 
 ```powershell
 # 仅首次创建 .env；已有配置时不要覆盖
-Copy-Item .env.example .env
+if (-not (Test-Path -LiteralPath '.env')) { Copy-Item .env.example .env }
 uv sync --frozen --python 3.12
 docker compose up -d db
 $env:PYTHONPATH='backend'
@@ -75,16 +75,21 @@ Linux/macOS 将 `$env:PYTHONPATH='backend'` 换成 `export PYTHONPATH=backend`�
 | 环境变量 | 说明 |
 | --- | --- |
 | DATABASE_URL | 默认 PostgreSQL；SQLite 开发替代为 sqlite:///./wonder.db |
-| MOCK_MODE | 默认 true；设为 false 且有 Key 才启用真实模型 |
+| MOCK_MODE | 默认 true；设为 false 且有 Key 才启用真实模型；本阶段保持 true |
+| MODEL_PROVIDER | 新增供应商选择，默认 openai-compatible；百炼填 bailian，只对 qwen3.8-flash 添加非思考参数 |
 | MODEL_API_BASE_URL | 支持 OpenAI 格式的服务地址，通常以 /v1 结尾 |
 | MODEL_API_KEY | 默认空，缺少 Key 时明确回退到 Mock |
 | MODEL_NAME | 服务支持的模型名；示例 gpt-4o-mini 是配置占位 |
 | MODEL_TIMEOUT | 单次调用超时秒数，默认 30 |
-| MODEL_MAX_RETRIES | SDK 重试次数，默认 1 |
-| MODEL_MAX_TOKENS | 输出 token 上限，默认 2048 |
+| MODEL_MAX_RETRIES | 日常默认 1；受限 Live runner 必须为 0，避免隐式追加请求 |
+| MODEL_MAX_TOKENS | 输出 Token 配置，默认 2048；锁定 LangChain 实际发送 max_completion_tokens |
 | CORS_ORIGINS | 允许的前端来源，逗号分隔 |
 
-真实服务需支持 chat completions、function/tool calling、指定 tool_choice 和所用模型的 max_tokens 参数。不同“兼容”服务仍可能存在差异。输出通过 Pydantic 校验，超时、限流、不可用、非法工具/结构记录为失败，不能静默当作成功。当前没有真实 Key，未验证任何真实模型服务或调用费用；可选评测见 [evals](evals/README.md)。
+真实服务需支持 chat completions、function/tool calling、指定 tool_choice 和所用模型的 max_tokens 参数。不同“兼容”服务仍可能存在差异。输出通过 Pydantic 校验，超时、限流、不可用、非法工具/结构记录为失败，不能静默当作成功。用户已在百炼准备北京地域 Key/Host、免费额度和用完即停（用户确认，助手未读取或联网核验）。2026-10-25 只完成 Qwen3.8-Flash 接入准备与离线兼容测试，所有真实模型检查 not run；配置及下一阶段受限命令见 [evals](evals/README.md)。
+
+本地北京配置：API Key 是私有鉴权凭据；API Host 是业务空间专属域名；Base URL 是 `https://{实际APIHost}/compatible-mode/v1`；Model ID 填 `qwen3.8-flash`。仅在本地 .env/环境变量填真实 Key/Host，不覆盖已有 .env、不贴到对话或 GitHub，.env.example 只放公开占位；继续 `MOCK_MODE=true`。未来真实请求前才按明确授权设置非 Mock 与 `MODEL_MAX_RETRIES=0`。
+
+原 `bind_tools(..., tool_choice=tool_name)` 会变成指定函数对象；百炼 Qwen 的思考模式对该策略有限制，因此仅 `MODEL_PROVIDER=bailian` 且型号精确匹配时传 `extra_body={"enable_thinking": false}`。保留唯一工具与 Pydantic、来源/未知值、审批和幂等校验，不接受普通文本。离线测试用实际 LangChain/SDK 序列化加内存传输，验证最终 JSON，并不调用模型。下一阶段另获授权后才运行 `evals/run_live.py --allow-live --max-cases 1`：最多一个公开 collect、失败停跑、无 SDK 重试、无数据库写入；可能消耗输入/输出 Token，只保留真实 SDK usage，缺失为 null。完整初学者步骤与边界见 [evals/README](evals/README.md)。
 
 Mock 草稿不会猜测兴趣原因、预算或精力。免费“写三个好奇问题”体验预算为 0，时间明确为估计值。约束取当前请求与已设置偏好的较严格上限。预算受限时未知预算会被拒绝；自由文本约束不会让模型自行宣称满足。
 
@@ -161,7 +166,7 @@ scripts/        当前 Windows 环境启动脚本
 - [路线图](ROADMAP.md)：当前阶段与里程碑；[交付记录](CHANGELOG.md) 只记实际完成的改动；[验证记录](docs/VERIFICATION.md) 区分通过、跳过和未执行。
 - [开发约定](AGENTS.md)：开始开发前读取和复评记录，结束后同步状态与实证。
 
-M1 本地 MVP 闭环已交付，当前为 M2 UX-001 首次使用与状态引导：代码、自动化与隔离浏览器已验证，仍待用户首次体验。用户接受 UX-003 当前可读性并允许推进，但按示例提交的具体人工记录仍待补；UX-002 的自动定位、精确跳转和恢复留待后续。CI 故障修复已有两个 Job 成功及独立 PG 集成证据；PG 回滚/并发、真实模型和完整 Docker 仍待验证。正式任务状态只在 Backlog 维护，planned 不代表已实施。
+2026-10-25：M1 本地 MVP 已交付；M2 的 UX-001、UX-002 当前范围获得用户认可，UX-003 人工按示例记录缺口与 UI-001 仍保留。按用户明确范围进入 M3 的 AGENT-001 第一阶段：百炼 Qwen3.8-Flash 安全配置、参数隔离与离线测试、默认最多一个 collect 的 Live 入口准备；不是已成功联网。PG 回滚/并发、完整 Docker、真实 collect/explore 与 EVAL 基线仍待验证；下一阶段需单独确认本地配置及首次真实请求授权。正式任务状态只在 Backlog 维护。
 
 ## 已知限制
 

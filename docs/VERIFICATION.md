@@ -678,3 +678,73 @@ Node 22 执行 frontend/e2e/smoke.mjs → verifyResults → verifyStarReading，
 - 为什么用户需要它？真实反馈是“只是想看看”，默认编辑造成意外；本轮把阅读作为查看入口的默认动作，修改由明确选择触发。
 - 它在 AI Agent 系统中解决了什么问题？对齐阅读、修改和持久化意图，并清楚区分原文与结构化内容、未知与零；保留审批/API 安全边界，属于 UI/UX 与工作流展示改进，没有模型能力提升。
 - 我们通过这次开发学到了什么？入口写“查看”就需要提供阅读界面；服务端返回记录才是保存后的展示依据。异步 busy 会影响真实浏览器焦点，JSDOM 不会自动重现全部行为，需要显式触发元素、组件回归与浏览器几何/键盘/写入检查共同验证。
+
+<a id="agent-001-phase1-20261025"></a>
+
+## 2026-10-25：UX-002 实际验收与 AGENT-001 第一阶段（仅离线）
+
+### 范围、基线与阶段
+
+来源：本轮用户完整任务书及转述的实际体验。开始时工作区/暂存区干净，分支 main，本地 HEAD 与预期 a455b17dcca8d6ed13055af83e4f51e3046b6150 一致。默认 Git 连接失败，原因是已有代理 127.0.0.1:7897 不可用；检测用户此前提供的 127.0.0.1:12450 可连接后，只在相关 Git 命令加 `-c http.proxy=http://127.0.0.1:12450`，实际 `ls-remote origin refs/heads/main` 返回同一 SHA。未修改全局代理或覆盖未知修改。
+
+已读取 AGENTS、ROADMAP、Backlog、IDEA_LOG、VERIFICATION、PROJECT_GUIDE、README、CHANGELOG、evals 文档、config/model_adapter/workflow/tools/schemas、相关模型/审批测试、CI/.env.example/.gitignore/uv.lock。模型/运行器改动不涉及前端/Prompt/Schema/迁移/工作流权限/工具清单；未新增依赖，uv.lock 未改。
+
+M2 UX-001 保留既有验收，UX-002 见下节收尾；UX-003 人工按示例提交记录仍缺，未关闭。M3 开始 AGENT-001 第一阶段接入准备，正式任务继续 in_progress；未进入真实 API/完整评测阶段。全部未完成项含 deferred 已复评，顺序/理由及剩余 P1 以 Backlog 为准；无新 P0 证据。
+
+### UX-002 实际用户认可与上一轮 CI（非本轮重跑）
+
+用户实际原话：“我体验了一下，感觉可以了，这个版本就比较清晰。我们来进行下一步吧。”核对 App 的只读 StarDetails 与显式 StarEditor 切换、components、App.results 测试及之前隔离浏览器证据，结合此次认可，满足 UX-002 当前范围验收。用户未报告亲测的全部异常、390px 与键盘边界不代填；自动化/历史浏览器和本人体验分开标记。IDEA-001 保留原话，Backlog 完成当前任务状态变更。
+
+实际通过 GitHub 连接器复查 [上一轮 CI 39129060995](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39129060995)，关联提交 a455b17dcca8d6ed13055af83e4f51e3046b6150：backend Job 117680271393、frontend Job 117680271528 均 completed/success。读取日志确认普通后端 **55 passed / 1 skipped**、独立 PostgreSQL **1 passed in 0.17s**、前端 **82 passed**，以及迁移/schema、Ruff、前端格式/lint/typecheck/build 成功。这是 2026-10-18 上轮证据，本轮只是复查，不算本轮重跑；不证明 PG 回滚/并发、完整容器或真实模型通过。
+
+### 实现与官方/锁版本核对
+
+- 唯一新增设置 MODEL_PROVIDER，Literal 限定 openai-compatible / bailian，默认通用；原 Mock 默认及无 Key 日常回退保留。仅百炼 + qwen3.8-flash 传 extra_body.enable_thinking=false；不引入百炼 SDK、任意参数字典或额外 Host 设置。
+- 适配器固定 `use_responses_api=False`，保持指定 tool_choice；拒绝普通文本、无调用、错误名称、多个调用，以及正常调用夹带 invalid_tool_calls。DTO 仍经 Pydantic，原文/来源覆盖与推测动机清除保留；数据库权限、审批二次约束、幂等和 Star 来源追溯仍沿原链路。
+- last_usage 只白名单保留实际 SDK 的 input_tokens/output_tokens/total_tokens 非负整数，每次请求清空；无 usage 为 null，无估算。没有保存模型原始响应、headers 或隐藏推理。
+- Live runner 不再强制 Settings(mock_mode=False)，需要显式 --allow-live，默认 --max-cases 1；本地预检 Key 非空/常见占位、非 Mock、模型名称、HTTPS /v1 URL（无凭据/查询串/fragment）、百炼北京专属域名/路径/示例替换、SDK retries=0。预检只判格式，不验证密钥有效性或实际地域权限。失败停止并非零退出，不补案例/升级模型；只处理公开 extraction，不导入 db/workflow 或审批。
+- runner 报告记录实际案例数/模型/配置上限/失败类型/耗时/公开 DTO/SDK usage 或 null；未知异常只记 runner_error，不回显异常文本。报告 .cache/live-eval.json 被忽略且每轮覆盖，当前没有真实报告。正常 pytest、CI、lint、build、E2E 不运行 Live runner；入口测试使用 Fake Settings/Adapter，不是执行真实 --allow-live 命令。
+
+实际安装及 uv.lock 相符：Python 3.12.15、langchain-openai **1.7.0**、langchain-core **1.6.9**、OpenAI **3.28.0**、httpx **0.28.1**；OpenAI 此版本用已有 httpx2 **2.13.1** 传输。读取本地 ChatOpenAI.bind_tools / _get_request_payload 实现：工具名转指定函数对象；max_tokens 转 max_completion_tokens。离线传输进一步验证最终 JSON 的 URL、model、工具列表、tool_choice、enable_thinking=false 顶层字段、max_completion_tokens=2048，没有 extra_body 外层或 max_tokens 残留；不只断言本地变量。
+
+2026-10-25 实际浏览阿里云官方：[Function Calling](https://help.aliyun.com/zh/model-studio/qwen-function-calling)（指定函数与非思考配置示例）、[OpenAI 兼容](https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope)（北京专属域名/地域 Key）、[Chat 参数](https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions)（enable_thinking、max_completion_tokens 支持 Flash 3.5 及之后）、[Qwen3.8-Flash](https://help.aliyun.com/zh/model-studio/qwen3-8-flash)（型号/北京 Function Calling）。官方参数依据与本地序列化不代表服务已连通。
+
+### 实际离线检查与失败修复
+
+环境：Windows PowerShell，仓库 D:/Projects/wonder-orbit，已有 .venv，不安装/升级依赖。后端命令使用 `./.venv/Scripts/python.exe`。前端在 frontend，通过当前进程 PATH 前置 `.tools/node/node_modules/node/bin` 使用 **Node 22.23.3**；系统 Node 16 不用于测试，未修改系统配置。npm 旧版 CLI 的 global/local 配置弃用提示存在，但检查成功。
+
+| 检查 | 本轮实际命令 | 结果与限制 |
+| --- | --- | --- |
+| 专项离线模型/runner | `./.venv/Scripts/python.exe -m pytest backend/tests/test_qwen_adapter.py backend/tests/test_live_runner.py -q -rs` | 修复后 **48 passed**；真实 SDK + 内存传输及 Fake，非 Live |
+| 后端最终完整回归 | `./.venv/Scripts/python.exe -m pytest -q -rs` | **103 passed / 1 skipped in 3.96s**；新增 48 项，包含全部既有审批/约束/幂等回归 |
+| Ruff | `./.venv/Scripts/python.exe -m ruff check backend evals`；`./.venv/Scripts/python.exe -m ruff format --check backend evals` | 最终 passed；23 files already formatted |
+| 前端格式/lint/类型 | frontend 下 `npm run format:check`、`npm run lint`、`npm run typecheck` | passed，无前端源码改动 |
+| 前端测试 | `npm test` | **4 files / 82 passed**，34.35s；含 UX-002 查看/编辑/恢复既有回归 |
+| 前端构建 | `npm run build` | passed；tsc -b + Vite，1581 modules，构建 14.34s；不当作性能比较 |
+| 本机 PostgreSQL | pytest 中 test_postgres.py | skipped，未配置独立服务；不操作现有数据库 |
+| 新浏览器 E2E / 完整 Docker / PG 回滚与并发 | 本轮未启动这些命令 | not run；无 UI/数据库结构变更，本轮风险由 SDK 内存/API 隔离回归覆盖；保留历史浏览器证据，不冒充重跑 |
+| 真实 Qwen / Key 验证 / 免费额度 / Token / 真实 collect/explore / 审批目标环境 | 无 | **全部 not run，用户明确禁止**；不执行 evals/run_live.py --allow-live |
+
+首轮专项为 **44 passed / 1 error**：统一禁止 socket.connect 拦截了 Windows TestClient/asyncio 的 loopback socketpair 自唤醒，引发未完整创建事件循环的清理警告。修复只允许 127.0.0.1/::1 的事件循环本机连接，仍禁止 DNS/create_connection/外网 connect/connect_ex；模型 HTTP 全走内存 MockTransport。补 SDK timeout、explore 指定工具、来源/动机回归后 48 passed；后续完整回归无该错误/警告。
+
+首轮 Ruff 因 conftest 在禁用 .env 后才导入应用，触发 5 处 E402；使用明确的文件级 noqa 并说明安全初始化必须先于 app.db/app.main。随后修改测试断言触发 1 个格式差异，实际 ruff format 修正再重跑 check/format/full pytest 全通过；没有删除测试或降低业务断言。
+
+专项覆盖：Qwen 型号/北京测试 Base URL、非思考参数、实际指定工具结构与输出上限、正常 DTO、未知原因/时间/预算/精力 null、非 Qwen/通用服务不传专用参数；缺/错/多工具、坏 JSON、合法夹坏调用、非法/多余参数失败；模拟 SDK 429/503/timeout 分类且只有一次传输；usage 缺失不估算/不沿用；原文/来源/动机防推测。隔离 API 确认非法输出不创建 Star/Quest、正常生成也不入档、显式批准才写且重复批准仍只有一条。runner 测试覆盖缺授权、非法数量、缺 Key/Mock/模型/URL/地域/示例 Host/重试不足预检拒绝、默认单案例/显式上限/失败停跑/报告脱敏及异常分类；全部 Fake、公开测试文本与 tmp_path。
+
+### 安全与未触碰范围
+
+未读取、打印、复制或覆盖当前 .env，未使用真实 Key/Host，未访问百炼推理 endpoint 或验证凭据。测试 conftest 在 app 导入前将 Settings.model_config.env_file=None，空 Key/Mock/隔离 URL，关闭 LangSmith tracing。SDK 测试只使用占位凭据，不记录 Authorization；没有上传测试产物、个人兴趣或运行隐藏推理。
+
+个人 wonder.db 仅做文件 SHA-256 前后对照（未以 SQLite/ORM 打开）：均为 **168DBA7DA4099D3818191ED62A748EDC71189355F2EBFDEF8A64AE52CAAA8D62**。测试仅 tmp_path 下 test.db 与 .cache/test-import.db 配置；没有在个人库插入 Star/Quest，没有迁移个人库。未连接 Codex Cloud、部署/发布、启动日常后端/浏览器、实施 EVAL-001/Embedding/检索重构/MCP/多 Agent。
+
+实际 `git check-ignore` 验证 .env、.env.local、.env.secret、.cache/qwen-offline-test.json、wonder.db、wonder.db-wal 被忽略；`git ls-files '.env*' '*.db' '*.sqlite*' '*.log*'` 仅返回 .env.example，示例只含公开值/空 Key。.gitignore 已足够，本轮未制造忽略规则变更。文档链接/锚点、任务状态一致性、源码 diff/敏感内容/修改范围与 git diff --check 的最终结果在本节交付核对追加；真实 CI 以该提交实际运行记录为准，不先写成功。
+
+### 本轮三问复盘
+
+- 为什么用户需要它？现有 Mock 只能演示固定规则，下一步需要可控地试真实模型；提前处理协议差异与单案例/零重试边界，避免第一次尝试就误跑全量或暴露凭据。
+- 它在 AI Agent 系统中解决了什么问题？本轮是模型适配协议、结构结果的信任边界与评测入口成本控制；模型提交参数，受控后端校验，用户批准正式写入。UX-002 属 UI/UX 意图与工作流展示，本轮兼容准备也不等于模型理解/推荐质量提升。
+- 我们通过这次开发学到了什么？OpenAI 兼容不保证参数完全通用，必须看锁定框架的最终 JSON；指定 tool_choice 要与思考模式协调，且一个有效调用可能夹着坏调用。SDK 能返回的 usage 才是可追溯用量，缺失不能当零；离线成功不能替代真实鉴权、额度、语义效果或审批目标环境证据。Windows 事件循环的本机 socket 自唤醒应和真实 HTTP 网络区分。
+
+下一项建议仅为：用户在本地自行确认被忽略的 Key/北京 Host/模型配置并另行授权首次一个 collect 的真实请求；本轮完成后停止，不自动继续。
+
+交付前最终核对：`.cache/agent001_phase1_doccheck.py`（被忽略的本轮检查器，不导入应用）实际检查 **306 处本地 Markdown 链接/锚点、28 个任务索引/详情状态、14 个唯一 IDEA ID**，均通过；未完成 P1 实际为 UX-003、INFRA-001、INFRA-002、AGENT-001、EVAL-001。15 个变更文件均在预期清单；仅扫描可提交文件的疑似 Key 与北京 Host，未发现真实凭据或非示例 Host。`git diff --check` 通过；`.env.example` / 文档 / 适配器 / runner / 两个新测试 / conftest 为本轮实际改动，无 .env、个人数据、产物、依赖或迁移混入。提交/推送前再次核对远程 main 与开始基线一致；后续普通推送和本提交实际 CI 结果在最终交付消息提供，不把尚未运行的 CI 预写为成功。

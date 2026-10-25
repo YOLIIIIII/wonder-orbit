@@ -1,13 +1,13 @@
 # 产品待办与迭代队列
 
-更新日期：2026-10-18（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
+更新日期：2026-10-25（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
 
 ## 已交付基线与当前范围
 
 - Star CRUD、单草稿确认、关键词/标签检索、真实关联、LangGraph/受控工具、审批、反馈、候选偏好确认、Mock、运行审计与基础 Web UI 已实现，详见 README 和既有验收。不会重新列为待实现。
 - PostgreSQL、容器、真实模型和 CI 已有实现/配置；CI 修复后的远程 backend/frontend 均通过，独立 PG 集成实际 1 passed。PG 回滚/并发、完整容器与真实模型仍缺验收；语义检索、多草稿是待评估/待实现。
 - 2026-10-18 UX-001 本轮回归后端 52 passed / 1 skipped、前端 30 passed；独立 SQLite 首次闭环（含浏览器拦截模拟失败、真实拒绝/批准）与 1440/390px 指南验证通过。本机 PostgreSQL 仍缺服务，历史证据与本轮实证在 VERIFICATION 分开记录。
-- 本轮继续 UX-002 人工反馈修正：所有星星查看入口默认只读，明确选择后才编辑。用户认可自动定位和整体衔接，但直接编辑违背查看预期，仍需修正后再体验。UX-001 保持 done，UX-003 具体人工缺口保留；上文为历史成绩，本轮实证见 VERIFICATION。不实施 UX-004/005、真实模型、后端/Schema 或新依赖；按本轮授权完成安全检查后普通提交推送及 CI。
+- 2026-10-25：UX-002 修正版本获用户实际认可，结合既有自动化/隔离浏览器及上轮 CI 收尾；UX-001 保持原验收，UX-003 人工按示例提交缺口不关闭。本轮唯一开发范围为 AGENT-001 第一阶段安全接入准备与离线测试，严禁真实模型、个人库写入、完整 EVAL/Embedding/MCP/多 Agent；安全检查通过后按授权普通提交推送并核对 CI。
 
 ## 状态与完成规则
 
@@ -55,6 +55,8 @@
 
 2026-10-18（UX-002 开发前完整复评）：核对全部未完成任务及 deferred 的素材、模块拆分、checkpoint、对外部署触发条件。用户真实结果查找痛点与 UX-001 当前范围验收支持按原顺序推进 UX-002，仍 P1；其余数据库/容器/模型/评测、数据增长/检索/并发的证据、风险、成本、依赖和简单替代方案不变，无新增 P0 实证，不提高候选/重构项优先级。UX-001 阶段性验收后未完成 P1 为 6 项（UX-002/003、INFRA-001/002、AGENT-001、EVAL-001）。当前 M2 转入 UX-002，完成代码后先等用户体验，不自动扩展下一项。
 
+2026-10-25（阶段切换完整复评）：逐项重新审视全部未完成任务，含 UI-002/003、AGENT-006、INFRA-006 的素材/深链/checkpoint/对外部署触发条件。UX-002 用户认可与既有证据满足本范围收尾，无新增 P0。用户已选百炼北京 qwen3.8-flash 并明确本轮禁止真实请求，因此旧顺序“UX-002 后继续体验/等待服务，再推进 INFRA-001/002 与 AGENT-001”调整为“UX-002 验收收尾 → AGENT-001 第一阶段离线准备 → 等待首次 Live 授权”；优先级均不变，AGENT-001 由 planned 转 in_progress，不能 done。M3 开始准备，M2 的 UX-003 人工记录缺口仍独立保留。其余未完成 P1 为 UX-003、INFRA-001/002、EVAL-001，加上 AGENT-001 共 5 项；PG/容器环境不因此具备。全部 P2（UI-001、UX-004/005、AGENT-002/003/004/005、RETR-001、DATA-001/002/003/004、INFRA-004/005）的价值/证据/成本/风险/依赖仍维持；先采用已有查询、关键词、明确反馈与安全重试，不扩展能力。四项 deferred 的替代方案和复评条件未触发，不因技术偏好提升优先级。
+
 ## 任务索引
 
 2026-10-18（UX-002 查看/编辑分离复评）：审视全部未完成项含 deferred 的素材、重构、checkpoint 与部署触发条件；用户真实阅读预期属于现有 UX-002，维持 P1 和 in_progress，不新建重复任务。其余数据库/容器/模型/评测与 P2/P3 的价值、风险、成本、依赖和简单替代方案不变，无新 P0 证据，未完成 P1 仍 6 项。M2 阶段及实施顺序不变，不自动开始 AGENT-001。
@@ -63,7 +65,7 @@
 | --- | --- | --- | --- | --- |
 | [DOC-001](#doc-001) | 建立持续维护的需求与迭代记录 | P2 | done | [IDEA-012](IDEA_LOG.md#idea-012) |
 | [UX-001](#ux-001) | 首次使用与空状态的下一步引导 | P1 | done | [IDEA-001](IDEA_LOG.md#idea-001) |
-| [UX-002](#ux-002) | 审批结果、体验手记与失败恢复衔接 | P1 | in_progress | [IDEA-001](IDEA_LOG.md#idea-001) |
+| [UX-002](#ux-002) | 审批结果、体验手记与失败恢复衔接 | P1 | done | [IDEA-001](IDEA_LOG.md#idea-001) |
 | [UX-003](#ux-003) | 输入示例、格式、未知值与约束文案校准 | P1 | in_progress | [IDEA-002](IDEA_LOG.md#idea-002) |
 | [UX-004](#ux-004) | 评估体验记录的概览与查找 | P2 | proposed | [IDEA-009](IDEA_LOG.md#idea-009) |
 | [UX-005](#ux-005) | 评估面向用户的执行过程说明 | P2 | proposed | [IDEA-014](IDEA_LOG.md#idea-014) |
@@ -72,7 +74,7 @@
 | [INFRA-001](#infra-001) | 验证 PostgreSQL 迁移与现有集成测试 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [INFRA-002](#infra-002) | 验证完整 Compose 与 Nginx 应用启动 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [INFRA-003](#infra-003) | 取得首次真实 GitHub Actions 运行证据 | P1 | done | [IDEA-004](IDEA_LOG.md#idea-004) |
-| [AGENT-001](#agent-001) | 验证一个真实模型服务的工具调用兼容性 | P1 | planned | [IDEA-005](IDEA_LOG.md#idea-005) |
+| [AGENT-001](#agent-001) | 验证一个真实模型服务的工具调用兼容性 | P1 | in_progress | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [EVAL-001](#eval-001) | 建立版本化案例与人工复核 Agent 基线 | P1 | planned | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [AGENT-002](#agent-002) | 评估并实现可分别审批的多兴趣草稿 | P2 | proposed | [IDEA-006](IDEA_LOG.md#idea-006) |
 | [AGENT-003](#agent-003) | 可恢复的澄清问题延续 | P2 | proposed | [IDEA-006](IDEA_LOG.md#idea-006) |
@@ -138,7 +140,7 @@
 
 - 描述与问题背景：接受后现在显示“请到体验手记记录结果”，草稿已保存分支以文字提示为主；可改为直接入口，并使失败与待审批恢复的下一步更清晰。
 - 优先级：P1。
-- 状态：in_progress。
+- 状态：done。
 - 预期用户价值：不用猜导航位置就能找回结果、反馈或查看失败原因。
 - 技术价值（AI Agent 求职）：把运行状态、幂等与审批设计转为可理解的交互。
 - 预计实现成本：M。
@@ -147,7 +149,7 @@
 - 验收标准：接受候选后能直接打开对应体验/手记；保存星星后能打开对应档案；拒绝不创建正式记录；失败入口可打开原 run_id、只在生成失败时提供适用重试；刷新可从运行页恢复待确认结果；测试重复点击不新增 Star/Quest/Reflection；完成与跳过均可记录且无内疚文案。
 - 原始想法：[IDEA-001](IDEA_LOG.md#idea-001)。
 - 相关文档或代码位置：frontend/src/App.tsx decision/quests/runs；frontend/src/api.ts；backend/tests/test_acceptance.py；frontend/e2e/smoke.mjs。
-- 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
+- 证据/交付记录：2026-10-25 用户明确认可修正后的只读详情与显式编辑，结合既有自动化、隔离浏览器和上一轮 CI 完成当前范围验收；未报告的人工异常/移动端/键盘边界不代填。见 [本次验收](VERIFICATION.md#agent-001-phase1-20261025)。
 
 2026-10-18 反馈关联：用户反馈 1：生成草稿后需要下滑寻找结果。纳入后续候选范围与验收：生成成功可发现结果，键盘/移动端定位可用且不重复提交；取消/失败不错误定位。是否滚动及焦点方案实施前确认，不在本轮实现；既有依赖不变。
 
@@ -305,18 +307,20 @@
 
 - 描述与问题背景：langchain-openai 适配、Mock 回退、输出校验与模拟异常测试已实现；没有真实工具调用证据。
 - 优先级：P1。
-- 状态：planned。
+- 状态：in_progress。
 - 预期用户价值：知道真实模式能否整理兴趣和提出可靠候选。
 - 技术价值（AI Agent 求职）：真实 LLM tool calling、结构验证、错误分类与审批隔离。
 - 预计实现成本：M。
 - 主要风险：费用、限流、服务参数差异；模型可能编造动机或行为。
-- 前置依赖：用户选定服务/模型、在忽略配置中提供 Key、明确小批量调用额度；只用无敏感信息的固定案例与临时库。
+- 前置依赖：用户已选百炼北京 qwen3.8-flash；本轮只允许离线准备，禁止读取/使用真实 Key。后续需用户确认本地私有配置与首次真实请求授权/额度；真实流程测试仅使用公开案例与隔离库。
 - 验收标准：真实 collect/explore 返回指定工具和可校验结构；引用仅取真实 Star、未知信息保留空值、生成不写正式记录；批准后才写；核对超时/不可用/限流处理（模拟与真实异常分开记录）；记录 model/mode/参数及脱敏结果，不记录 Key、隐藏推理或未测效果。
 - 原始想法：[IDEA-005](IDEA_LOG.md#idea-005)。
 - 相关文档或代码位置：backend/app/model_adapter.py；backend/app/workflow.py；backend/tests/test_acceptance.py；evals/run_live.py；.env.example。
-- 证据/交付记录：尚未完成本任务验收；既有 MVP 证据不能替代本项。
+- 证据/交付记录：第一阶段实现及离线证据见 [2026-10-25 验证](VERIFICATION.md#agent-001-phase1-20261025) 与 CHANGELOG。真实 collect/explore、服务兼容、usage 和审批边界实测均 not run，因此继续 in_progress，不能视为完整 AGENT-001 验收。
 
 2026-10-18 反馈关联：用户反馈 4 的 AI 价值感受关联 IDEA-005；仍需真实服务与明确额度，未在本轮接入或调用。
+
+2026-10-25 第一阶段子范围：MODEL_PROVIDER 隔离百炼专用 enable_thinking=false，固定 Chat Completions，保留指定唯一工具/Pydantic；SDK 实际请求 JSON 与异常/来源/空值/审批离线回归；Live 默认 1 个公开 collect、显式开关、非 Mock/Key/模型/北京专属 URL 预检、重试为 0、失败停跑、实际 usage 或 null。验收仅为这些离线行为，不调用真实服务、不读私有 .env、不写个人库、不实施 EVAL-001。真实阶段仍需另行授权，本轮结束后停止。
 
 ### EVAL-001
 

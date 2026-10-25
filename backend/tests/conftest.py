@@ -1,8 +1,17 @@
+# ruff: noqa: E402
+# 隔离配置必须先于导入 app.db/app.main；后续导入依赖这些环境设置。
 import os
 
 os.environ["DATABASE_URL"] = "sqlite:///./.cache/test-import.db"
 os.environ["MOCK_MODE"] = "true"
 os.environ["MODEL_API_KEY"] = ""
+os.environ["LANGSMITH_TRACING"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+
+from app.config import Settings
+
+# 测试从不读取用户的 .env（包括其中的 Key/Host）；只用显式测试配置和环境。
+Settings.model_config["env_file"] = None
 
 import pytest
 from fastapi.testclient import TestClient

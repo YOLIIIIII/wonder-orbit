@@ -20,6 +20,8 @@
 
 2026-10-18（UX-002 查看/编辑分离）局部更新：components.tsx 新增 StarDetails 只读展示真实 Star，原文/描述分开、未知值与 0 元区分，链接仅 http/https 可点击，正文普通 React 文本。App 的 selectedStar 统一默认阅读，starEditing 明确选择才挂载原 StarEditor；取消卸载草稿无写入，PUT 成功核对返回 id 并展示服务端内容，失败保留表单，删除仅在编辑内。viewStar(id, navigate) 支持精确档案跳转和来源原页阅读；异步前捕获 starOpener，Modal 用 returnFocusTo/卡片 ID 恢复焦点，Tab 循环纳入链接。编辑/阅读切换聚焦表单标题输入或详情标题，关闭途中到达的旧保存响应不重开弹窗。未新增文件、API、Schema、依赖或 Quest 行为；App.results/components 测试与 results/smoke 浏览器同步。历史“默认编辑弹窗”由本轮只读详情替代，实证见 [本轮验证](VERIFICATION.md#ux-002-star-reading-20261018)。
 
+2026-10-25（AGENT-001 第一阶段）局部更新：新增 test_qwen_adapter.py 和 test_live_runner.py，模型/runner 行为及未来 Live 命令如下表同步。Settings 只新增 MODEL_PROVIDER，适配器仅对百炼 qwen3.8-flash 传 extra_body.enable_thinking=false，并固定 Chat Completions；last_usage 仅保留 SDK 实际三项 Token 计数。runner 不再强制覆盖 Mock，默认最多一个公开 collect，预检/零重试/失败停跑；不导入数据库。测试 conftest 在导入应用前禁用 .env 与 tracing；测试中的授权字符串只驱动 Fake，不执行真实 Live 命令。API、图、八个受控工具、审批/幂等/来源与数据库结构均未改变，无迁移/依赖变更。下文首次文件数与静态核验为带日期历史，不代表本轮重新统计；本轮实证见 [VERIFICATION](VERIFICATION.md#agent-001-phase1-20261025)。
+
 ## 一、整体地图与阅读入口
 
 ```text
@@ -95,7 +97,7 @@ Java 对照：Pydantic 类近似 DTO + Bean Validation，FastAPI Depends 近似�
 | [backend/app/retrieval.py](../backend/app/retrieval.py) | 中文二元词组/英文数字词匹配；取前 20 结果；用真实共同标签/非未分类类别构造关联；序列化补 UTC | tokens、search、relations、record_dict、star_dict | Star ORM；main 的检索/列表/关联；ToolRegistry 搜索 | 分词、排序、归档筛选、关联规则或时间序列化改变时 | B、Q；搜索/关联 UI 变更加 F/E；比较检索先标注评测 |
 | [backend/app/semantic.py](../backend/app/semantic.py) | 只有 Embedding 和语义检索 Protocol；当前没有实现，也没有被工作流调用 | EmbeddingProvider.embed、SemanticRetriever.search | 未来独立检索器接口；现用 retrieval.search | RETR-001 有证据后实现具体检索器并定义更新/回退策略 | 实现后 B、Q 和同集关键词/语义评测；当前不声称语义检索已通过 |
 | [backend/app/rules.py](../backend/app/rules.py) | 模型提示与后端约束验证共享同一份允许约束/文字步骤 | SUPPORTED_CONSTRAINTS、TEXT_STEPS | ModelAdapter.proposals、ToolRegistry.validate_quest_proposal、模板测试 | 增加可验证约束或体验模板时，不能只改模型 Prompt | B、Q；重点模板/约束测试，必要 L |
-| [backend/app/model_adapter.py](../backend/app/model_adapter.py) | 统一 Mock/Live；Mock 固定主题/文字体验；Live 强制一个指定工具调用且校验结构；异常只暴露分类 | ModelFailure、ModelAdapter.request、ModelAdapter.draft、ModelAdapter.proposals | Settings、schemas、rules、ChatOpenAI；ToolRegistry 读取其结果 | 提取/建议规则、SystemMessage Prompt、服务参数、错误分类改变时 | B、Q；重点 test_model_template/test_acceptance/非法输出；真实兼容性须 L |
+| [backend/app/model_adapter.py](../backend/app/model_adapter.py) | 统一 Mock/Live；Mock 固定主题/文字体验；Live 强制一个指定工具且拒绝额外坏调用、校验结构；百炼 Qwen 专用非思考参数与实际 usage；异常只暴露分类 | ModelFailure、ModelAdapter.request、ModelAdapter.draft、ModelAdapter.proposals、last_usage | Settings、schemas、rules、ChatOpenAI；ToolRegistry 读取其结果 | 提取/建议规则、SystemMessage Prompt、服务参数、错误分类改变时 | B、Q；重点 test_model_template/test_acceptance/非法输出；真实兼容性须 L |
 | [backend/app/tools.py](../backend/app/tools.py) | 八个受控工具的参数校验/批准守卫/审计；读取、确定性验证、事务内写 Quest/Reflection 与候选偏好 | ToolRegistry.call；八个同名 handler 见工具表 | session、ModelAdapter、schemas、retrieval、rules、ORM；由 Workflow/main 编排 | 工具名/参数/权限、约束验证或写入规则改变时 | B、Q、P；重点工具拒绝、审批二次验证、反馈和幂等；闭环 E |
 | [backend/app/workflow.py](../backend/app/workflow.py) | 真实 StateGraph 分支与短图；节点包装持久化快照/事件；生成图不写正式实体 | AgentState、Workflow.node/execute/retrieve/generate/validate/approved_operation；finish_run | ToolRegistry、AgentRun、AgentRequest；main 调用与提交事务 | 节点/边/公开 state/失败记录/恢复语义变化时 | B、Q；重点 test_langgraph_steps_tools_and_approval、失败/重试；E，必要 L |
 | [backend/app/main.py](../backend/app/main.py) | FastAPI 入口；路由、用例编排、审批事务、请求幂等和 HTTP 错误；没有另设 service.py | app；begin_run、execute_run、decide（内部 persist_star）、reflect、retry_run；其余端点见路由表 | Depends(get_session)、schemas、ORM、Workflow、adapter、retrieval；前端 api | API、返回结构、幂等、用户批准、反馈、偏好或实体 CRUD 改变时 | B、Q、P；重点 test_mvp/test_acceptance；接口变化 F/E |
@@ -149,13 +151,15 @@ refresh 并行拉取七类数据；act 管理 busy/错误/提示，成功后 ref
 
 | 文件 | 具体职责 | 重要入口/符号 | 交互模块 | 何时修改 | 修改后检查 |
 | --- | --- | --- | --- | --- | --- |
-| [backend/tests/conftest.py](../backend/tests/conftest.py) | 导入前强制 Mock、空 Key 和 .cache/test-import.db；每测试 tmp_path/test.db 建表；覆盖 get_session | db、client、star、proposal_run、quest；override | FastAPI TestClient、make_engine、Base.metadata.create_all；测试直接建表不验证迁移 | fixture、隔离、初始记录或测试请求改变 | B、Q；确认仍不连接个人库/真实模型 |
+| [backend/tests/conftest.py](../backend/tests/conftest.py) | 导入前强制 Mock、空 Key、禁用 .env/tracing 和 .cache/test-import.db；每测试 tmp_path/test.db 建表；覆盖 get_session | db、client、star、proposal_run、quest；override | FastAPI TestClient、make_engine、Base.metadata.create_all；测试直接建表不验证迁移 | fixture、隔离、初始记录或测试请求改变 | B、Q；确认仍不连接个人库/真实模型 |
 | [backend/tests/test_mvp.py](../backend/tests/test_mvp.py) | API/图/工具/数据库边界；含固定 Mock 提取案例；模拟 Live 非法结构/工具 | test_draft_confirmation_no_automatic_write、test_langgraph_steps_tools_and_approval、test_edited_proposal_validates_again、test_model_failure_audited_and_retry、test_reflection_persisted_candidates_need_confirmation 等 | client/db fixture、所有核心后端模块、evals/cases.json extraction | 业务规则、约束、审批、反馈、检索或恢复改变 | B、Q；参数化测试数量不等于函数个数；不声称是真模型评测 |
 | [backend/tests/test_acceptance.py](../backend/tests/test_acceptance.py) | 验收回归：失败生成/反馈同键重放不报成功；模拟超时/限流/连接异常的脱敏分类 | test_failed_generation_key_does_not_return_created、test_failed_reflection_key_does_not_claim_saved、test_provider_failure_classification_is_sanitized | begin_run、ModelAdapter、AgentRun/Star/Reflection | 幂等状态或错误分类改变；保持失败审计和记录计数断言 | B、Q；这些服务异常由 FakeModel 模拟 |
 | [backend/tests/test_model_template.py](../backend/tests/test_model_template.py) | 在模拟 request 下检查真实模式 payload 传精确允许步骤与 0 预算 | test_live_model_receives_exact_supported_constraint_template | ModelAdapter.proposals、TEXT_STEPS、Preferences | 受支持约束或模型 payload 改变 | B、Q；名字包含 live，但此测试不调用真实模型 |
+| [backend/tests/test_qwen_adapter.py](../backend/tests/test_qwen_adapter.py) | 真实 LangChain/SDK + httpx2 内存传输捕获实际 JSON，错误工具/结构/usage/来源及隔离库审批回归 | wire、forbid_network、test_qwen_wire_payload_and_unknowns | ChatOpenAI、MockTransport、ModelAdapter；不记录 headers；仅允许事件循环 loopback 自唤醒 | 锁版本、序列化、专用参数、解析/错误分类改变 | B/Q 离线，不代表 L 真实服务 |
+| [backend/tests/test_live_runner.py](../backend/tests/test_live_runner.py) | Fake 配置/模型的授权、数量、北京 URL/Key/非 Mock 预检与停跑/脱敏报告测试 | config、test_preflight_rejects_before_adapter、test_main_bounded_public_cases_and_failure_stop | importlib 加载 runner；tmp_path 报告；禁止网络；不读取私有 .env | runner 预检、CLI、报告/计数改变 | B/Q 离线；main 参数包含授权字符串也只调用 Fake |
 | [backend/tests/test_postgres.py](../backend/tests/test_postgres.py) | 只有 TEST_POSTGRES_URL 存在才运行；独立随机 schema 验证 JSON 与外键保护，finally 清理 | test_postgres_json_and_foreign_key | make_engine、Base、Star/Quest/QuestStar；直接 create_all，不是迁移回滚测试 | 目标数据库约束/类型改变 | P、Q；需要能创建/删除专用 schema 的隔离数据库 |
 | [evals/cases.json](../evals/cases.json) | 三个 extraction 固定输入及 Mock 期望标签；另有七个 scenarios 的预期行为说明 | extraction、scenarios；ocean-space/unknown/explicit-source | test_fixed_extraction_eval_cases 读取 extraction；run_live.py 只遍历 extraction | 案例/期望或人工基线改变 | B + JSON 格式；L 只验证实际覆盖项；scenarios 不是自动数据驱动全套测试 |
-| [evals/run_live.py](../evals/run_live.py) | 显式 --allow-live 且有 Key 才运行；只做提取的结构验证/耗时；输出 .cache/live-eval.json | main；ModelAdapter.draft；mode/model/prompt_version/workflow_version/results | Settings、AgentRequest、cases.json；自动加入 backend 到 sys.path | 真实评测范围、版本或输出改变 | Q；显式 L；目前不是完整 LangGraph、建议质量或检索对比评测 |
+| [evals/run_live.py](../evals/run_live.py) | 显式 --allow-live、非 Mock/Key/模型/URL/零重试预检；默认 --max-cases 1；失败停止；公开结构/耗时/实际 usage 输出 .cache/live-eval.json | main、positive_count、validate_live_config、run_cases；executed_cases、results | Settings、ModelAdapter.draft、AgentRequest、公开 cases.json；不导入 db/workflow | 预检、CLI、请求范围/报告改变 | Q 离线；L 本阶段禁止，不是完整 EVAL/审批验证 |
 | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | push/PR 两 job；Ubuntu + PostgreSQL 16 + Python 3.12/uv；Node 22 前端 | backend/front-end job 名实际为 backend、frontend；MVP checks | 根 uv/迁移/Ruff/pytest；前端 npm ci 与格式/lint/type/test/build；专门 PG 测试 step | 检查集合、环境版本/依赖缓存或触发条件改变 | 本地 B/Q/F/M/P，最终核对真实 CI run；目前未含 Docker 构建、浏览器 E2E 或 Live eval |
 
 普通 pytest 使用 conftest 的 Mock/隔离 SQLite，Base.metadata.create_all 是测试准备，不证明 Alembic 迁移正确。CI 先做 PostgreSQL Alembic/Ruff，再 mkdir -p .cache，之后普通 pytest（PostgreSQL 用例因无 TEST_POSTGRES_URL 跳过），最后单独带 TEST_POSTGRES_URL 执行 PostgreSQL 用例。首次远程运行在普通 pytest 失败，最后一步未执行；2026-10-17 已补记 [修复后的成功运行](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39030090153)，两个 Job 成功，独立 PG 实际 1 passed，原失败记录保留。检查哪些 job 真运行过要看远程结果；YAML 不能代替执行证据。
@@ -496,14 +500,19 @@ docker compose -p wonder-guide-check up --build
 
 指定 project 名隔离 named volume，不隔离宿主端口。Compose 用数据库 wonder，后端 URL 被 service.environment 指向 db；页面为 http://127.0.0.1:8080。不要自动删卷。本轮和现有记录均没有成功运行 Compose/Nginx 的证据。
 
-Live 仅在有真实可用模型服务、私有环境配置、可接受调用额度并明确选择运行时执行；会调用三个提取案例：
+Live 本阶段全部 not run，禁止执行。只有下一阶段确认本地配置、明确首次真实请求授权后才使用以下命令（最多一个公开 collect；.env 保留 Mock 默认；先本地填正确北京 Host/Key/Model、MODEL_PROVIDER=bailian、MODEL_MAX_RETRIES=0）：
 
 ```powershell
 Set-Location -LiteralPath 'D:\Projects\wonder-orbit'
-& .\.venv\Scripts\python.exe evals/run_live.py --allow-live
+$env:MOCK_MODE='false'
+try {
+    & .\.venv\Scripts\python.exe evals/run_live.py --allow-live --max-cases 1
+} finally {
+    $env:MOCK_MODE='true'
+}
 ```
 
-脚本显式选择 Live，检查 Key；不能依赖 MOCK_MODE=true 阻止这条已明确启用的评测。输出 .cache/live-eval.json。schema_valid 只说明结构符合 DTO，不说明语义准确率；目前没有真实模型结果、完整图评测、检索标注集或模型质量基线。
+脚本不会再覆盖 MOCK_MODE；缺条件退出且不构造模型。失败停跑、无 SDK 自动重试、不升级型号。只调用 adapter.draft，不导入数据库、不审批，输出被忽略的 .cache/live-eval.json（实际 executed_cases、model、公开 DTO、错误分类、耗时、SDK usage 或 null）。schema_valid 只表示结构合法，不能证明语义质量/完整 Agent 效果；真实服务、免费额度/usage、explore 与审批目标环境证据仍待后续授权。初学者配置词汇、协议/参数与 Token 边界见 [evals/README](../evals/README.md)。
 
 ### 6.8 S：PowerShell 语法与运行是两种检查
 

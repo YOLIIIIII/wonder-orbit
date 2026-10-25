@@ -18,9 +18,14 @@ class ModelAdapter:
 
     def __init__(self, config: Settings):
         self.config = config
+        self.last_usage: dict[str, int] | None = None
 
     def request(self, tool_name: str, schema, payload: dict):
+        self.last_usage = None
         try:
+            provider_options = {}
+            if self.config.model_provider == "bailian" and self.config.model_name == "qwen3.8-flash":
+                provider_options["extra_body"] = {"enable_thinking": False}
             model = ChatOpenAI(
                 model=self.config.model_name,
                 api_key=self.config.model_api_key,
@@ -28,6 +33,8 @@ class ModelAdapter:
                 timeout=self.config.model_timeout,
                 max_retries=self.config.model_max_retries,
                 max_tokens=self.config.model_max_tokens,
+                use_responses_api=False,
+                **provider_options,
             )
             tool = {
                 "type": "function",
@@ -52,7 +59,20 @@ class ModelAdapter:
                     HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
                 ]
             )
-            if len(message.tool_calls) != 1 or message.tool_calls[0]["name"] != tool_name:
+            usage = getattr(message, "usage_metadata", None)
+            if isinstance(usage, dict):
+                # 只保留 SDK 实际返回的计数；不复制响应/headers/隐藏推理。
+                counts = {
+                    key: usage[key]
+                    for key in ("input_tokens", "output_tokens", "total_tokens")
+                    if type(usage.get(key)) is int and usage[key] >= 0
+                }
+                self.last_usage = counts or None
+            if (
+                getattr(message, "invalid_tool_calls", [])
+                or len(message.tool_calls) != 1
+                or message.tool_calls[0]["name"] != tool_name
+            ):
                 raise ModelFailure("invalid_tool_call")
             return schema.model_validate(message.tool_calls[0]["args"])
         except ModelFailure:
