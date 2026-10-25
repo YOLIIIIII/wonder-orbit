@@ -91,6 +91,8 @@ Linux/macOS 将 `$env:PYTHONPATH='backend'` 换成 `export PYTHONPATH=backend`�
 
 原 `bind_tools(..., tool_choice=tool_name)` 会变成指定函数对象；百炼 Qwen 的思考模式对该策略有限制，因此仅 `MODEL_PROVIDER=bailian` 且型号精确匹配时传 `extra_body={"enable_thinking": false}`。保留唯一工具与 Pydantic、来源/未知值、审批和幂等校验，不接受普通文本。离线测试用实际 LangChain/SDK 序列化加内存传输，验证最终 JSON，并不调用模型。下一阶段另获授权后才运行 `evals/run_live.py --allow-live --max-cases 1`：最多一个公开 collect、失败停跑、无 SDK 重试、无数据库写入；可能消耗输入/输出 Token，只保留真实 SDK usage，缺失为 null。完整初学者步骤与边界见 [evals/README](evals/README.md)。
 
+2026-10-25 第二阶段新增隔离工作流入口 `evals/run_workflow_live.py --allow-live`：最多 collect/explore 各一次、零重试，通过现有 FastAPI/图/工具和模拟测试 decision，所有正式测试数据仅在新建 .cache SQLite；实际 engine/迁移/初始零记录检查先于模型，默认 pytest/CI 不执行。**本轮已运行一次 collect 后停止**：工具/结构/图生成通过，interest_reason 将主题复述为动机，严格空值检查失败；没有批准、没有 Star/Quest/Reflection，没有发起 explore。真实用量 1245 Token；后续新调用须另获授权，不使用本轮剩余次数补跑。入口/离线命令和边界见 [evals](evals/README.md)，[真实证据](docs/VERIFICATION.md#agent-001-workflow-20261025)；不是完整 Agent 闭环成功。
+
 Mock 草稿不会猜测兴趣原因、预算或精力。免费“写三个好奇问题”体验预算为 0，时间明确为估计值。约束取当前请求与已设置偏好的较严格上限。预算受限时未知预算会被拒绝；自由文本约束不会让模型自行宣称满足。
 
 ## 输入提示与实际规则
@@ -166,7 +168,7 @@ scripts/        当前 Windows 环境启动脚本
 - [路线图](ROADMAP.md)：当前阶段与里程碑；[交付记录](CHANGELOG.md) 只记实际完成的改动；[验证记录](docs/VERIFICATION.md) 区分通过、跳过和未执行。
 - [开发约定](AGENTS.md)：开始开发前读取和复评记录，结束后同步状态与实证。
 
-2026-10-25：M1 本地 MVP 已交付；M2 的 UX-001、UX-002 当前范围获得用户认可，UX-003 人工按示例记录缺口与 UI-001 仍保留。按用户明确范围进入 M3 的 AGENT-001 第一阶段：百炼 Qwen3.8-Flash 安全配置、参数隔离与离线测试、默认最多一个 collect 的 Live 入口准备；不是已成功联网。PG 回滚/并发、完整 Docker、真实 collect/explore 与 EVAL 基线仍待验证；下一阶段需单独确认本地配置及首次真实请求授权。正式任务状态只在 Backlog 维护。
+2026-10-25：M1 本地 MVP 已交付；M2 的 UX-001/002 验收保留，UX-003 人工记录缺口与 UI-001 仍保留。M3 已推进 AGENT-001 第二阶段：用户已报告适配器 collect-only 成功，本轮一次真实 API/图 collect 因动机字段语义不满足而在批准前停止，explore/正式审批仍待验证。AGENT-001 保持 in_progress；PG 回滚/并发、完整 Docker 与 EVAL 基线未完成，下一步先明确主题/动机的离线规则，不自动增加真实调用。正式状态只在 Backlog 维护。
 
 ## 已知限制
 

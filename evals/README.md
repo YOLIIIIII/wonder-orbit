@@ -2,7 +2,7 @@
 
 cases.json 保存公开固定输入、Mock 精确期望标签和业务失败场景。backend/tests/test_mvp.py 使用隔离库做确定性断言。Mock 通过率不代表模型准确率。
 
-2026-10-25：AGENT-001 第一阶段只交付接入准备与离线证据，所有真实模型检查 **not run**。本阶段禁止运行下方 Live 命令，不使用真实 Key、免费 Token 或个人 wonder.db。
+2026-10-25 第一阶段历史边界：当时只交付接入准备与离线证据，真实模型全部 not run。下文保留该阶段 collect-only 入口说明；第二阶段的独立工作流入口、授权边界与真实失败另见本文末节，不能以历史禁用/成功表述替代当前证据。
 
 ## 三种验证分别证明什么
 
@@ -74,3 +74,26 @@ try {
 结果只写被忽略的 .cache/live-eval.json，包含 mode/provider/model、配置的案例上限/输出上限/重试、实际 executed_cases、各案例 ID/collect、schema_valid 或失败分类、elapsed_ms、通过 Pydantic 的公开结构化输出与 usage。usage 仅取 SDK 返回的 input_tokens/output_tokens/total_tokens 非负整数；缺失为 null，不估算、不当作 0。失败在收到可解析的响应时也可能保留实际 usage；无响应不能凭空得知服务是否已消耗 Token。文件每次覆盖，下一阶段若需比较先在本地保留脱敏副本；不写 Key、Host、Authorization、原始异常、隐藏推理或私人数据。结构合法不等于语义准确，报告仍需人工复核。
 
 2026-10-25 已核对官方资料：[Function Calling](https://help.aliyun.com/zh/model-studio/qwen-function-calling)、[OpenAI 兼容接入](https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope)、[Chat 参数](https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions)、[模型 ID](https://help.aliyun.com/zh/model-studio/qwen3-8-flash)。官方文档与本地请求验证不替代真实连通性证据；本轮完整记录见 [VERIFICATION](../docs/VERIFICATION.md#agent-001-phase1-20261025)。
+
+
+## AGENT-001 第二阶段：隔离库工作流入口与本轮停止结果
+
+新增 `run_workflow_live.py`，复用已有 validate_live_config；通过进程内 FastAPI TestClient 运行实际 LangGraph/ToolRegistry/ModelAdapter 与 decision API，不启动 HTTP 服务。使用显式 --allow-live 后，进程内固定 bailian/qwen3.8-flash/非 Mock/零重试；Key/北京 Base URL 只由 Settings 运行时读取，不展示/改写 .env、不改变模型请求代理。适配器 request 与实际 bind_tools.invoke 都限制 collect→explore 各一次，调用前落盘尝试；任何失败占次数并停跑，不能通过更换模型或批次参数扩额度。
+
+入口会新建 `.cache/qwen-workflow-随机值/workflow.db`，拒绝已有/越界目标，核对实际 engine/SessionLocal、Alembic 版本及 Star/Quest/Reflection 初始为零。collect 先验证原文/来源和未知字段，未批准不入档；只有通过才在隔离库发明确的测试批准、重复决定验证幂等。然后先只读检索确定能命中真实测试 Star，再发 explore，核对来源、时间/零预算/低精力/固定免费室内文字步骤；只有合法候选才测试批准一个 Quest、幂等与关联。没有候选就部分失败，不造候选；不写 Reflection。所有测试决定都标记为 isolated_test_simulation，不能表述为用户实际批准/完成体验。
+
+复用命令如下，**本轮已经因真实语义检查失败停止，不得再执行；后续任何新请求需另行授权**：
+
+```powershell
+& .\.venv\Scripts\python.exe evals/run_workflow_live.py --allow-live
+```
+
+每次显式执行会创建新的库和 report.json，调用尝试、公开 DTO/节点/工具、计数、实际 usage/耗时保留于被忽略目录，不上传个人结果。缺省运行在读取 Settings 前拒绝，默认 pytest/CI/lint/build/E2E 不触发该命令。输出过滤实际 Key/Host，禁用该专用过程的日志/tracing；环境临时覆盖退出恢复。个人 wonder.db 只做前后文件哈希。
+
+离线保护测试（不联网）可运行：
+
+```powershell
+& .\.venv\Scripts\python.exe -m pytest backend/tests/test_workflow_live_runner.py -q
+```
+
+本轮真实结果：只请求 collect **1 次**，唯一 create_star_draft、Pydantic 及 understand_request→extract_star_draft→await_user_decision 成功；模型把原文主题片段填入 interest_reason，未满足未知动机 null 要求，入口以 collect_unknown_fields 在批准前停止。实际 input=1038/output=207/total=1245 Token，invoke=10119ms；Star/Quest/Reflection 最终均零（停止后额外 mode=ro 核对），explore/审批幂等全部 not run，没有用第二次额度重跑。现有“原文子串”保护不能区分主题与动机，未改 Prompt/生产逻辑或降低验收；AGENT-001 继续 in_progress，不代表真实闭环通过。完整证据见 [本轮验证](../docs/VERIFICATION.md#agent-001-workflow-20261025)。

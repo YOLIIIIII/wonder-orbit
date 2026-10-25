@@ -761,3 +761,91 @@ M2 UX-001 保留既有验收，UX-002 见下节收尾；UX-003 人工按示例�
 修复后的实际本地重跑（Node 22.23.3，frontend）：再次执行 `npm run format:check`、`npm run lint`、`npm run typecheck`、`npm test`、`npm run build`，全部 passed；**82 passed / 4 files**，6.86s，Vite 1581 modules / 1.87s。不是只重跑失败案例。后端业务/测试/依赖自先前 103 passed 的版本后未改变，本次仅前端测试单行与文档，不冒称再次重跑后端。
 
 追加修复后的范围核对：本轮相对原基线共 **16 个预期文件**（首实现 15 个，新增既有 frontend/src/App.results.test.tsx 单行等待修正），检查器按原基线至工作区核对，原始 Key/Host 扫描与 306 链接/28 任务/14 IDEA 一致性检查再次通过，git diff --check 通过。修复另作普通后续提交，不 amend/force，不把第一次失败改写成成功。后续提交/普通推送/CI 终态在最终报告给出，等待成功后才作交付结论。
+
+<a id="agent-001-workflow-20261025"></a>
+
+## 2026-10-25：AGENT-001 第二阶段工作流验证
+
+### 用户已报告的 collect-only 证据（非本轮重跑）
+
+来源为本轮用户附件：本人执行 `evals/run_live.py --allow-live --max-cases 1`，qwen3.8-flash，1 case，schema_valid，无错误，input_tokens=1037、output_tokens=223、total_tokens=1260、elapsed_ms=4860；用户观察免费额度 1M→998.74K。这是用户报告的实际结果，本轮不重跑该脚本，不冒称亲自联网复核。它只证明直接适配器 collect，不证明 FastAPI/LangGraph、explore/约束或审批链路。
+
+上一轮最终提交 0e5846e78622748305263d96bc9d10b0819104a4 的 [CI 40178061446](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/40178061446) 已于上一轮实际核对成功：backend 103 passed / 1 skipped，独立 PG 1 passed，frontend 82 passed/build；这是上一轮远程证据，不属于本轮重跑。前一失败运行及焦点断言修正保留在上节。
+
+### 本轮范围与开发前检查
+
+用户授权本轮最多两次真实调用（collect/explore 各一次），失败/超时同样占次数；禁止重试/探针/批量/换模型/完整 EVAL/Embedding/MCP/多 Agent/部署。真实凭据只允许既有 Settings 运行时读取，不浏览或输出 .env，不调整模型请求代理。补充要求：提交前核对 .env 忽略、跟踪和暂存区敏感信息；疑似泄露停止推送。文档只追加本项目工程/实证，保留历史，不再扩写通用密钥知识。
+
+开始工作区干净，分支 main；本地 HEAD 和通过临时 Git 代理 ls-remote 得到的远程 main 均为预期 0e5846e78622748305263d96bc9d10b0819104a4。仓库 local 姓名/邮箱符合指定身份。已按约定核对要求的文档、config/model_adapter/workflow/tools/main/schemas/db/retrieval、迁移、模型/审批测试、run_live/cases、示例/忽略规则。未浏览私有 .env 内容或历史私人业务数据。
+
+### 安全入口与离线实现证据
+
+新增 evals/run_workflow_live.py：缺 --allow-live 在 Settings 前拒绝；显式授权后固定百炼 qwen3.8-flash、非 Mock、零 SDK 重试并复用 validate_live_config。通过进程内 TestClient 调用原 API/图/工具，未启动网络服务。适配器 request 和实际 bind_tools.invoke 双重限制 collect→explore 各一次，invoke 前原子更新尝试报告，失败不补跑。没有生产 Schema/表/Prompt/权限或依赖变更。
+
+临时库仅新建于仓库 .cache，拒绝复用文件/越界/符号链接，核验 app.db.engine 及 SessionLocal 实际绑定同一 SQLite 文件；调用既有 Alembic upgrade head，确认迁移版本与 Star/Quest/Reflection 初始零记录，任何异常均在模型前停止。临时环境、函数/工厂绑定在退出时恢复；个人 wonder.db 只做前后文件哈希。报告只保留公开测试文本/经校验 DTO、节点/工具事件、审批计数/ID、实际 usage/耗时，剔除真实 Key/Host，不保存原始服务错误或隐藏推理；日志/tracing 在专用运行期间禁用。测试批准明确标注 isolated_test_simulation，不冒充用户本人操作。
+
+新增 test_workflow_live_runner.py 使用 Fake Chat + 实际 API/图/迁移，禁止 DNS/HTTP 连接，仅允许 Windows 事件循环 loopback 自唤醒；不读 .env，个人库 hash 函数在单元测试中替换为空值。覆盖完整双场景、零次拒绝/错误参数、实际 engine 错绑、旧库/非零初始库、调用顺序/第三次阻止、失败占额度/不补跑、错误/多个/缺工具、非法结构/未知字段编造、无候选/预算未知/错误引用/时间/精力/步骤约束拒绝、报告脱敏及环境恢复；既有 pytest 继续覆盖未批准工具/拒绝决策/异常分类/审计和幂等。
+
+首轮新增专项 25 passed，出现 14 条已有 Alembic prepend_sys_path 路径分隔方式弃用提示；专用入口在其 Config 对象明确 path_separator=os 后复验消除提示，不改生产 alembic.ini。初始 Ruff 因 ROOT 赋值位于路径设置与应用导入之前触发 E402，移动 ROOT 定义到导入之后修正；未绕过规则。随后补 explore 超时停跑案例及实际节点/工具检查，最终命令与结果在下文追加。
+
+
+### 本轮真实执行：一次 collect，严格语义检查失败后停止
+
+所有必要离线测试通过后，实际只执行 **一次** `./.venv/Scripts/python.exe evals/run_workflow_live.py --allow-live`。没有执行旧 collect-only runner，没有模型探针、重试、余额 API 或第二次请求。进程退出码 1，脱敏报告 `.cache/qwen-workflow-hwngib7z/report.json`，实际库 `.cache/qwen-workflow-hwngib7z/workflow.db`；均被忽略且保留在本机。
+
+实际配置：provider=bailian、model=qwen3.8-flash、北京专属地址（不记录完整 Host）、OpenAI 兼容 Chat Completions、指定 create_star_draft、enable_thinking=false、SDK max_retries=0、max_completion_tokens=2048、timeout=30s。凭据只由该进程 Settings 读取，未人工浏览、打印、复制 .env 或 Key；模型网络配置未改道。库在请求前已实际核验 app.db.engine/SessionLocal、Alembic 0001 和三项零计数，没有连接个人库。
+
+| 项目 | 本轮真实结果 |
+| --- | --- |
+| 实际模型请求数 | **1 / 上限 2**，collect 一次，explore 未请求 |
+| Tool Calling | 返回唯一 create_star_draft，无 invalid_tool_calls，DraftResult/Pydantic 通过 |
+| Token（SDK 实际） | input=**1038**、output=**207**、total=**1245**；非估算，免费余额未查询 |
+| 耗时 | 模型 invoke **10119ms**；API **10483ms**；AgentRun **10456ms**，测量边界不同 |
+| API/Run | POST 201；run_id=**9129741a-5198-4726-8ad4-9617f13655b8**；mode=live、model_name=qwen3.8-flash、status=awaiting_decision、error_type=null |
+| 节点 | understand_request → extract_star_draft → await_user_decision 均 succeeded |
+| 工具 | create_star_draft succeeded；没有写工具或审批节点 |
+| 公开原文 | 我一直想了解深海生物为什么会发光，想找时间记录三个感兴趣的问题。 |
+| 原文与未知数值 | original_text 正确保留，source_type=paste、reference=null；estimated_minutes/budget/energy 均 null |
+| 严格语义失败 | interest_reason 返回“**一直想了解深海生物为什么会发光**”，不是 null；runner 报 **collect_unknown_fields**，在测试批准前停止 |
+| 正式记录 | 初始和停止后只读核对均 **Star=0、Quest=0、Reflection=0**；只存在 1 条待确认 AgentRun，无正式 star_id/quest_id |
+| 场景 A 审批/幂等 | **not run**，严格语义检查未通过，不自动批准不合格草稿 |
+| 场景 B 检索/图/候选/约束/审批/关联 | **not run**，A 未通过，因此不消耗第二次请求，不制造 Star 或候选 |
+
+精确区分：服务/工具协议、结构和图的生成部分成功，**本轮整个 collect 验收及真实工作流闭环失败**。该 reason 是原文主题的逐字片段，并非新编造的外部个人经历；但本场景未明确给出“为什么感兴趣”，不能将“想了解什么”当作动机事实。现有 adapter 只清除不在原文中的 reason，子串条件不足以判定字段语义。本轮未弱化 null 检查、改 Prompt、替换该输出、批准它或用剩余次数重跑。后续需要独立决策如何区分主题与明确兴趣动机，离线回归优先；本轮没有宣称模型兼容故障或审批链已实际通过。
+
+另观察到 category=未分类、tags=[]、description 为空，missing_fields 包含 available_minutes/budget 等请求字段名称，提问要求分类/标签/时间/精力。这些是当前公开响应的质量观察，不是额外业务验收通过或本轮已修复能力，不据单样本给质量统计。完整公开 DTO 保存在忽略报告中；文档只节选与失败有关的字段，不写隐藏推理/服务 headers。
+
+进程返回后，只用 `sqlite3` 的 **mode=ro** 打开明确的隔离库，`PRAGMA database_list` 对照实际路径，查询三类正式记录和 AgentRun，核对上述零计数/运行状态；在忽略报告追加 post_stop_read_only_audit（additional_model_calls=0）。没有重启 Live runner、审批、改动测试数据或触及个人库。个人 wonder.db 只文件哈希：执行前后与只读审计后均 **168DBA7DA4099D3818191ED62A748EDC71189355F2EBFDEF8A64AE52CAAA8D62**；环境恢复检查 true。
+
+基于本次失败，仅完善专用 runner 的异常退出计数落盘，并增加“原文主题复述为 reason”的离线回归；不修改生产适配层/Prompt/Schema。修改后的入口未再真实执行，因此不能把该新计数分支说成在本次 Live 已验证；本次正式计数证据来自上述只读审计。AGENT-001 保持 in_progress，EVAL-001、INFRA-001/002 不关闭。
+
+### 本轮最终工程检查与复盘
+
+环境为 Windows PowerShell / Python 3.12.15，已有 .venv；前端在 frontend 中临时 PATH 前置仓库 Node **22.23.3**，不改系统配置、不升级/新增依赖。后端命令均以 `./.venv/Scripts/python.exe` 执行；测试层禁用 .env/真实 Key/tracing，新增 runner 测试均为 Fake，不是再次真实运行。
+
+| 检查 | 实际命令 | 本轮结果 |
+| --- | --- | --- |
+| 后端完整回归（含新增 28 项保护） | `./.venv/Scripts/python.exe -m pytest -q -rs` | 最终 **131 passed / 1 skipped in 16.53s**；本机无独立 PG，test_postgres skipped；包含本次主题/动机原文片段回归和失败退出计数 |
+| Ruff | `./.venv/Scripts/python.exe -m ruff check backend evals`；`./.venv/Scripts/python.exe -m ruff format --check backend evals` | passed，25 files already formatted |
+| 前端格式/lint/类型 | `npm run format:check`、`npm run lint`、`npm run typecheck` | passed，前端文件未改 |
+| Vitest | `npm test` | **4 files / 82 passed**，55.83s；不作性能比较 |
+| build | `npm run build` | passed，tsc -b + Vite，1581 modules / 15.99s |
+| 真实工作流 runner | `./.venv/Scripts/python.exe evals/run_workflow_live.py --allow-live`（只执行一次） | **failed / 1 invoke**：工具/结构/图生成通过、collect_unknown_fields；不是真实闭环成功 |
+| 停止后隔离库审计 | `.cache/qwen-workflow-hwngib7z/workflow.db`，sqlite mode=ro + PRAGMA 路径核对 | passed，正式三类记录零，1 awaiting_decision AgentRun，新增模型调用 0 |
+| 真实 explore/审批/幂等/引用约束 | 未执行 | **not run**；collect 未满足严格语义，按授权边界停止，不补跑 |
+| 真实 429/timeout/服务不可用 | 未人为制造 | **not run**；异常由 Fake/内存传输和失败审计离线回归，不额外耗 Token |
+| 完整浏览器 E2E / Docker / PG 回滚并发 / EVAL 基线 | 未执行 | **not run**，不在本轮范围；CI 独立 PG 与本机缺服务分开记录 |
+
+未启动公网或日常后端服务、未读取私人兴趣数据、未执行旧 collect-only runner、余额探针、自动重试、模型切换或额外 Live 请求，未连接 Codex Cloud/部署。个人库只哈希，.env 只由真实运行 Settings 使用，未浏览/打印/复制/修改；所有真实业务测试原本只允许进入新隔离库，本轮在批准前停止所以没有正式业务写入。
+
+- 为什么用户需要这次改动／真实 Agent 工作流？直接适配器的 schema_valid 不能证明应用的图/审批安全与字段含义；专用入口把真实返回放进原工作流，能在正式写入前发现语义问题并留下可复核结果。
+- 它在 AI Agent 系统中解决了什么问题／哪些边界取得实证？本轮实际取得 API→understand_request→extract_star_draft/create_star_draft→await_user_decision、指定唯一工具/Pydantic、未知数值空值、来源保留和批准前正式零记录证据；真实审批/explore 没有实证，Fake 的完整路径与真模型证据明确分开。
+- 我们通过这次开发学到了什么？结构合法与字段语义正确是两层验证。兴趣主题的原文子串仍可能被填成“原因”；仅防止新增原文之外的内容并不保证字段语义。严格验收在批准前停下，比把剩余调用额度用来凑成功更能保护可信证据。没有据此宣称通用模型效果提升或兼容服务不可用。
+
+当前 M3 仍为 AGENT-001 真实工作流验收中，无完整闭环结论；剩余 P1 五项/无新增已证实 P0 见 Backlog。下一项建议是针对“兴趣主题／明确动机”的离线对照与最小防护决策，另获授权后再采真实审批/explore 证据；本轮交付结束即停止，不启动 EVAL-001。
+
+### 提交前文档、范围与暂存区安全核对
+
+实际 `.cache/agent001_workflow_doccheck.py` 检查 **313 个本地 Markdown 链接/锚点、28 个任务索引/详情状态**，全部通过；相对基线仅 10 个预期文件改变（两个新 runner/测试文件及八个文档），无生产逻辑、依赖、Schema、迁移、前端或私人配置变化。`git diff --check` 与暂存区检查通过，远程 main 在提交前仍是预期 0e5846e78622748305263d96bc9d10b0819104a4。
+
+按用户补充要求，在 commit/push 前实际执行 `git check-ignore --quiet .env`（成功）与 Git 跟踪文件名检查：.env 被忽略且未跟踪，未发现被跟踪的私人 .env 变体。只读取 Git 暂存区十个文件的版本进行 Key 签名、Authorization 凭据、私人北京 Host、非空示例 Key、私人/产物文件名检查；没有读取私人 .env。初次自检把 evals/README.md 的空 MODEL_API_KEY= 误判，已停止提交/推送并调查；逐行检查仅输出 value_empty=true，确认是正则 \s 跨行匹配下一项配置而非泄露，改为仅匹配行内空白后重新全量扫描，疑似敏感命中 **0**。未隐藏真实发现、未输出匹配值，也未以忽略规则绕过检查。安全扫描汇总在被忽略的 .cache/agent001_workflow_staged_safety.json；其结果不包含真实 Key/Host/headers。再次暂存文档后重扫通过才执行普通提交/推送；任何新疑似泄露仍须停止。提交、推送和实际 CI 结果在最终交付报告提供，不预先把 CI 记为通过。

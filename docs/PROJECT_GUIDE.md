@@ -24,6 +24,8 @@
 
 2026-10-25 CI 复验追加：既有 App.results.test.tsx 的多 Quest 导航用例由立即焦点断言改为等待 useEffect 实际设置焦点；保留原 ID/焦点/写入次数要求，非业务/路由/模块职责变化。原手册 B/Q/F 命令仍适用，首轮失败及真实重跑见 VERIFICATION。
 
+2026-10-25（AGENT-001 第二阶段）局部导航更新：新增 run_workflow_live.py 与 test_workflow_live_runner.py，重要职责见评测表；生产 Schema/表/Prompt/API/图/工具权限未改变。专用入口只在显式授权后用 Settings 运行时读取凭据，以实际 API→图→工具执行，双层计数且零重试，临时环境/engine/SessionLocal 绑定只在该进程上下文有效，先 Alembic/零记录核验再模型。新入口不能代替旧 collect-only 历史证据；本轮一次 collect 的严格语义失败及未执行的后续阶段见 VERIFICATION，不把离线批准写成真实通过。
+
 ## 一、整体地图与阅读入口
 
 ```text
@@ -162,6 +164,8 @@ refresh 并行拉取七类数据；act 管理 busy/错误/提示，成功后 ref
 | [backend/tests/test_postgres.py](../backend/tests/test_postgres.py) | 只有 TEST_POSTGRES_URL 存在才运行；独立随机 schema 验证 JSON 与外键保护，finally 清理 | test_postgres_json_and_foreign_key | make_engine、Base、Star/Quest/QuestStar；直接 create_all，不是迁移回滚测试 | 目标数据库约束/类型改变 | P、Q；需要能创建/删除专用 schema 的隔离数据库 |
 | [evals/cases.json](../evals/cases.json) | 三个 extraction 固定输入及 Mock 期望标签；另有七个 scenarios 的预期行为说明 | extraction、scenarios；ocean-space/unknown/explicit-source | test_fixed_extraction_eval_cases 读取 extraction；run_live.py 只遍历 extraction | 案例/期望或人工基线改变 | B + JSON 格式；L 只验证实际覆盖项；scenarios 不是自动数据驱动全套测试 |
 | [evals/run_live.py](../evals/run_live.py) | 显式 --allow-live、非 Mock/Key/模型/URL/零重试预检；默认 --max-cases 1；失败停止；公开结构/耗时/实际 usage 输出 .cache/live-eval.json | main、positive_count、validate_live_config、run_cases；executed_cases、results | Settings、ModelAdapter.draft、AgentRequest、公开 cases.json；不导入 db/workflow | 预检、CLI、请求范围/报告改变 | Q 离线；L 本阶段禁止，不是完整 EVAL/审批验证 |
+| [evals/run_workflow_live.py](../evals/run_workflow_live.py) | 显式授权、新 .cache SQLite/实际 engine/SessionLocal/Alembic/零记录；API/图 collect→explore，最多两次 invoke；严格 DTO/语义/约束与测试批准/幂等；失败停跑，报告脱敏 | main、run_workflow、CallBudget、CheckFailure、write_report、file_hash | 复用 run_live.validate_live_config、Settings、实际 main.app/Workflow/ToolRegistry/ModelAdapter；仅专用进程临时绑定，正式 schema 不变 | 隔离/额度/场景/报告策略改变 | B/Q 离线后，L 另获授权；本轮已停止不能重跑；不属默认 CI |
+| [backend/tests/test_workflow_live_runner.py](../backend/tests/test_workflow_live_runner.py) | Fake Chat + 实际 API/图/Alembic 的双场景/边界；禁止 HTTP/DNS，测试 Key；数据库错绑/复用/非零、上限、异常、空值、约束和报告/恢复 | fake、test_fake_full_api_graph_and_migrated_database、test_budget_counts_failure_and_rejects_third_invoke | 专用 runner、既有后端；tmp_path 新 SQLite/报告，个人 hash 函数替换；不读 .env | runner 隔离、断言/硬额度/脱敏变化 | B/Q；AIMessage 为 Fake，无真实模型，即使测试参数含 --allow-live |
 | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | push/PR 两 job；Ubuntu + PostgreSQL 16 + Python 3.12/uv；Node 22 前端 | backend/front-end job 名实际为 backend、frontend；MVP checks | 根 uv/迁移/Ruff/pytest；前端 npm ci 与格式/lint/type/test/build；专门 PG 测试 step | 检查集合、环境版本/依赖缓存或触发条件改变 | 本地 B/Q/F/M/P，最终核对真实 CI run；目前未含 Docker 构建、浏览器 E2E 或 Live eval |
 
 普通 pytest 使用 conftest 的 Mock/隔离 SQLite，Base.metadata.create_all 是测试准备，不证明 Alembic 迁移正确。CI 先做 PostgreSQL Alembic/Ruff，再 mkdir -p .cache，之后普通 pytest（PostgreSQL 用例因无 TEST_POSTGRES_URL 跳过），最后单独带 TEST_POSTGRES_URL 执行 PostgreSQL 用例。首次远程运行在普通 pytest 失败，最后一步未执行；2026-10-17 已补记 [修复后的成功运行](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/39030090153)，两个 Job 成功，独立 PG 实际 1 passed，原失败记录保留。检查哪些 job 真运行过要看远程结果；YAML 不能代替执行证据。

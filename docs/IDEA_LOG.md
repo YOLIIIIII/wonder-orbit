@@ -119,6 +119,12 @@
 
 实施选择（助手，非用户原话）：新增 MODEL_PROVIDER 区分百炼和通用兼容服务，仅百炼 qwen3.8-flash 传 extra_body.enable_thinking=false；保留指定唯一工具/Pydantic 和审批调用链。Live 默认最多 1 个公开 collect，要求显式授权、非 Mock、北京 Host/模型/Key 格式预检、SDK 重试为 0，失败停跑；只记录 SDK 实际 usage 与公开 DTO。该方案改善协议兼容和验证边界，不代表真实联网成功或模型质量提升。官方来源与实际证据见 [VERIFICATION](VERIFICATION.md#agent-001-phase1-20261025)。
 
+2026-10-25（AGENT-001 第二阶段），来源：用户附件《Qwen 真实工作流闭环验证》及补充安全要求。用户报告亲自执行一次 collect-only runner：qwen3.8-flash / 1 case / schema_valid，input 1037、output 223、total 1260 Token，4860ms，控制台免费额度 1M→998.74K；这是用户已报告证据，不是本轮重跑，也不证明图/explore/审批。现明确授权本轮最多两次真实请求（collect/explore 各一次），通过 FastAPI→LangGraph→受控工具，正式测试记录仅进入全新 .cache SQLite，失败/超时也计额度且禁止补跑/探针/换模型。私有配置只许 Settings 在运行时读取，不浏览/打印 .env；提交前核对忽略/跟踪/暂存区，疑似泄露必须停推送。最新文档约定：只补本项目技术学习/权衡/实证，不再增加通用密钥科普，不专门清理历史。
+
+实施决策（助手方案）：单独 runner 复用原 Live 预检及 API，不更改生产 Schema/Prompt/权限；双重检查适配器请求和实际 bind_tools.invoke 的硬上限/顺序，调用前持久记录尝试；先检查实际 engine/SessionLocal→新库、Alembic 和零记录，再运行两段公开场景，测试批准明确标记为模拟决定。离线保护/异常先通过后才实际调用，结果若部分失败如实保留且停止，AGENT-001 不提前关闭。
+
+2026-10-25（第二阶段实证）：真实只调用一次 collect，工具/Pydantic/图生成通过，但 Qwen 将“想了解深海生物为什么发光”的主题片段填入 interest_reason，未满足本场景的未知动机 null 要求。runner 在批准前以 collect_unknown_fields 停止，无 Star/Quest/Reflection，explore/审批均未执行；实际 1038+207=1245 Token。保留严格检查、不改提示/生产逻辑、不用剩余额度补跑。学习/候选决策（非已实现能力）：原文子串匹配能阻止凭空编造，却不能判定“主题”与“动机”，后续需先设计离线语义对照并决定最小防护，再另获真实调用授权；不据单样本断言整体模型质量。
+
 ### IDEA-006
 
 **多兴趣整理、澄清延续和更多轻体验规则**

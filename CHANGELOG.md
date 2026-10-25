@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### 2026-10-25：AGENT-001 第二阶段隔离库验证入口与真实失败实证
+
+- 新增专用工作流 runner：显式 --allow-live，固定百炼 qwen3.8-flash/非 Mock/零重试，适配器 request 与模型 invoke 双层限两次并先落盘；新 .cache SQLite、实际 engine/SessionLocal、既有 Alembic 与初始零记录检查先于请求，通过现有 API/图/工具和明确的模拟测试 decision 核对批准/幂等/关联，失败即停。
+- 新增 Fake + 实际 API/图/迁移的离线安全/约束/次数/脱敏/恢复测试；不改变生产 Schema/表、Prompt、适配器、权限、依赖或前端业务。报告只保留公开结构/事件/计数/实际 usage，忽略真实 Key/Host 与原始服务错误，环境恢复且个人库只哈希。
+- 实际仅 **1 次真实 collect**：指定工具/Pydantic/图生成成功，主题片段被填入 interest_reason 导致严格语义检查 collect_unknown_fields，批准前停止，实际 **1245 Token / 10119ms invoke**；Star/Quest/Reflection 全零，无测试批准，explore/约束/审批幂等真实检查均 not run，未补跑。AGENT-001 保持 in_progress，不能称完整闭环通过。
+- 用户历史 collect-only 结果与本轮实证、失败细节/离线回归和三问分别留证；同步最小入口使用、导航与阶段，不扩写通用入门知识。结果与安全检查见 [VERIFICATION](docs/VERIFICATION.md#agent-001-workflow-20261025)。
+
 ### 2026-10-25：AGENT-001 第一阶段 Qwen 安全接入准备与 UX-002 验收
 
 - 用户实际认可星星只读详情→明确编辑；结合既有实现/自动化/隔离浏览器及上一轮 CI 收尾 UX-002 当前范围。保留 UX-003 人工按示例记录缺口，不虚构本人亲测边界。
