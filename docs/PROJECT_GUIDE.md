@@ -22,6 +22,8 @@
 
 2026-10-25（AGENT-001 第一阶段）局部更新：新增 test_qwen_adapter.py 和 test_live_runner.py，模型/runner 行为及未来 Live 命令如下表同步。Settings 只新增 MODEL_PROVIDER，适配器仅对百炼 qwen3.8-flash 传 extra_body.enable_thinking=false，并固定 Chat Completions；last_usage 仅保留 SDK 实际三项 Token 计数。runner 不再强制覆盖 Mock，默认最多一个公开 collect，预检/零重试/失败停跑；不导入数据库。测试 conftest 在导入应用前禁用 .env 与 tracing；测试中的授权字符串只驱动 Fake，不执行真实 Live 命令。API、图、八个受控工具、审批/幂等/来源与数据库结构均未改变，无迁移/依赖变更。下文首次文件数与静态核验为带日期历史，不代表本轮重新统计；本轮实证见 [VERIFICATION](VERIFICATION.md#agent-001-phase1-20261025)。
 
+2026-10-25 CI 复验追加：既有 App.results.test.tsx 的多 Quest 导航用例由立即焦点断言改为等待 useEffect 实际设置焦点；保留原 ID/焦点/写入次数要求，非业务/路由/模块职责变化。原手册 B/Q/F 命令仍适用，首轮失败及真实重跑见 VERIFICATION。
+
 ## 一、整体地图与阅读入口
 
 ```text

@@ -748,3 +748,16 @@ M2 UX-001 保留既有验收，UX-002 见下节收尾；UX-003 人工按示例�
 下一项建议仅为：用户在本地自行确认被忽略的 Key/北京 Host/模型配置并另行授权首次一个 collect 的真实请求；本轮完成后停止，不自动继续。
 
 交付前最终核对：`.cache/agent001_phase1_doccheck.py`（被忽略的本轮检查器，不导入应用）实际检查 **306 处本地 Markdown 链接/锚点、28 个任务索引/详情状态、14 个唯一 IDEA ID**，均通过；未完成 P1 实际为 UX-003、INFRA-001、INFRA-002、AGENT-001、EVAL-001。15 个变更文件均在预期清单；仅扫描可提交文件的疑似 Key 与北京 Host，未发现真实凭据或非示例 Host。`git diff --check` 通过；`.env.example` / 文档 / 适配器 / runner / 两个新测试 / conftest 为本轮实际改动，无 .env、个人数据、产物、依赖或迁移混入。提交/推送前再次核对远程 main 与开始基线一致；后续普通推送和本提交实际 CI 结果在最终交付消息提供，不把尚未运行的 CI 预写为成功。
+
+
+### 首次普通推送与实际 CI 失败（保留证据）
+
+主实现提交 **a3958d12106a378747d5b0af2cd301b4c64b1e80**，Author/Committer 均为指定 YOLIIIIII GitHub noreply。实际普通 `git -c http.proxy=http://127.0.0.1:12450 push origin main` 成功，远程 main 同 SHA，未 force/改写历史，工作区当时干净。
+
+[本轮首次 CI 40177809670](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/40177809670) 对应该提交，已实际读取 Job/日志：backend **121122202367 success**，迁移/schema/Ruff 成功，普通 **103 passed / 1 skipped in 2.93s**，独立 PostgreSQL **1 passed in 0.19s**；frontend **121122202476 failure**，格式/lint/类型通过、测试 **81 passed / 1 failed**，因此本次 frontend build 未执行，不能宣称整个 CI 成功。
+
+失败为原有 App.results.test.tsx“多个候选各自使用 quest_id，导航不打开反馈也不重放审批”，第 402 行立即 toHaveFocus 观察到 body，而目标区域已渲染。源码中实际焦点由 busy 结束后的 useEffect 设置，idle 只等待处理中提示消失；这里存在观察时序窗口（源码/日志推断，不能凭一次本地通过断言所有环境稳定）。因此追加最小测试修正：仅将该断言改为 `await waitFor(() => expect(target).toHaveFocus())`，等待实际焦点到位，保留正确 ID、无弹窗、记录反馈按钮、两次审批及无反馈写入的所有断言；不改业务逻辑、不加固定 sleep、不删除断言或开启测试自动重试。UX-002 本人的验收保留，不把测试观察时序问题冒充新的功能交付。
+
+修复后的实际本地重跑（Node 22.23.3，frontend）：再次执行 `npm run format:check`、`npm run lint`、`npm run typecheck`、`npm test`、`npm run build`，全部 passed；**82 passed / 4 files**，6.86s，Vite 1581 modules / 1.87s。不是只重跑失败案例。后端业务/测试/依赖自先前 103 passed 的版本后未改变，本次仅前端测试单行与文档，不冒称再次重跑后端。
+
+追加修复后的范围核对：本轮相对原基线共 **16 个预期文件**（首实现 15 个，新增既有 frontend/src/App.results.test.tsx 单行等待修正），检查器按原基线至工作区核对，原始 Key/Host 扫描与 306 链接/28 任务/14 IDEA 一致性检查再次通过，git diff --check 通过。修复另作普通后续提交，不 amend/force，不把第一次失败改写成成功。后续提交/普通推送/CI 终态在最终报告给出，等待成功后才作交付结论。

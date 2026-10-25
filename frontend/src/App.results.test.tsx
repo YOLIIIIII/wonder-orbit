@@ -399,7 +399,7 @@ describe("UX-002 真实结果衔接", () => {
         name: index ? "小体验二" : "小体验一",
       });
       expect(target).toHaveAttribute("id", "quest-quest-" + index);
-      expect(target).toHaveFocus();
+      await waitFor(() => expect(target).toHaveFocus());
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(
         within(target).getByRole("button", { name: "记录体验感受" }),

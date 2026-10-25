@@ -9,8 +9,10 @@
 - 用户实际认可星星只读详情→明确编辑；结合既有实现/自动化/隔离浏览器及上一轮 CI 收尾 UX-002 当前范围。保留 UX-003 人工按示例记录缺口，不虚构本人亲测边界。
 - 新增 MODEL_PROVIDER（默认通用兼容），仅百炼 qwen3.8-flash 传 extra_body.enable_thinking=false，固定 Chat Completions；保留指定唯一工具/Pydantic，额外非法工具调用也拒绝，普通文本不作成功。
 - Live runner 增加默认最多一个 collect、明确开关、非 Mock/Key/型号/北京 URL 格式与零重试预检、失败停跑/非零退出；只写公开结构、错误分类、实际案例数/耗时及 SDK usage（缺失 null），不导入数据库或审批，不打印密钥/headers/隐藏推理。
-- 新增真实 LangChain/SDK 内存传输与 Fake runner 离线测试，测试隔离层禁读 .env/禁 tracing；通用供应商、Mock、来源/空值、错误分类及隔离库审批回归保留。无依赖/Schema/迁移/前端代码变更，真实模型调用全部 not run；AGENT-001 保持 in_progress，交付不代表联网成功或模型效果提升。
+- 新增真实 LangChain/SDK 内存传输与 Fake runner 离线测试，测试隔离层禁读 .env/禁 tracing；通用供应商、Mock、来源/空值、错误分类及隔离库审批回归保留。无依赖/Schema/迁移/前端业务代码变更，真实模型调用全部 not run；AGENT-001 保持 in_progress，交付不代表联网成功或模型效果提升。
 - 初学者配置、首次 Live 命令、阶段/任务/导航和三问复盘同步。真实本地检查及失败修复证据见 [VERIFICATION](docs/VERIFICATION.md#agent-001-phase1-20261025)，下一阶段等待另行授权。
+
+本轮远程复验追加：首个提交 backend 与独立 PG 成功，frontend 一项既有 Quest 导航焦点即时断言失败；最小修正为等待实际焦点到位，保留全部 ID/审批/反馈边界断言，不改前端业务。首轮失败与后续重跑证据保存在 VERIFICATION，不把未执行的首轮 build 写成通过。
 
 ### 2026-10-18：UX-002 星星查看与编辑分离
 
