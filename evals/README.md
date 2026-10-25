@@ -97,3 +97,22 @@ try {
 ```
 
 本轮真实结果：只请求 collect **1 次**，唯一 create_star_draft、Pydantic 及 understand_request→extract_star_draft→await_user_decision 成功；模型把原文主题片段填入 interest_reason，未满足未知动机 null 要求，入口以 collect_unknown_fields 在批准前停止。实际 input=1038/output=207/total=1245 Token，invoke=10119ms；Star/Quest/Reflection 最终均零（停止后额外 mode=ro 核对），explore/审批幂等全部 not run，没有用第二次额度重跑。现有“原文子串”保护不能区分主题与动机，未改 Prompt/生产逻辑或降低验收；AGENT-001 继续 in_progress，不代表真实闭环通过。完整证据见 [本轮验证](../docs/VERIFICATION.md#agent-001-workflow-20261025)。
+
+
+<a id="interest-reason-offline-20261025"></a>
+
+## interest_reason 语义边界修正（2026-10-25，仅离线）
+
+本轮真实模型请求 **0**；没有使用此前未消耗次数，也没有运行任何 --allow-live 命令。上一节真实 1245 Token/collect_unknown_fields 为历史证据，保留不改；本节不是新真实审批/explore 结果。
+
+interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专用提示给正反例和 null 规则；实际适配器在 Pydantic 之后，除原文子串外，还要求原因完整对应同一句明确个人因果片段。有限支持：`我喜欢/我对…感兴趣，因为/由于…`（可带少量程度词）、`因为/由于…，所以/因此我…`、`…让我/使我对…产生兴趣`。主题、科学因果而未指向个人兴趣、目标/时间安排、否定/不确定/引述、原文之外或改写/片段证据不保留。仅将该字段在 missing_fields 中统一为未知一次、已知时移除；其他字段/提问不重写。
+
+保守规则是有边界的句式白名单，不是通用中文语义模型。复杂长句、隐含/跨句动机、改写原因、引号和否定混合表达可能漏提取；没有充分证据优先 null，用户仍能在既有草稿编辑中明确填写。空/空白字符串、null、字段缺失归 null；错误类型继续由 Pydantic 拒绝为 invalid_model_output，不强转成字符串。
+
+公开回归夹具 [interest_reason_cases.json](interest_reason_cases.json) 有 30 个对照，包含历史原文/错误 reason（期望仍 null）、用户列明的正反例及证据范围/空值/非法类型；通过真实 LangChain/SDK 内存传输，不发 HTTP。Fake API/图回归确认标准化后的草稿仍 await_user_decision，批准前无 Star/Quest；没有降低 runner 的 unknown_fields 或审批规则。旧“主题复述导致失败”断言迁为“主题复述被清空且审批前零记录”，非法工具/结构和其他未知字段编造仍要求失败。
+
+```powershell
+& .\.venv\Scripts\python.exe -m pytest backend/tests/test_qwen_adapter.py backend/tests/test_workflow_live_runner.py -q
+```
+
+这只是字段契约回归，不启动 EVAL-001、不提供模型准确率。category/tags/description 和其他 missing_fields 名称的历史质量观察留给 EVAL-001 候选，未在本轮修正。真实 Prompt 接受情况、修正后的真实 collect/审批/explore，仍需下一次明确授权；本轮结束即停止。证据见 [本轮验证](../docs/VERIFICATION.md#agent-001-reason-20261025)。

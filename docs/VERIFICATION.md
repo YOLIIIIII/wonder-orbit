@@ -849,3 +849,81 @@ M2 UX-001 保留既有验收，UX-002 见下节收尾；UX-003 人工按示例�
 实际 `.cache/agent001_workflow_doccheck.py` 检查 **313 个本地 Markdown 链接/锚点、28 个任务索引/详情状态**，全部通过；相对基线仅 10 个预期文件改变（两个新 runner/测试文件及八个文档），无生产逻辑、依赖、Schema、迁移、前端或私人配置变化。`git diff --check` 与暂存区检查通过，远程 main 在提交前仍是预期 0e5846e78622748305263d96bc9d10b0819104a4。
 
 按用户补充要求，在 commit/push 前实际执行 `git check-ignore --quiet .env`（成功）与 Git 跟踪文件名检查：.env 被忽略且未跟踪，未发现被跟踪的私人 .env 变体。只读取 Git 暂存区十个文件的版本进行 Key 签名、Authorization 凭据、私人北京 Host、非空示例 Key、私人/产物文件名检查；没有读取私人 .env。初次自检把 evals/README.md 的空 MODEL_API_KEY= 误判，已停止提交/推送并调查；逐行检查仅输出 value_empty=true，确认是正则 \s 跨行匹配下一项配置而非泄露，改为仅匹配行内空白后重新全量扫描，疑似敏感命中 **0**。未隐藏真实发现、未输出匹配值，也未以忽略规则绕过检查。安全扫描汇总在被忽略的 .cache/agent001_workflow_staged_safety.json；其结果不包含真实 Key/Host/headers。再次暂存文档后重扫通过才执行普通提交/推送；任何新疑似泄露仍须停止。提交、推送和实际 CI 结果在最终交付报告提供，不预先把 CI 记为通过。
+
+<a id="agent-001-reason-20261025"></a>
+
+## 2026-10-25：AGENT-001 兴趣主题与明确动机的离线语义修正
+
+### 范围、基线与既有证据
+
+来源：用户本轮明确字段契约和最小修正任务书。本轮 **实际 Live 请求数 0**；未运行 run_workflow_live.py --allow-live、collect-only runner、任何模型/密钥探针，不使用此前未消耗次数。所有模型响应是 Fake 或真实 SDK 的内存传输，未读取或修改私人 .env；个人 wonder.db 只做文件哈希，测试只用隔离临时库。
+
+开始时工作区/暂存区干净，main、本地 HEAD 和远程 ls-remote 均为预期 **a9bfe7885b4b9c24e016700345fd7099ad25654e**。Git 仅对相关命令临时使用既有 127.0.0.1:12450 代理，没有修改全局配置。已按 AGENTS 核对 ROADMAP/Backlog/IDEA/历史 VERIFICATION/CHANGELOG、model_adapter/schemas/workflow/tools、API 决策落库位置、两个适配/runner 测试、run_workflow_live 与案例。重审未完成任务及 deferred，仍在 M3 AGENT-001 范围内，无新阶段/优先级调整，ROADMAP 保留历史而不机械改写。
+
+上一轮真实 collect 的 **1245 Token / collect_unknown_fields** 是历史结果，不算本轮消耗或重跑。已通过 GitHub 连接器复查 [CI 40185466889](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/40185466889)，head_sha 为上述基线，completed/success；其 131 后端/82 前端/独立 PG 成功是上一轮证据，不冒充本轮测试。
+
+### 根因、实现与字段边界
+
+真正根因有两层：旧 Prompt 仅说“兴趣原因仅在原文明确提供时提取”，没有明确区分兴趣对象与个人动机；Pydantic 检查结构/类型，旧 adapter 只要求 reason 是原文子串，不能证明该子串回答了“为什么产生兴趣”。因此“想了解深海生物为什么发光”这个主题复述会被保留，虽非原文外编造，也不满足动机字段契约。
+
+最小实现仅改 model_adapter.py：
+
+1. 给 create_star_draft 的 SystemMessage 追加字段提示，说明个人动机的正例、主题/问题/活动/时间/科学因果/否定的反例与 null 规则。generate_quest_proposal 不收到此追加；既有室内文字探索限制、工具定义/指定名称、唯一调用/Pydantic 与错误分类不变。
+2. 在 Pydantic 后、原文/来源覆盖之后调用 explicit_interest_reason。先保留原文子串要求，再要求模型原因完整对应同一句明确个人因果句的原因片段。有限支持 `我喜欢/好奇/对…感兴趣，因为/由于…`、`因为/由于…，所以/因此我…`、`…让我/使我对…产生兴趣`，可带列明的少量程度词。排除主题/目标式原因、否定/不确定/引述、原文外或改写证据；不自动编写新原因。保留的字符串仍来自原文。
+3. 只规范 interest_reason 的 missing_fields：未知时出现一次，已知时移除；其他缺失字段名称/顺序、questions、category/tags/description、时间/预算/精力均保持原结果，不借此清理全部提取质量。
+
+这是保守的小型句式规则，不是通用中文理解。复杂/跨句/隐含动机、改写文本、包含引号或否定的真实原因可能被漏掉；片段不完整也优先 null。用户仍可在原有草稿编辑中明确填写原因。没有增加第二个 LLM、联网校验器、模型成本、依赖、数据库字段或迁移。
+
+字段链为：指定工具返回→Pydantic→adapter.draft 原文来源覆盖/原因标准化/该字段缺失信息→ToolRegistry 再验 DTO→AgentRun.state 待确认；正式 Star 仍只由原 decision API 在明确批准后写入。手动输入和用户编辑值仍走原 Schema/审批，不用该模型提取规则重新推断用户直接填写的动机。**正式 API/Schema/审批协议未变**，来源/真实 Star 引用/约束/幂等、Qwen 非思考和 Live runner 的调用上限/隔离检查均未改。
+
+### 公开对照、类型与模拟工作流
+
+新增 evals/interest_reason_cases.json（explicit-personal-motivation-v1），**30 个公开回归对照**，不是 EVAL-001 完整评测集或模型效果统计。包含用户十类要求及少量句式/证据边界；历史真实输入和错误 reason 不变，期望仍 null，未硬编码某个主题的生产答案。
+
+| 输入/模型原因类别 | 期望与实际离线结果 |
+| --- | --- |
+| 深海为什么发光、宇宙起源、历史原文主题复述 | null，并补 interest_reason 缺失状态 |
+| 我喜欢天文，因为小时候看过星空纪录片 | 保留“小时候看过星空纪录片”（或原文中的因果前缀版本） |
+| 因为纪录片所以我对天文感兴趣；纪录片让我对天文产生兴趣 | 保留明确的纪录片经历原因 |
+| 我之所以喜欢园艺，是因为外婆教过我照料花草；音乐让我心情平静的明确因果表达 | 保留原文明说的经历/感受 |
+| 光合作用使植物生长、否定赚钱原因、不要猜测、计划完成活动/投入时间 | null，不把科学原因/否定/目标当个人动机 |
+| 原文外经历、只取主题碎片、别人引述、不确定、跨句隐含或改写原因 | 保守 null，不补造事实 |
+| 空/空白字符串、null、字段缺失 | null；不会因默认值变为已知原因 |
+| 数字或对象类型 | invalid_model_output；保留 Pydantic 严格失败，不转成字符串 |
+
+对照通过实际 ChatOpenAI/LangChain/OpenAI SDK + 内存 MockTransport，检查适配器最终 DTO/missing_fields，而不是只测正则或修改本地变量。每个合法对照还断言其他结构化字段、原文/来源和提问不变；专测 collect 提示范围、Mock 原行为、缺失状态增补/去重/移除。
+
+两处隔离 API/实际 LangGraph 回归（分别为 SDK 内存和 Fake Chat）重放相同历史错误 reason，最终 draft.interest_reason=None，数值/精力未知仍 null，Run 仍 live 配置标签/awaiting_decision，批准前 Star/Quest 为空、decisions={}，只发生一次 Fake/内存 invoke，没有发送审批或 explore。live 标签是测试配置，不能据此称联网成功。
+
+旧 runner 测试的 topic_as_reason 曾断言其触发失败；本轮将这一单项迁为明确的“清空原因且批准前零记录”回归，保留公开原文/错误输出/null 期望和 runner 原 unknown_fields 条件，没有删除语义要求或放宽 runner。其他工具/非法结构/预算等未知信息编造仍要求失败，完整既有 Fake 双场景/上限/隔离/审批回归继续运行，不是实际模型操作。
+
+### 本轮实际检查
+
+环境：Windows PowerShell，已有 Python 3.12.15/.venv 与 Node **22.23.3**；前端当前进程 PATH 前置项目 Node，无安装/升级。测试 conftest 在应用导入前禁用 .env、空 Key/Mock 与 tracing；SDK 专项禁止 DNS/HTTP，仅允许 Windows 事件循环本机自唤醒，响应全在内存。
+
+| 检查 | 实际命令 | 本轮结果 |
+| --- | --- | --- |
+| 首轮专项 | `./.venv/Scripts/python.exe -m pytest backend/tests/test_qwen_adapter.py backend/tests/test_workflow_live_runner.py -q -rs` | **78 passed in 7.46s**；后续再增 2 个对照/2 个 Mock 检查，最终包含于下行完整回归 |
+| 后端完整 | `./.venv/Scripts/python.exe -m pytest -q -rs` | **165 passed / 1 skipped in 14.90s**；PG 因本机无 TEST_POSTGRES_URL 跳过，不是 PG 通过 |
+| Ruff | `./.venv/Scripts/python.exe -m ruff check backend evals`；`./.venv/Scripts/python.exe -m ruff format --check backend evals` | passed；25 files already formatted |
+| 前端格式/lint/类型 | frontend 下 `npm run format:check`、`npm run lint`、`npm run typecheck` | passed；前端源码未修改 |
+| 前端单测 | `npm test` | **4 files / 82 passed**，16.80s |
+| 前端构建 | `npm run build` | passed，tsc -b + Vite，1581 modules / 2.03s；不作性能比较 |
+| 真实模型/真实审批/真实 explore | 无命令 | **全部 not run，本轮实际请求 0**，不使用前轮剩余次数 |
+| 新浏览器 E2E / Docker / PG 回滚并发 / 完整 EVAL | 未执行 | **not run**；本轮字段协议风险由 SDK 内存、隔离 API/图与全量回归覆盖，无 UI/DB/部署变更 |
+
+本轮无失败测试，代码仅做实际 Ruff format 后检查通过，没有更改案例期望凑成功。没有新增依赖或评测框架，原 run_workflow_live.py 与 cases.json 的 guard/输入没有改变。个人 wonder.db 本轮仅文件 SHA-256 对照，未以 SQL/ORM 打开；安全/范围/暂存区检查在交付前追加，不读取 .env 内容。
+
+### 其他质量观察与三问复盘
+
+前次 category=未分类、tags=[]、description 为空是 Schema 合法默认，不等于整理质量充分；可能影响分类/标签查找或摘要展示，但原文仍保留，不能断言检索失效。其他 missing_fields 名称可能降低补充信息引导准确性。本轮不改这些内容，仅在既有 EVAL-001 记录候选观察，分别评价结构合法、字段语义可信、内容整理质量、产品可用性；EVAL-001 仍未正式开展，不建立虚构效果基线。
+
+- 为什么用户需要这次改动？避免把“对什么好奇”显示或经批准保存成“为什么好奇”，同时让草稿明确暴露仍未知的原因，减少用户被看似有依据的字段误导。
+- 它在 AI Agent 系统中解决了什么问题？在模型结构输出与待确认草稿之间增加字段级文本证据和语义边界；Prompt 引导生成、确定性规则保守守门、审批控制正式副作用，三者各有职责。不是 UI 文案优化或已证明的模型效果提升。
+- 我们通过这次开发学到了什么？原文一致只能证明文本来源，不能证明字段角色；Pydantic 合法也不等于语义可信。对不确定个人事实选择 null 会漏掉一些隐含动机，但比自动补全事实更符合本项目契约，缺失字段也必须与规范化后的 DTO 同步。
+
+AGENT-001 继续 in_progress，M3 真实工作流验收未完成；UX-001/002 与 UX-003 人工记录边界保留，剩余 P1 仍 UX-003、INFRA-001、INFRA-002、AGENT-001、EVAL-001，无新增已证实 P0。下一项仅建议在另获明确授权后验证修正后的真实 collect/审批/explore；本轮结束即停止，不执行该建议。
+
+交付前最终核对：`.cache/agent001_reason_doccheck.py` 实际检查 **319 处本地 Markdown 链接/锚点、28 项任务索引/详情、30 个唯一对照 ID 与历史输入/错误 reason/null 期望**，全部通过；相对基线仅 **11 个预期文件**。git diff --check 和已暂存 diff 检查通过；schemas/workflow/tools/main/config、两个 Live runner、原 cases.json、前端、依赖/锁、忽略规则、迁移和 ROADMAP 均未改，未覆盖未知工作区修改。
+
+个人 wonder.db 开始及结束 SHA-256 均为 **168DBA7DA4099D3818191ED62A748EDC71189355F2EBFDEF8A64AE52CAAA8D62**，未读取业务内容。提交前再次实际核验 .env 被 Git 忽略、未被跟踪且无私人 .env 变体被跟踪；仅扫描暂存区 11 个源码/测试/公开夹具/文档文件，Key 签名、Authorization 值、私人北京 Host、非空配置/私人文件检查均未发现疑似命中。没有读取/打印 .env；扫描汇总在被忽略的 .cache/agent001_reason_staged_safety.json。远程 main 提交前仍为预期 a9bfe7885b4b9c24e016700345fd7099ad25654e；文档补记再次暂存/扫描通过后，才按授权执行普通提交/推送。提交与实际 CI 终态在最终报告提供，不预写 CI 成功。

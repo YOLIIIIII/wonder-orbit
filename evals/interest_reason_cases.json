@@ -1,0 +1,187 @@
+{
+  "contract": "explicit-personal-motivation-v1",
+  "cases": [
+    {
+      "id": "ocean-topic",
+      "text": "我想了解深海生物为什么会发光。",
+      "model_reason": "深海生物为什么会发光",
+      "expected_reason": null
+    },
+    {
+      "id": "historical-qwen-output",
+      "text": "我一直想了解深海生物为什么会发光，想找时间记录三个感兴趣的问题。",
+      "model_reason": "一直想了解深海生物为什么会发光",
+      "expected_reason": null
+    },
+    {
+      "id": "universe-topic",
+      "text": "我很好奇宇宙的起源。",
+      "model_reason": "宇宙的起源",
+      "expected_reason": null
+    },
+    {
+      "id": "personal-documentary",
+      "text": "我喜欢天文，因为小时候看过星空纪录片。",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": "小时候看过星空纪录片"
+    },
+    {
+      "id": "personal-causal-prefix",
+      "text": "我喜欢天文，因为小时候看过星空纪录片。",
+      "model_reason": "因为小时候看过星空纪录片",
+      "expected_reason": "因为小时候看过星空纪录片"
+    },
+    {
+      "id": "personal-therefore",
+      "text": "因为小时候看过星空纪录片，所以我对天文感兴趣。",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": "小时候看过星空纪录片"
+    },
+    {
+      "id": "personal-trigger",
+      "text": "小时候看过星空纪录片让我对天文产生了兴趣。",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": "小时候看过星空纪录片"
+    },
+    {
+      "id": "personal-origin",
+      "text": "我之所以喜欢园艺，是因为外婆教过我照料花草。",
+      "model_reason": "外婆教过我照料花草",
+      "expected_reason": "外婆教过我照料花草"
+    },
+    {
+      "id": "personal-feeling",
+      "text": "我对音乐感兴趣，因为听歌让我心情平静。",
+      "model_reason": "听歌让我心情平静",
+      "expected_reason": "听歌让我心情平静"
+    },
+    {
+      "id": "scientific-cause",
+      "text": "因为光合作用，植物能够生长，我想了解这个过程。",
+      "model_reason": "光合作用",
+      "expected_reason": null
+    },
+    {
+      "id": "negated-motive",
+      "text": "我不是因为想赚钱才学绘画。",
+      "model_reason": "想赚钱",
+      "expected_reason": null
+    },
+    {
+      "id": "negated-reason-clause",
+      "text": "我喜欢绘画，但不是因为想赚钱。",
+      "model_reason": "想赚钱",
+      "expected_reason": null
+    },
+    {
+      "id": "no-guess",
+      "text": "不要猜测原因，我想了解深海生物为什么会发光。",
+      "model_reason": "想了解深海生物",
+      "expected_reason": null
+    },
+    {
+      "id": "model-invented-history",
+      "text": "我想了解深海生物为什么会发光。",
+      "model_reason": "小时候生活在海边",
+      "expected_reason": null
+    },
+    {
+      "id": "activity-goal",
+      "text": "我喜欢绘画，因为想在周末完成一幅作品。",
+      "model_reason": "想在周末完成一幅作品",
+      "expected_reason": null
+    },
+    {
+      "id": "time-plan",
+      "text": "我准备花十分钟记录三个问题。",
+      "model_reason": "花十分钟",
+      "expected_reason": null
+    },
+    {
+      "id": "topic-in-real-cause",
+      "text": "我喜欢天文，因为小时候看过天文纪录片。",
+      "model_reason": "天文",
+      "expected_reason": null
+    },
+    {
+      "id": "quoted-other-person",
+      "text": "朋友说：“我喜欢天文，因为小时候看过星空纪录片。”",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": null
+    },
+    {
+      "id": "reported-other-person",
+      "text": "朋友说我喜欢天文，因为小时候看过星空纪录片。",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": null
+    },
+    {
+      "id": "uncertain-cause",
+      "text": "我喜欢天文，也许是因为小时候看过星空纪录片。",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": null
+    },
+    {
+      "id": "implicit-cause-conservative",
+      "text": "小时候看过星空纪录片。我喜欢天文。",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": null
+    },
+    {
+      "id": "rewritten-evidence",
+      "text": "我喜欢天文，因为小时候看过星空纪录片。",
+      "model_reason": "童年曾观看天文影片",
+      "expected_reason": null
+    },
+    {
+      "id": "empty-string",
+      "text": "我很好奇宇宙的起源。",
+      "model_reason": "",
+      "expected_reason": null
+    },
+    {
+      "id": "whitespace-string",
+      "text": "我很好奇宇宙的起源。",
+      "model_reason": "  ",
+      "expected_reason": null
+    },
+    {
+      "id": "explicit-null",
+      "text": "我很好奇宇宙的起源。",
+      "model_reason": null,
+      "expected_reason": null
+    },
+    {
+      "id": "missing-field",
+      "text": "我很好奇宇宙的起源。",
+      "omit_reason": true,
+      "expected_reason": null
+    },
+    {
+      "id": "wrong-type",
+      "text": "我很好奇宇宙的起源。",
+      "model_reason": 42,
+      "expected_failure": "invalid_model_output"
+    },
+    {
+      "id": "wrong-object",
+      "text": "我很好奇宇宙的起源。",
+      "model_reason": {
+        "cause": "猜测"
+      },
+      "expected_failure": "invalid_model_output"
+    },
+    {
+      "id": "personal-modifier",
+      "text": "我很喜欢天文，因为小时候看过星空纪录片。",
+      "model_reason": "小时候看过星空纪录片",
+      "expected_reason": "小时候看过星空纪录片"
+    },
+    {
+      "id": "goal-with-modifiers",
+      "text": "我喜欢绘画，因为我一直很想完成一幅作品。",
+      "model_reason": "我一直很想完成一幅作品",
+      "expected_reason": null
+    }
+  ]
+}

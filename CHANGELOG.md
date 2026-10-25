@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### 2026-10-25：AGENT-001 兴趣主题与明确动机的离线修正
+
+- collect 专用提示区分个人原因、主题/问题/目标、科学因果与否定，补正反例/null 要求；探索提示及室内文字活动/工具协议保留。
+- 原文子串条件之外，新增小型明确个人因果句式证据保护；不明确/否定/引述/目标或原文外信息清为 null，仅同步 interest_reason 的 missing_fields 状态。有限规则可能漏掉隐含或复杂动机，不宣称通用语义理解；空值安全处理，错误类型保持 Pydantic 严格失败。
+- 新增 30 项公开字段对照，通过实际 LangChain/SDK 内存传输及模拟 API/图验证；历史公开主题错误仍要求 null，批准前零正式记录，Mock/其他字段/审批/约束和 Live 上限隔离回归保留。
+- 后端 165 passed / 1 skipped，Ruff、前端格式/lint/类型/82 项测试/build 通过；真实请求 **0**，生产 API/Schema/审批、数据库/依赖/前端和 Live runner 未改。AGENT-001 保持 in_progress，真实审批/explore 未验证，EVAL-001 未开展。详细证据与规则边界见 [VERIFICATION](docs/VERIFICATION.md#agent-001-reason-20261025)。
+
 ### 2026-10-25：AGENT-001 第二阶段隔离库验证入口与真实失败实证
 
 - 新增专用工作流 runner：显式 --allow-live，固定百炼 qwen3.8-flash/非 Mock/零重试，适配器 request 与模型 invoke 双层限两次并先落盘；新 .cache SQLite、实际 engine/SessionLocal、既有 Alembic 与初始零记录检查先于请求，通过现有 API/图/工具和明确的模拟测试 decision 核对批准/幂等/关联，失败即停。

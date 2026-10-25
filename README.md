@@ -93,6 +93,8 @@ Linux/macOS 将 `$env:PYTHONPATH='backend'` 换成 `export PYTHONPATH=backend`�
 
 2026-10-25 第二阶段新增隔离工作流入口 `evals/run_workflow_live.py --allow-live`：最多 collect/explore 各一次、零重试，通过现有 FastAPI/图/工具和模拟测试 decision，所有正式测试数据仅在新建 .cache SQLite；实际 engine/迁移/初始零记录检查先于模型，默认 pytest/CI 不执行。**本轮已运行一次 collect 后停止**：工具/结构/图生成通过，interest_reason 将主题复述为动机，严格空值检查失败；没有批准、没有 Star/Quest/Reflection，没有发起 explore。真实用量 1245 Token；后续新调用须另获授权，不使用本轮剩余次数补跑。入口/离线命令和边界见 [evals](evals/README.md)，[真实证据](docs/VERIFICATION.md#agent-001-workflow-20261025)；不是完整 Agent 闭环成功。
 
+2026-10-25 动机语义离线修正：collect 生成后的 interest_reason 现在需同时满足原文证据和有限的明确个人因果句式，主题/问题/目标、否定或无充分依据时清为 null，并同步该字段 missing_fields；仅补 collect 提示，不改探索或审批。规则可能漏掉隐含/复杂动机，不是通用语义判断；30 项公开对照和隔离 API/图回归通过，本轮真实请求 0、真实审批/explore 仍待授权，历史失败不改写为真实通过。详见 [字段回归](evals/README.md#interest-reason-offline-20261025)。
+
 Mock 草稿不会猜测兴趣原因、预算或精力。免费“写三个好奇问题”体验预算为 0，时间明确为估计值。约束取当前请求与已设置偏好的较严格上限。预算受限时未知预算会被拒绝；自由文本约束不会让模型自行宣称满足。
 
 ## 输入提示与实际规则

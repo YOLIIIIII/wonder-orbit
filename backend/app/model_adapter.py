@@ -1,10 +1,58 @@
 import json
+import re
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
 from .config import Settings
 from .rules import SUPPORTED_CONSTRAINTS, TEXT_STEPS
 from .schemas import AgentRequest, DraftResult, Preferences, Proposal, ProposalResult, StarInput
+
+
+INTEREST_REASON_INSTRUCTION = (
+    "interest_reason 只回答用户自己为什么对该兴趣产生兴趣，必须有原文明确的个人动机依据，"
+    "逐字提取原因片段；未明确提供时用 null，并将 interest_reason 列入 missing_fields。"
+    "正例：我喜欢天文，因为小时候看过星空纪录片。原因是‘小时候看过星空纪录片’。"
+    "反例：我想了解深海生物为什么会发光、我很好奇宇宙的起源，只给出主题/问题，原因均为 null。"
+    "想完成的活动或投入时间不是兴趣原因；‘因为光合作用植物能生长’是科学因果，"
+    "不是个人兴趣动机；‘我不是因为想赚钱才学绘画’不能提取否定的动机。"
+    "不要猜测经历、心理或兴趣价值，不确定就用 null。"
+)
+
+# 只识别明确的个人因果句式；不是通用中文语义判断，宁可漏提取。
+_PERSONAL_INTEREST = (
+    r"我(?:之所以)?(?:一直|很|非常|特别)?(?:喜欢|好奇|对[^，,]{1,60}(?:感兴趣|好奇|着迷))[^，,]{0,60}"
+)
+_REASON_PATTERNS = (
+    re.compile(rf"^{_PERSONAL_INTEREST}[，,]?(?:主要)?(?:是)?(?:因为|由于)(?P<cause>[^，,]+)(?:[，,].*)?$"),
+    re.compile(rf"^(?:因为|由于)(?P<cause>[^，,]+)[，,](?:所以|因此){_PERSONAL_INTEREST}$"),
+    re.compile(r"^(?P<cause>[^，,]+?)[，,]?(?:让|使)我对[^，,]{1,60}(?:产生了兴趣|产生兴趣|感兴趣|着迷)$"),
+)
+_UNCERTAIN_OR_NEGATED = re.compile(
+    r"不是|并非|并不|不喜欢|不感兴趣|不再|不因为|不想|没有|未曾|不确定|也许|可能|或许|假如|如果|据说|假设|[\"'“”‘’「」]"
+)
+_TOPIC_OR_GOAL = re.compile(
+    r"^(?:我)?(?:一直|很|非常|特别|只是|更|就){0,3}(?:想|打算|准备|希望|计划|为了|喜欢|好奇)|为什么|为何"
+)
+
+
+def explicit_interest_reason(text: str, reason: str | None) -> str | None:
+    """保留与原文明确个人因果片段完整对应的原因；主题/推测/否定或模糊证据置空。"""
+    if not reason or reason not in text:
+        return None
+    candidate = re.sub(r"^(?:因为|由于)", "", reason).strip()
+    candidate = candidate.rstrip("。！？!?；;")
+    for sentence in re.split(r"[。！？!?；;\n]+", text):
+        sentence = sentence.strip()
+        if not sentence or _UNCERTAIN_OR_NEGATED.search(sentence):
+            continue
+        for pattern in _REASON_PATTERNS:
+            match = pattern.fullmatch(sentence)
+            if not match:
+                continue
+            cause = match["cause"].strip()
+            if candidate == cause and not _TOPIC_OR_GOAL.search(cause):
+                return reason
+    return None
 
 
 class ModelFailure(Exception):
@@ -54,6 +102,7 @@ class ModelAdapter:
                             "建议限定为使用已有文字的室内思考/记录小体验，不能购买物品、联网或假定有任何设备。"
                             "免费文字记录可估算预算为0。提出1到3项，每项引用真实ID并说明不确定性。"
                             "如果信息不足或无法满足约束，返回问题和空建议。不输出隐藏推理。"
+                            + (INTEREST_REASON_INSTRUCTION if tool_name == "create_star_draft" else "")
                         )
                     ),
                     HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
@@ -96,9 +145,13 @@ class ModelAdapter:
             result.draft.original_text = request.text
             result.draft.source_type = request.source_type
             result.draft.source_reference = request.source_reference
-            # 不将模型推测的兴趣动机保存为事实。
-            if result.draft.interest_reason and result.draft.interest_reason not in request.text:
-                result.draft.interest_reason = None
+            result.draft.interest_reason = explicit_interest_reason(
+                request.text, result.draft.interest_reason
+            )
+            # 只规范该字段的已知/未知状态，不改其他缺失字段或提问。
+            result.missing_fields = [field for field in result.missing_fields if field != "interest_reason"]
+            if result.draft.interest_reason is None:
+                result.missing_fields.append("interest_reason")
             return result
         topic_map = {
             "海洋": "自然",

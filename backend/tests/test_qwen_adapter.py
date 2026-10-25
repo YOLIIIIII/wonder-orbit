@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 
 from app.config import Settings
 from app.model_adapter import ModelAdapter, ModelFailure
-from app.schemas import AgentRequest
+from app.schemas import AgentRequest, ProposalResult
 
 
 BASE = "https://test-workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
@@ -268,3 +268,125 @@ def test_source_and_inferred_reason_are_not_model_facts(wire):
     assert draft.draft.interest_reason is None
     assert draft.draft.source_type == "paste"
     assert draft.draft.source_reference is None
+
+
+# 公开回归夹具，不是完整模型评测，也不执行 Live。
+def interest_reason_cases():
+    from pathlib import Path
+
+    return json.loads(
+        (Path(__file__).resolve().parents[2] / "evals/interest_reason_cases.json").read_text(encoding="utf-8")
+    )["cases"]
+
+
+@pytest.mark.parametrize("case", interest_reason_cases(), ids=lambda case: case["id"])
+def test_interest_reason_contract_through_real_sdk_memory_transport(wire, case):
+    fields = {
+        "title": "公开兴趣",
+        "original_text": "由适配器覆盖",
+        "description": "合法描述",
+        "category": "自然",
+        "tags": ["公开"],
+        "estimated_minutes": 12,
+        "estimated_budget": 0,
+        "energy_level": "low",
+    }
+    if not case.get("omit_reason"):
+        fields["interest_reason"] = case["model_reason"]
+    wire.message["tool_calls"] = [
+        tool(
+            {
+                "draft": fields,
+                "missing_fields": ["category", "interest_reason", "interest_reason", "custom-observation"],
+                "questions": ["公开提问"],
+            }
+        )
+    ]
+    model = ModelAdapter(config())
+    request = AgentRequest(
+        request_type="collect",
+        text=case["text"],
+        source_type="link",
+        source_reference="https://example.com/public",
+    )
+    if "expected_failure" in case:
+        with pytest.raises(ModelFailure, match="^" + case["expected_failure"] + "$"):
+            model.draft(request)
+        return
+    result = model.draft(request)
+    assert result.draft.interest_reason == case["expected_reason"]
+    assert result.missing_fields == ["category", "custom-observation"] + (
+        ["interest_reason"] if case["expected_reason"] is None else []
+    )
+    assert result.draft.original_text == case["text"]
+    assert result.draft.source_type == "link" and result.draft.source_reference == request.source_reference
+    assert result.draft.estimated_minutes == 12 and result.draft.estimated_budget == 0
+    assert result.draft.energy_level == "low" and result.draft.tags == ["公开"]
+    assert result.draft.category == "自然" and result.draft.description == "合法描述"
+    assert result.questions == ["公开提问"]
+    assert len(wire.calls) == 1
+
+
+def test_missing_reason_is_added_and_collect_prompt_is_scoped(wire):
+    model = ModelAdapter(config())
+    result = model.draft(AgentRequest(request_type="collect", text="我想了解海洋。"))
+    assert result.missing_fields == ["interest_reason"]
+    prompt = wire.calls[0]["body"]["messages"][0]["content"]
+    assert "明确的个人动机依据" in prompt and "小时候看过星空纪录片" in prompt
+    assert "科学因果" in prompt and "否定的动机" in prompt
+    assert "不能购买物品、联网或假定有任何设备" in prompt
+    wire.message["tool_calls"] = [
+        tool({"proposals": [], "questions": ["请补充"]}, name="generate_quest_proposal")
+    ]
+    model.request("generate_quest_proposal", ProposalResult, {})
+    assert "正例：我喜欢天文" not in wire.calls[1]["body"]["messages"][0]["content"]
+
+
+def test_historical_topic_output_stays_unwritten_in_api(wire, client, monkeypatch):
+    from app import main as main_module
+
+    public = next(case for case in interest_reason_cases() if case["id"] == "historical-qwen-output")
+    wire.message["tool_calls"] = [
+        tool(
+            {
+                "draft": {
+                    "title": "深海生物发光",
+                    "original_text": public["text"],
+                    "interest_reason": public["model_reason"],
+                },
+                "missing_fields": [],
+                "questions": [],
+            }
+        )
+    ]
+    monkeypatch.setattr(main_module, "settings", lambda: config())
+    monkeypatch.setattr(main_module, "adapter", lambda: ModelAdapter(config()))
+    response = client.post("/api/agent/runs", json={"request_type": "collect", "text": public["text"]})
+    assert response.status_code == 201
+    run = response.json()
+    assert run["mode"] == "live" and run["status"] == "awaiting_decision"
+    draft = run["state"]["draft"]
+    assert draft["draft"]["interest_reason"] is None and draft["missing_fields"] == ["interest_reason"]
+    assert all(
+        draft["draft"][name] is None for name in ("estimated_minutes", "estimated_budget", "energy_level")
+    )
+    assert client.get("/api/stars").json() == [] and client.get("/api/quests").json() == []
+    assert len(wire.calls) == 1
+
+
+@pytest.mark.parametrize("text", ["我想了解深海生物为什么会发光。", "我喜欢天文，因为小时候看过星空纪录片。"])
+def test_mock_reason_behavior_remains_unchanged(monkeypatch, text):
+    def denied(**kwargs):
+        pytest.fail("Mock 禁止构造真实 ChatOpenAI")
+
+    monkeypatch.setattr("app.model_adapter.ChatOpenAI", denied)
+    result = ModelAdapter(Settings(_env_file=None, mock_mode=True, model_api_key="")).draft(
+        AgentRequest(request_type="collect", text=text)
+    )
+    assert result.draft.interest_reason is None
+    assert result.missing_fields == [
+        "interest_reason",
+        "estimated_minutes",
+        "estimated_budget",
+        "energy_level",
+    ]

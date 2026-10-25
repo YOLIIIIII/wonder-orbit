@@ -186,7 +186,6 @@ def test_fake_full_api_graph_and_migrated_database(monkeypatch, tmp_path, fake):
         ("multiple_tools", 1, "failed"),
         ("invalid_schema", 1, "failed"),
         ("invented_unknown", 1, "failed"),
-        ("topic_as_reason", 1, "failed"),
         ("no_candidates", 2, "partial"),
         ("unknown_budget", 2, "partial"),
         ("bad_reference", 2, "partial"),
@@ -203,9 +202,6 @@ def test_failure_stops_and_never_manufactures_quest(monkeypatch, tmp_path, fake,
     assert not (report["counts"].get("final") or {}).get("quests")
     assert "fake-sensitive-detail" not in json.dumps(report)
     assert report["counts"]["on_exit"] == {"stars": int(calls == 2), "quests": 0, "reflections": 0}
-    if fault == "topic_as_reason":
-        assert report["error_type"] == "collect_unknown_fields"
-        assert report["stages"]["collect"]["run"]["status"] == "awaiting_decision"
 
     if fault == "timeout":
         assert report["stages"]["collect"]["run"]["status"] == "failed"
@@ -312,3 +308,25 @@ def test_report_redacts_key_and_private_host(tmp_path):
     output = (tmp_path / "report.json").read_text(encoding="utf-8")
     assert cfg.model_api_key not in output and "offline-fixture.cn-beijing" not in output
     assert "[redacted]" in output
+
+
+def test_historical_topic_reason_is_cleared_before_any_approval(fake, client, monkeypatch):
+    from app import main as main_module
+    from app.model_adapter import ModelAdapter
+
+    fake.fault = "topic_as_reason"
+    monkeypatch.setattr(main_module, "settings", config)
+    monkeypatch.setattr(main_module, "adapter", lambda: ModelAdapter(config()))
+    response = client.post("/api/agent/runs", json={"request_type": "collect", "text": w.COLLECT_TEXT})
+    assert response.status_code == 201
+    run = response.json()
+    assert run["mode"] == "live" and run["status"] == "awaiting_decision"
+    draft = run["state"]["draft"]
+    assert draft["draft"]["interest_reason"] is None
+    assert "interest_reason" in draft["missing_fields"]
+    assert all(
+        draft["draft"][name] is None for name in ("estimated_minutes", "estimated_budget", "energy_level")
+    )
+    assert client.get("/api/stars").json() == [] and client.get("/api/quests").json() == []
+    assert fake.invokes == ["create_star_draft"]
+    assert run["decisions"] == {}
