@@ -65,6 +65,20 @@ class Result(Record):
     manual: dict[str, Rating] = Field(default_factory=dict)
     approval: ApprovalEvidence | None = None
     capture: Capture | None = None
+    failure_type: (
+        Literal[
+            "timeout",
+            "rate_limit",
+            "model_unavailable",
+            "invalid_tool_call",
+            "invalid_model_output",
+            "no_model_request",
+            "request_budget_exceeded",
+            "runner_error",
+            "interrupted_unknown",
+        ]
+        | None
+    ) = None  # Sanitized category; never a provider error body.
 
 
 class Results(Record):
@@ -78,6 +92,7 @@ class Results(Record):
     model: str = "unknown"
     mode: Literal["fake", "mock", "live"]
     results: list[Result]
+    sampling: dict | None = None  # Reviewed sampling provenance, usage and timings.
 
 
 def load_public_json(path):
@@ -157,6 +172,10 @@ def prepare_captures(data):
     for result in batch.results:
         if result.output is not None:
             raise ValueError("capture_cannot_supply_normalized_output")
+        if result.failure_type and (
+            result.status != "executed" or result.capture is None or result.capture.raw_output is not None
+        ):
+            raise ValueError("failure_has_invalid_evidence")
         if result.status == "executed":
             if result.capture is None:
                 raise ValueError("capture_required")
@@ -181,6 +200,8 @@ def evaluate(data):
     rows = []
     for case_id, case in cases.items():
         result = next((r for r in batch.results if r.case_id == case_id), None)
+        if result and result.failure_type and (result.status != "executed" or result.output is not None):
+            raise ValueError("failure_has_invalid_evidence")
         kind = case["input"]["request_type"]
         checks = []
         if result and result.capture is not None:
@@ -203,7 +224,13 @@ def evaluate(data):
                     raise ValueError("rating_requires_score_and_note")
                 manual[metric] = rating.model_dump()
         if not result or result.status == "not_run":
-            if result and (result.output is not None or result.approval or result.manual or result.capture):
+            if result and (
+                result.output is not None
+                or result.approval
+                or result.manual
+                or result.capture
+                or result.failure_type
+            ):
                 raise ValueError("not_run_has_evidence")
             checks.append({"name": "output", "status": "not_run"})
         elif result.output is None:
@@ -293,6 +320,7 @@ def evaluate(data):
                 "case_id": case_id,
                 "checks": checks,
                 "manual": manual,
+                "failure_type": result.failure_type if result else None,
                 "capture": result.capture.model_dump(mode="json") if result and result.capture else None,
             }
         )

@@ -1207,3 +1207,40 @@ Windows PowerShell / 项目 Python 3.12.15 与 Node 22.23.3，PATH 进程内前�
 
 
 收尾实证：353 个本地 Markdown 链接/锚点、29 项任务索引/详情、16 个唯一 IDEA ID 一致，git diff --check 通过。相对开始 SHA256 清单，本轮只追加修改 8 个授权文件（六份文档 + styles.css/smoke.mjs）；此前 15 个未提交文件均保留，EVAL 源码/测试/公开样例、App.tsx/App.test.tsx、evals README/项目导航与开始内容逐字节相同。四份产品文档定位/候选边界、指定任务状态检查通过。密钥/Bearer/私钥签名扫描无命中，.env 仍被忽略且未跟踪，暂存区为空、HEAD 保持 ff8ae6c；本轮 5176/8026 测试服务按端口及本轮启动命令核对后已停止，不影响其他服务。
+
+<a id="eval-001-phase3-a-20261101"></a>
+
+## 2026-11-01：EVAL-001 第三阶段 A（离线准备，真实请求 0）与 UX-006 收尾
+
+开始实测 HEAD=bee5596d7bb0ea0a199af7ba9722ddded25e81a8，工作区干净；按 AGENTS→ROADMAP/Backlog→IDEA-005/015/近期 VERIFICATION 核对历史证据。用户本次任务书的新范围/反馈追加至 IDEA_LOG，全部未完成项含 deferred 的复评见 Backlog；本轮不启动 AGENT-004、生产 Prompt/规则/Schema、首页或依赖改动，不 commit/push，不连接云或发布。
+
+新增 evals/collect_quality.py 与 backend/tests/test_quality_collector.py；原 check_results 仅增加可选 failure_type（封闭脱敏类别）与 sampling 旁证，失败不得伪装成合法输出，不放宽案例/版本/快照/映射检查。默认只输出公开计划，无 Settings/适配器/数据库运行时导入；真实开关之后才读现有 Settings 并执行既有预检。固定三个案例、直接 adapter_dto；完整公开快照、展开默认值的实际适配器参数、模型实际 payload、合成 ID 一一映射、源码哈希/Git SHA 与 dirty 标记保留。现有适配器会做 Pydantic 和动机规则处理，本观察层不能区分所有未经防护的原始模型错误；后续人工分析必须承认此边界。
+
+真实批次目录独占创建，不复用/恢复；request 前 fsync 尝试计数和 attempted_unknown、usage=unknown，最多三次且每例一次，零 SDK retries，失败即停。实际合法 DTO 原值保留，非法结构无 DTO 时不重建输出。中断记录 elapsed_ms=null/usage=unknown，后续可人工审核后导出 interrupted_unknown；不猜测零消耗。隔离日志默认 public_data=false；只有显式人工已审核声明的导出才写 public_data=true，且导出拒绝 fake/mock、上下文/映射/版本/实际 payload 漂移和覆盖目标。公开导出→既有 --prepare-captures→--results，人工缺分保持 not_rated，审批未观察、不推断或伪造计数。没有自动上传。
+
+### 本轮实际检查（Windows / 项目现有 Python 3.12 .venv）
+
+| 命令/检查 | 最终结果与边界 |
+| --- | --- |
+| `.venv/Scripts/ruff.exe check backend evals` | passed；All checks passed |
+| `.venv/Scripts/ruff.exe format --check backend evals` | passed；30 files already formatted |
+| `.venv/Scripts/python.exe -m pytest -q -rs` | 268 passed / 1 skipped，15.24s；跳过 test_postgres 因未配置独立 TEST_POSTGRES_URL，不声称 PG 通过 |
+| 默认 `.venv/Scripts/python.exe -X utf8 evals/collect_quality.py` | exit 0；mode=offline、requests=0、三例顺序准确；没有真实批次目录或公开输出文件 |
+| 原 checker `--prepare-captures evals/sample_public_captures.json`、`--results evals/sample_fake_results.json` | 均 exit 0；仅 Fake 工具自测，非 Qwen 质量报告。完整准备→检查与失败类别/旁证保真在新增 pytest 中覆盖 |
+| GitHub 连接器 fetch_workflow_run_jobs：YOLIIIIII/wonder-orbit，41301902392 | backend job 124834414738、frontend job 124834414893 均 completed/success；后端迁移/schema/Ruff/pytest/独立 PG、前端格式/lint/type/test/build 步骤均 success。这是已推送 bee5596 的历史 CI，本轮未触发新 CI |
+
+新增 29 项采集保护用例。SDK Fake 客户端走实际适配器/解析，测试模型调用参数固定、三例次数/顺序/每例第二次请求拒绝、每个位置超时/非法结构即停、unknown usage、请求前日志、固定集哈希漂移、错误模型/Mock/空 Key/非零重试拒绝、输入/偏好/快照/映射/版本/model_payload 差异拒绝、Fake 标记拒绝作为真实导出、原始 DTO 保留及缺评分 not_rated。两种独立子进程 audit hook：默认 CLI 禁配置/模型/图导入与私人 .env/.cache/DB/网络访问；模拟真实分支使用显式测试 Settings/Fake Timeout，禁个人配置/数据库/SQLAlchemy/图导入、DB 打开和网络，报告不含测试 Key/Host/原错误。所有 Fake 结果只在 pytest 隔离临时目录，无真实提供商证据产物。
+
+开发中首轮测试文件有一个括号语法错误，修复后两项断言误按案例数组位置查找 Explore（suite 顺序并非本批顺序），改为 case_id 精确查找；没有放宽生产检查。最终全量结果如上，260/266 项为中途迭代结果，非最终结果。
+
+未执行：真实模型请求/Token 采集/真实 DTO 内容评分/阶段 B/公开真实导出；实际真实请求数 **0**，无本批真实 usage 可以汇报。前端未修改，按用户本轮范围不重跑 lint/typecheck/test/build、视觉/E2E，使用上述真实历史证据评估 UX-006，明确不是本轮应用测试。未运行新 PG/完整容器检查，无个人数据库访问、无 .env 原文/Key/私人 Host 读取或保存；Settings 私有读取分支本轮未执行。
+
+### UX-006 验收依据与复盘
+
+用户本次明确报告已查看新版邀请卡并接受阶段成果，且 bee5596 已推送；本轮核对指定 CI 双 Job success。既有全项前后端回归、1440/390px 隔离浏览器/键盘/状态/无额外写请求记录见本文件 eval-001-phase2-prep-20261101、ux-006-tint-docs-20261101；未当作本轮重跑。由这些已有工程证据和新增实际用户接受反馈，现有 MVP 验收缺口已补齐，正式状态在 Backlog 收尾；整体视觉提升仍归 UI-001/002，不强行扩展当前范围。
+
+为什么用户需要这次改动：建立可复核的小样本真实质量证据入口，未来讨论整理和探索价值时有同一输入可对照，而非凭历史印象或漂亮文字下结论。它在 Agent 系统中解决什么：隔离适配器内容质量与工作流/审批证据，固定上下文与预算，防止中断漏计、Fake/缺评分冒充质量结论；属于评测工程能力，不是本轮模型能力增强。学到了什么：工作流检索项与质量快照不是同一格式；直接传完整公开快照才可保持一致；结构合法、动机防护后的 DTO 和真正值得尝试的内容是不同证据，后续人工判断不能由确定性通过代替。首页收尾仅为 UI/UX 阶段接受，不提供模型效果证据。
+
+当前 M3 穿插 M2，M1 已交付，M2/M3 整体未完成。无新增已证实 P0；剩余 P1 为 UX-003、INFRA-001/002、EVAL-001，EVAL-001 尚无完整正式质量基线。下一项推荐为审阅本轮差异后单独确认 B 的固定脚本/额度；本轮按用户明确两阶段要求停止，不自动真实请求或提交推送。
+
+交付前文档/范围实测：360 个本地 Markdown 链接/锚点通过，29 项任务索引/详情状态一致；本轮仅 10 个预期文件（evals/collect_quality.py、backend/tests/test_quality_collector.py、evals/check_results.py、evals/README.md、docs/IDEA_LOG.md、docs/PRODUCT_BACKLOG.md、docs/PROJECT_GUIDE.md、docs/VERIFICATION.md、ROADMAP.md、CHANGELOG.md）。git diff --check 通过，变更文件密钥/Bearer/私钥签名扫描无命中；真实批次目录和公开导出不存在，暂存区为空、HEAD 仍为 bee5596。最后只追加文档记录，不宣称又重跑了应用测试。

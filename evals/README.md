@@ -195,3 +195,36 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 若要保存再检查，可用 Python subprocess 捕获 stdout，并以 `Path(...).write_text(text, encoding="utf-8")` 写入明确的公开 JSON 路径（不要存 `.cache` 再交给此工具，也不要覆盖输入）；随后 `python evals/check_results.py --results <公开准备结果.json>`。原始 capture/准备结果/检查报告都应保留，以便追溯 ID 与版本；本工具不自动发布文件。
 
 人工步骤：先核对案例输入、真实生成版本/模型/观察层和检索来源，再看确定性失败，然后按 [QUALITY_RUBRIC](QUALITY_RUBRIC.md) 在准备结果 `manual` 填 0/1/2 和具体依据，未审项保留 not_rated。不要编辑 capture/raw_output 来“修正”模型；要修模型另开有版本的新批次。无建议场景不能观察的质量维度继续 not_rated。最后重跑原 `--results`，逐项看结果和备注，不将缺执行/缺评分解释成高质量，不跨观察层或版本合并分数。
+
+## EVAL-001 第三阶段 A：固定 adapter_dto 采集入口
+
+`collect_quality.py` 复用 ModelAdapter.draft/proposals、run_live.validate_live_config 与原检查器。默认只读取公开固定案例、schemas/rules，输出离线计划；不导入 Settings/模型/图/数据库、不读 .env。不修改生产 Prompt/规则，也不执行 LangGraph、检索 API 或审批。真实配置仅在显式真实运行时由现有 Settings 读取；不能将 .env/Key/私人 Host 放入命令行、报告或对话。
+
+本轮可执行（零请求）：
+
+```powershell
+.venv/Scripts/python.exe -X utf8 evals/collect_quality.py
+```
+
+固定顺序 explicit-motivation（Collect）、unknown-motivation（Collect）、grounded-explore（Explore）。案例 wonderorbit-cases-v1、规范 wonderorbit-quality-v1；脚本固定校验整个 quality_cases.json 的 SHA256（同时作为公开检索快照版本），改动即拒绝。Explore 原样提供 original_text/category/tags 等完整字段，不冒充 workflow 的 text/score/match_basis。公开 public-star-ocean 映射至测试合成 UUID `00000000-0000-4000-8000-000000000001`，严格一一对应，绝非数据库记录。偏好 `{}` 展开为现有 Preferences 默认值，约束为空；请求默认字段和完整 adapter_inputs/model_payload 均保存供复核。
+
+以下为**阶段 B 单独确认后的固定命令，本轮禁止执行**：
+
+```powershell
+.venv/Scripts/python.exe -X utf8 evals/collect_quality.py --allow-live
+```
+
+预检只接受百炼北京 qwen3.8-flash、非 Mock、非空 Key、合法业务空间地址、SDK retries=0；预检不验证 Key/余额。适配器 request 双保护：全批最多 3 次且每例一次；请求前持久化 attempted_unknown 与计数，超时/断网/非法结构均已消耗一次尝试，失败立即停止。禁用本调用 tracing，不保存响应正文/headers/隐藏推理。没有补跑、重试、换模型、探针或可扩充案例参数。
+
+结果固定为被忽略的 `.cache/quality-baseline-v1/raw.json`，`public_data=false`。首次创建批次目录，已存在即拒绝（包括中断或失败留下的目录）；不提供覆盖/恢复开关，也不要删除目录后用剩余额度重跑。本轮尚未创建真实批次。保存实际 Git SHA + dirty 标记、适配器/DTO/规则/采集脚本/预检/案例/规范/检查器 SHA256；prompt_version 是适配器源码哈希，workflow_version=not_executed:adapter_dto，retrieval_version 是固定公开快照哈希。后处理 DTO 保留原值，这是现有适配器/Pydantic/动机防护后的观察层，不能反推未经防护的原始模型内容。
+
+每次记录 schema_valid/failed/attempted_unknown、脱敏 failure_type、实际 SDK usage 或字符串 unknown、elapsed_ms；中断未完成耗时为 null。不能将 schema_valid 当成人工质量合格。raw_output 是实际合法 DTO；非法结构没有合法 DTO 时保留 null 与错误类别，不重构/修复成预期结果。合法 DTO 的错误来源会保留原始记录且停止，准备工具仍拒绝映射，不能放宽检查器。
+
+人工复核与后续离线链路：
+
+1. 人工查看 raw.json，逐项确认只含公开内容（包括模型生成文字）、真实版本/模型/观察层、三个实际参数及 model_payload、合成映射、尝试/失败/usage。不要修改原始 DTO；若出现敏感输出，停止导出，另行处置，不自动上传。
+2. 人工确认公开后，运行 `.venv/Scripts/python.exe -X utf8 evals/collect_quality.py --export-reviewed-public`。该开关即人工已完成内容审核的声明，程序无法代替人工审查。仅读取该固定批次，校验来源/上下文/版本后，以新文件方式导出 `evals/reviewed_quality_captures.json`、public_data=true；已有目标拒绝覆盖。mode=fake/mock 的原始记录拒绝冒充真实采集。导出不调用模型、不上传。
+3. `.venv/Scripts/python.exe -X utf8 evals/check_results.py --prepare-captures evals/reviewed_quality_captures.json`。将 stdout 按 UTF-8 保存为另一明确公开 JSON，再用原 `--results <公开结果.json>`；详见上一节的 subprocess 保存方式。原始 capture 保留，只有 ID 的规范化映射改变 output。
+4. 按 QUALITY_RUBRIC 共同填人工 0/1/2 和依据；缺评分继续 not_rated。审批未执行，保留空审批观察/检查 not_rated，不编造计数。失败类别随 Result.failure_type 留在报告，未采案例为 not_run；usage/耗时/实际 payload 随 sampling 旁证保留。live 仍标 supplied_live_output_unverified，离线工具不能证明供应商来源；Fake 自测不是质量基线。
+
+阶段 A 实证见 [VERIFICATION](../docs/VERIFICATION.md#eval-001-phase3-a-20261101)。真实请求 0；完整正式基线与内容评分未执行，EVAL-001 状态仅见 Backlog。
