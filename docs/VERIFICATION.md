@@ -1122,3 +1122,6 @@ explore run_id=**83200791-e774-47a3-8dc7-8d15f17dc7f4**。先只读检索确认�
 
 
 交付前检查：339 个本地 Markdown 链接/锚点、29 项任务索引/详情优先级及状态、15 个唯一 IDEA ID 一致；11 个预期文件，无后端/依赖/迁移或缓存变更。最终 `npm run format:check` 和 `git diff --check` 通过。.env 被忽略且未跟踪，变更文件 Key/Bearer/私钥签名扫描无命中；暂存仅上述源码/测试/文档，不含私人配置或数据库。指定身份创建本地提交；普通推送/CI 以最终报告实际结果为准，不提前写通过。UX-006 本地验收通过，远程交付仍待网络恢复，正式状态暂保留 in_progress。
+
+
+远程交付实际结果：功能提交 `947315b8a3d663aadbfed666c4981a92a5a8bca7`，信息 `feat(ux): add guided home entry points`；Author/Committer 均为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>。`git push origin main` exit 1（本地代理 127.0.0.1:7897 未监听）；命令级 `git -c http.proxy= -c https.proxy= -c http.version=HTTP/1.1 push origin main` exit 1（GitHub 443 连接 21s 超时），未变更代理配置、未强推。GitHub 连接查询此 SHA 的 Actions runs 返回 total_count=0，故本提交 CI 未触发/未执行，不是通过。远程仍为预期旧基线，UX-006 保留 in_progress，依赖网络恢复后普通推送并核对 CI。测试回环服务已停止，个人配置/数据库未改。补充此记录为独立文档提交；仅检查 Markdown/范围与 diff，不将此前应用测试冒称再次重跑。
