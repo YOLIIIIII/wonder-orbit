@@ -1,0 +1,39 @@
+{
+  "format_version": "offline-results-v1",
+  "public_data": true,
+  "case_version": "wonderorbit-cases-v1",
+  "rubric_version": "wonderorbit-quality-v1",
+  "mode": "fake",
+  "model": "handwritten-fixture",
+  "results": [
+    {
+      "case_id": "unknown-motivation",
+      "status": "executed",
+      "output": {
+        "draft": {
+          "title": "深海生物的发光",
+          "original_text": "我想了解深海生物为什么会发光。",
+          "source_type": "paste",
+          "source_reference": null,
+          "description": "对深海生物发光机制的好奇",
+          "category": "自然",
+          "tags": [
+            "深海",
+            "发光"
+          ],
+          "interest_reason": null,
+          "estimated_minutes": null,
+          "estimated_budget": null,
+          "energy_level": null
+        },
+        "missing_fields": [
+          "interest_reason"
+        ],
+        "questions": [
+          "你最想了解哪种发光生物？"
+        ]
+      },
+      "manual": {}
+    }
+  ]
+}

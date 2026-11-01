@@ -1049,3 +1049,40 @@ explore run_id=**83200791-e774-47a3-8dc7-8d15f17dc7f4**。先只读检索确认�
 本轮停止，下一项只建议另行规划 EVAL-001 的人工复核基线，不自动实施或追加真实调用。文档/暂存安全/提交/CI 的实际结果交付前核对，CI 终态在最终报告提供。
 
 交付前检查：`.cache/agent001_recheck_doccheck.py` 检查 323 个本地 Markdown 链接/锚点、28 项任务索引/详情及历史 30 个对照/原文/null 期望，全部通过；仅 7 个预期文档变化，git diff --check/暂存 diff 通过。当前所有源码、Prompt、依赖和 runner 与执行基线一致。个人库结束哈希再次相同；.env check-ignore 成功且未跟踪，暂存区 Key 签名/Authorization 值/私人 Host/数据库/私人配置扫描疑似命中 0，无 .cache 产物混入，不读取 .env 内容。普通提交/推送前再次核对远程，作者/提交者使用指定 GitHub 身份；CI 实际终态在最终报告给出，不提前写通过。
+
+
+<a id="eval-001-phase1-20261101"></a>
+
+## 2026-11-01：EVAL-001 第一阶段质量规范与离线框架
+
+基线：main/HEAD/远程均为 aa1c56e28cdac02b15c66da37561cf21de78f7d9，初始工作区/暂存区干净；按顺序读取 AGENTS、ROADMAP、Backlog、IDEA-005、最新实证、evals 与模型/Schema/工具/图及相关测试。AGENT-001 历史真实闭环通过保持不变。本轮仅评测方法和工具；EVAL-001 第一阶段交付，完整质量基线仍待验收，正式状态只在 Backlog。
+
+交付：wonderorbit-quality-v1 的 Collect 7 项 / Explore 5 项人工 0/1/2 标准（逐分值依据、not_rated），与结构/保真/已知空值/来源/资源/审批确定性检查分开；wonderorbit-cases-v1 新增 10 个公开综合案例，原 3+7 个场景和 30 个动机对照未改。合计 50 个文件内案例条目（有主题/规则复用，不等于独立语义样本）。check_results.py 只依赖现有 DTO、规则常量与已安装 Pydantic，不新建框架/表/迁移/依赖。显式公开 JSON → 校验版本/类型/规则 → stdout JSON；不自动读取或转换私人历史报告，不保存输入到数据库。Fake/Mock/Live 证据标签分别报告，Live 标签仅表示调用者声明，不验证供应商来源。
+
+实际环境：Windows PowerShell，项目 Python 3.12.15/.venv；最终前端使用项目已有 Node 22.23.3，PATH 仅当前进程前置 .tools/node/node_modules/node/bin，npm 缓存 .cache/npm；无安装/升级。
+
+| 实际命令/检查 | 本轮结果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest -q`（最终轮） | 209 passed / 1 skipped，25.83s；本机未配置 TEST_POSTGRES_URL，PG 跳过不是通过 |
+| `.venv/Scripts/python.exe -m ruff check backend evals` | passed |
+| `.venv/Scripts/python.exe -m ruff format --check backend evals` | passed，28 files |
+| 前端 `npm run format:check` / `lint` / `typecheck` / `test` / `build`（Node 22 完整重跑） | 全部 passed；82 tests / 4 files；Vite 1581 modules，build 14.52s |
+| `python evals/check_results.py --results evals/sample_fake_results.json` | exit 0；7 passed / 0 failed / 9 not_run / 1 not_rated；人工 0 rated / 60 not_rated；仅工具样例，非模型成绩 |
+
+新增 44 项专项覆盖：正确结果、错误 Star ID、时间/预算/精力、未知事实/原文/来源编造、缺人工评分、非法 JSON/封装/输出字段、not_run 矛盾、重复/未知 ID、评分类型和备注、版本区分、Fake/Mock/Live 分类、无历史/不支持约束、合法但空泛输出、批准/拒绝/重复的外部观察。另以无数据库 lookup 替身对照已有 ToolRegistry 约束验证结果，防止离线时间/预算/引用规则漂移。
+
+独立子进程 audit hook 实际阻断 socket/SQLite 事件、.env/.cache/数据库打开及 config/db/model_adapter/tools/workflow 导入，运行真实 CLI 样例通过；检查器没有网络调用/数据库/配置依赖。路径拒绝在打开前验证；错误报告不回显输入或原始 ValidationError。完整后端测试仍只使用隔离测试库、Fake/内存 SDK，未启动任何 Live runner。
+
+失败与修正保留：首次专项 35 passed / 1 failed，原因是 pytest 临时目录在 .cache 内，CLI 路径保护正确拒绝；将 JSON 解析/退出码单元测试与路径策略测试分开，未放宽保护，最终专项全部通过。首次前端误用系统 Node 16：format/typecheck 通过，lint 因 structuredClone 缺失失败，Vitest/build 因 fs/promises.constants 缺失失败；随后使用仓库已有 Node 22 完整重跑，不更改业务或依赖。首轮完整后端 201 passed / 1 skipped，之后补评分严格类型及规则对照测试，最终完整重跑如表；不拿旧轮冒充本轮。
+
+未执行：真实模型请求 **0**、Qwen Token **0**；未采集完整真实输出/人工质量基线、未优化 Prompt、未运行浏览器 E2E（无前端或生产流程变动）、未验证本机 PG 回滚/并发或完整容器。全部质量维度仍缺这一固定集的真实评分基线，历史 AGENT-001 单样本只证明既定兼容/闭环。工具的手写样例不是 Qwen 基线；人工未评分不等于 0 分，规则通过不等于体验优秀。
+
+三问复盘：
+
+- 为什么用户需要这次改动？已有真实闭环能运行，但用户还需要知道整理字段与探索建议是否准确、有用，才能有依据比较未来 Prompt/模型。
+- 它在 AI Agent 系统中解决了什么问题？将 DTO 合法、来源/资源/审批安全与语义质量分开，用版本化公开案例和可复查结果减少“只看结构成功”的误判；这是 Agent 评价能力建设，不是 UI 改动或模型能力增强。
+- 我们通过这次开发学到了什么？未分类/空摘要或泛化步骤可能合法而低价值；未知、未执行与人工观察不足必须分开。离线工具可证明检查方法工作，不能证明供应商输出质量，更不能从单次真实闭环推断总体效果。
+
+当前 M3；无新增已证实 P0，未完成 P1：UX-003、INFRA-001、INFRA-002、EVAL-001。下一项仅建议另行授权后采集同版本公开输出并人工复核；本轮交付后停止，不执行真实质量测试。提交前链接/状态/范围/暂存安全检查与最终前端结果在交付前追加；提交/本次 CI 实际终态在最终报告给出，不提前记成功。
+
+交付前实际检查追加：全仓 Markdown 本地链接/锚点 330 处、28 个任务索引/详情状态、14 个唯一 IDEA ID 均通过；案例条目 50（原 40 + 新 10）。暂存 12 个预期文件，无生产源码/依赖/前端/迁移或旧案例变更；git diff --check 通过。.env 被忽略且未跟踪；暂存文件 Key/Bearer 签名 0、非示例北京 Host 0，无 .env/.cache/数据库产物。没有读取私人配置或历史缓存，未覆盖初始未知改动（初始干净）。Node 22 最终前端全项通过见表；本提交 CI 将在普通推送后核对，最终报告给出，历史 CI 成功不替代本次。

@@ -586,3 +586,14 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 | Git | 暂存区为空；65 个项目文件未跟踪；未执行暂存/提交/推送，个人数据库仍被忽略 |
 
 本轮没有安装依赖、重跑业务测试/前端构建、启动服务、迁移数据库、调用真实模型、运行 Docker/远程 CI，也没有修改 VERIFICATION 的历史证据。仅本手册与 AGENTS 的维护规则改变，不执行 git commit/push。
+
+
+## 2026-11-01：EVAL-001 离线评价导航补充
+
+- `evals/QUALITY_RUBRIC.md`：确定性检查与 Collect/Explore 人工 0/1/2 评分口径。
+- `evals/quality_cases.json`：10 个版本化公开综合案例；引用旧 cases/interest_reason 对照，不复制已有 30 项。
+- `evals/check_results.py`：显式公开 JSON → 封装/版本校验 → 现有 DTO/约束常量检查 → 独立人工字段/结构化 stdout 报告。仅导入 schemas/rules，不导入 Settings/数据库/模型/图运行时，不联网、不写库、不自动读缓存。
+- `evals/sample_fake_results.json`：手写单案例工具自检输入，非模型基线。
+- `backend/tests/test_offline_evals.py`：合法/错误/缺失/版本/证据分层及独立进程网络、配置、数据库访问防护验证。
+
+命令：`python evals/check_results.py --results evals/sample_fake_results.json`；使用项目 .venv。退出码及格式见 [evals/README](../evals/README.md#offline-quality-v1)。生产调用链、启动与数据库结构未变。

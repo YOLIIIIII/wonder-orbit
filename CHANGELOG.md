@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+### 2026-11-01：EVAL-001 第一阶段离线质量评价
+
+- 定义 Collect/Explore 人工 0/1/2 评分与确定性检查边界，缺观察为 not_rated；新增 10 个公开综合案例和版本标识，复用既有 40 个案例条目，不复制动机对照。
+- 交付显式公开 JSON 离线检查器与手写自检样例，复用 DTO/约束常量；结构化报告分别保存版本/模式/检查结果与人工字段，Fake/Mock 不充当 Qwen 基线；不导入配置/模型/数据库运行时。
+- 后端最终 209 passed / 1 skipped、Ruff 与前端格式/lint/typecheck/82 项测试/build 通过；独立进程验证无联网/配置读取/数据库访问。真实模型请求与 Qwen Token 均 0；不改 Prompt、模型、生产流程、前端或依赖。EVAL-001 仅第一阶段交付，完整基线仍待验收。实际检查和复盘见 [VERIFICATION](docs/VERIFICATION.md#eval-001-phase1-20261101)。
+
 ### 2026-11-01：AGENT-001 真实 Collect → Explore 闭环验收
 
 - 复用最新语义修正代码与现有 runner，仅执行一次、真实两次 Qwen3.8-Flash 请求；collect 原始动机 null，explore 正确引用新建测试 Star，结构/确定性约束通过，全部模拟测试批准及重复决定幂等通过，最终 Star/Quest/Reflection=1/1/0。

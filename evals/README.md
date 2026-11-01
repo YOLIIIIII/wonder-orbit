@@ -118,3 +118,28 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 这只是字段契约回归，不启动 EVAL-001、不提供模型准确率。category/tags/description 和其他 missing_fields 名称的历史质量观察留给 EVAL-001 候选，未在本轮修正。真实 Prompt 接受情况、修正后的真实 collect/审批/explore，仍需下一次明确授权；本轮结束即停止。证据见 [本轮验证](../docs/VERIFICATION.md#agent-001-reason-20261025)。
 
 2026-11-01 真实复验追加：最新语义代码下仅执行一次现有工作流 runner，collect/explore 各一次全通过（共 2869 Token），原始动机 null、隔离库模拟批准/幂等/真实来源/约束/关联通过，最终 Star/Quest/Reflection=1/1/0。单一服务验收已具证，不代表模型质量基线或真实体验效果；历史失败保留。两次额度用完，本轮停止，任何新调用需新授权。详见 [最新实证](../docs/VERIFICATION.md#agent-001-live-recheck-20261101)。
+
+
+<a id="offline-quality-v1"></a>
+
+## EVAL-001 第一阶段：公开质量规范与离线检查（2026-11-01）
+
+[QUALITY_RUBRIC](QUALITY_RUBRIC.md) 定义 Collect 7 项、Explore 5 项人工 0/1/2 标准；确定性检查独立统计，未知/不可观察保留 not_rated，不自动给低分或高分。
+
+案例账本：旧 cases.json 3 个 extraction + 7 个 scenarios，旧 interest_reason_cases.json 30 个对照均不变；新增 [quality_cases.json](quality_cases.json) **10 个**综合评价案例，共 **50 个文件内案例条目（原 40 + 新 10）**，部分主题/规则复用，不称 50 个独立语义样本。新增案例版本 wonderorbit-cases-v1，规范 wonderorbit-quality-v1；每项附输入、规则、人工关注点。明确动机复用旧 personal-documentary，无批量复制 30 个对照。
+
+无需 .env、数据库或网络，直接执行：
+
+```powershell
+& .\.venv\Scripts\python.exe evals/check_results.py --results evals/sample_fake_results.json
+```
+
+仅输出 JSON 至 stdout；需要保存时可将标准输出重定向到明确的公开 JSON 文件。不自动读取 .cache、历史报告、私人配置或 wonder.db；拒绝 .cache/.git/.env 路径及非 JSON。输入必须由调用者确认 public_data=true；这不是自动隐私脱敏器，不向输入文件放私密数据。
+
+结果封装参考 [sample_fake_results.json](sample_fake_results.json)。必填 format_version=offline-results-v1、public_data=true、case_version、rubric_version、mode（fake/mock/live）、results；生成版本 prompt_version/workflow_version/retrieval_version 缺失写 not_recorded，model 缺失写 unknown。一个文件只表示一种模型/模式/版本组合；比较时分别运行、保留 metadata，不混合成绩；未知或不同案例/规范版本拒绝评价。
+
+每条结果用 case_id、status=executed/not_run；执行输出放 output（现有 DraftResult 或 ProposalResult 原始公开 DTO）。缺案例计 not_run；缺输出或非法 Schema 失败。manual 按规范维度保存 {"score": 0/1/2/"not_rated", "note": "简短依据"}；给分必须有备注。缺评分保留 not_rated。审批观察可选 approval={before,after_generation,after_decision,after_repeat,decision,authorization}，计数只针对本次对应实体（Collect 的 Star / Explore 的 Quest）；decision=approved/rejected/none，authorization=user_api/isolated_test_simulation/none。未提供观察标 not_rated，不从文本推断权限。公开案例 ID 与输出基于固定检索快照验证，不查询正式数据库。
+
+报告含各案例实际检查与人工字段、版本、模式、证据类型及两套计数。Fake 标记 tool_self_test，Mock 标记 application_mock，Live 标记 supplied_live_output_unverified：工具只评价所提供输出，不能证明它来自供应商。人工未评分不算确定性失败；退出 0 不等于完整评价通过。退出 1 为确定性失败，2 为输入/版本错误（错误信息不回显输入）。手写样例只执行一个 Collect，其他九项 not_run，人工均 not_rated；它不是 Qwen 质量基线。
+
+本轮真实模型请求 0；AGENT-001 既有真实闭环结论不变。EVAL-001 只交付第一阶段，正式状态见 Backlog；完整真实输出/人工质量基线、Prompt 对比与真实体验效果均未采集。本轮禁止运行上述历史 Live 命令，交付后停止。

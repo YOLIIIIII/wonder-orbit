@@ -1,0 +1,286 @@
+{
+  "version": "wonderorbit-cases-v1",
+  "rubric_version": "wonderorbit-quality-v1",
+  "reuses": [
+    "cases.json:3 extraction + 7 scenarios",
+    "interest_reason_cases.json:explicit-personal-motivation-v1 (30)"
+  ],
+  "cases": [
+    {
+      "id": "explicit-motivation",
+      "input": {
+        "request_type": "collect",
+        "text": "我喜欢天文，因为小时候看过星空纪录片。",
+        "source_type": "paste",
+        "source_reference": null
+      },
+      "expected_fields": {
+        "interest_reason": "小时候看过星空纪录片",
+        "estimated_minutes": null,
+        "estimated_budget": null,
+        "energy_level": null
+      },
+      "expected_rules": [
+        "single_draft",
+        "original_and_source",
+        "reason_missing_consistency"
+      ],
+      "manual_review": "复用 interest_reason_cases personal-documentary；准确主题及有用标题/分类/标签/描述；非固定措辞。"
+    },
+    {
+      "id": "unknown-motivation",
+      "input": {
+        "request_type": "collect",
+        "text": "我想了解深海生物为什么会发光。",
+        "source_type": "paste",
+        "source_reference": null
+      },
+      "expected_fields": {
+        "interest_reason": null,
+        "estimated_minutes": null,
+        "estimated_budget": null,
+        "energy_level": null
+      },
+      "expected_rules": [
+        "single_draft",
+        "original_and_source",
+        "reason_missing_consistency"
+      ],
+      "manual_review": "科学问题不是个人动机；补充问题应帮助用户，不强迫填写所有未知。"
+    },
+    {
+      "id": "multiple-topics",
+      "input": {
+        "request_type": "collect",
+        "text": "我对海洋和陶艺都很好奇。",
+        "source_type": "paste",
+        "source_reference": null
+      },
+      "expected_fields": {
+        "interest_reason": null,
+        "estimated_minutes": null,
+        "estimated_budget": null,
+        "energy_level": null
+      },
+      "expected_rules": [
+        "single_draft",
+        "original_and_source",
+        "reason_missing_consistency"
+      ],
+      "manual_review": "当前只生成一个草稿；评价是否保留两个主题、承认限制，不要求多草稿。"
+    },
+    {
+      "id": "source-organization",
+      "input": {
+        "request_type": "collect",
+        "text": "想了解古典音乐的节奏与结构。",
+        "source_type": "link",
+        "source_reference": "https://example.org/music"
+      },
+      "expected_fields": {
+        "interest_reason": null,
+        "estimated_minutes": null,
+        "estimated_budget": null,
+        "energy_level": null
+      },
+      "expected_rules": [
+        "single_draft",
+        "original_and_source",
+        "reason_missing_consistency"
+      ],
+      "manual_review": "评价摘要、标题、分类及标签是否有信息量；不能因默认未分类/空描述合法而给高分。"
+    },
+    {
+      "id": "unknown-resources",
+      "input": {
+        "request_type": "collect",
+        "text": "我想了解苔藓，时间、预算和精力还没有决定。",
+        "source_type": "paste",
+        "source_reference": null
+      },
+      "expected_fields": {
+        "interest_reason": null,
+        "estimated_minutes": null,
+        "estimated_budget": null,
+        "energy_level": null
+      },
+      "expected_rules": [
+        "single_draft",
+        "original_and_source",
+        "reason_missing_consistency"
+      ],
+      "manual_review": "未知保持空；提问有针对性，无心理或资源推测。"
+    },
+    {
+      "id": "grounded-explore",
+      "input": {
+        "request_type": "explore",
+        "text": "深海发光",
+        "available_minutes": 10,
+        "budget": 0,
+        "energy_level": "low"
+      },
+      "retrieved_stars": [
+        {
+          "star_id": "public-star-ocean",
+          "title": "深海发光",
+          "original_text": "我对深海生物发光很好奇。",
+          "category": "自然",
+          "tags": [
+            "深海",
+            "发光"
+          ]
+        }
+      ],
+      "retrieved_star_ids": [
+        "public-star-ocean"
+      ],
+      "preferences": {},
+      "expect_proposal": true,
+      "expected_rules": [
+        "retrieved_star_ids",
+        "time",
+        "budget",
+        "energy",
+        "constraints",
+        "approval_boundary"
+      ],
+      "manual_review": "依据需真正相关；错误 ID 应失败。时间/预算/精力通过不代表现实估计可信。"
+    },
+    {
+      "id": "empty-history",
+      "input": {
+        "request_type": "explore",
+        "text": "深海发光",
+        "available_minutes": 10,
+        "budget": 0,
+        "energy_level": "low"
+      },
+      "retrieved_stars": [],
+      "retrieved_star_ids": [],
+      "preferences": {},
+      "expect_proposal": false,
+      "expected_rules": [
+        "retrieved_star_ids",
+        "time",
+        "budget",
+        "energy",
+        "constraints",
+        "approval_boundary"
+      ],
+      "manual_review": "无相关历史应澄清，不凭空推荐或虚构来源。复用 cases empty-history。"
+    },
+    {
+      "id": "unsupported-constraint",
+      "input": {
+        "request_type": "explore",
+        "text": "深海发光",
+        "available_minutes": 10,
+        "budget": 0,
+        "energy_level": "low"
+      },
+      "retrieved_stars": [
+        {
+          "star_id": "public-star-ocean",
+          "title": "深海发光",
+          "original_text": "我对深海生物发光很好奇。",
+          "category": "自然",
+          "tags": [
+            "深海",
+            "发光"
+          ]
+        }
+      ],
+      "retrieved_star_ids": [
+        "public-star-ocean"
+      ],
+      "preferences": {
+        "constraints": [
+          "保证科学事实正确"
+        ]
+      },
+      "expect_proposal": false,
+      "expected_rules": [
+        "retrieved_star_ids",
+        "time",
+        "budget",
+        "energy",
+        "constraints",
+        "approval_boundary"
+      ],
+      "manual_review": "不支持必须保证科学事实正确时，应澄清，不能声称满足。"
+    },
+    {
+      "id": "vague-but-legal",
+      "input": {
+        "request_type": "explore",
+        "text": "深海发光",
+        "available_minutes": 10,
+        "budget": 0,
+        "energy_level": "low"
+      },
+      "retrieved_stars": [
+        {
+          "star_id": "public-star-ocean",
+          "title": "深海发光",
+          "original_text": "我对深海生物发光很好奇。",
+          "category": "自然",
+          "tags": [
+            "深海",
+            "发光"
+          ]
+        }
+      ],
+      "retrieved_star_ids": [
+        "public-star-ocean"
+      ],
+      "preferences": {},
+      "expect_proposal": true,
+      "expected_rules": [
+        "retrieved_star_ids",
+        "time",
+        "budget",
+        "energy",
+        "constraints",
+        "approval_boundary"
+      ],
+      "manual_review": "合法的“想一想、试试看”仍可在步骤/探索价值得 0；不能由 Schema 打高分。"
+    },
+    {
+      "id": "approval-lifecycle",
+      "input": {
+        "request_type": "explore",
+        "text": "深海发光",
+        "available_minutes": 10,
+        "budget": 0,
+        "energy_level": "low"
+      },
+      "retrieved_stars": [
+        {
+          "star_id": "public-star-ocean",
+          "title": "深海发光",
+          "original_text": "我对深海生物发光很好奇。",
+          "category": "自然",
+          "tags": [
+            "深海",
+            "发光"
+          ]
+        }
+      ],
+      "retrieved_star_ids": [
+        "public-star-ocean"
+      ],
+      "preferences": {},
+      "expect_proposal": true,
+      "expected_rules": [
+        "retrieved_star_ids",
+        "time",
+        "budget",
+        "energy",
+        "constraints",
+        "approval_boundary"
+      ],
+      "manual_review": "提交前后计数须由隔离 API 观察提供；模型自述批准无效。批准一次、拒绝不写、重复不增。"
+    }
+  ]
+}
