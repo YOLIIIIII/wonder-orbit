@@ -1,0 +1,115 @@
+{
+  "format_version": "public-captures-v1",
+  "public_data": true,
+  "case_version": "wonderorbit-cases-v1",
+  "rubric_version": "wonderorbit-quality-v1",
+  "mode": "fake",
+  "model": "handwritten-fixture",
+  "prompt_version": "fixture-only-v1",
+  "workflow_version": "fixture-only-v1",
+  "retrieval_version": "fixture-only-v1",
+  "results": [
+    {
+      "case_id": "unknown-motivation",
+      "status": "executed",
+      "capture": {
+        "observation_layer": "adapter_dto",
+        "generation_versions": {
+          "prompt_version": "fixture-only-v1",
+          "workflow_version": "fixture-only-v1",
+          "retrieval_version": "fixture-only-v1"
+        },
+        "input": {
+          "request_type": "collect",
+          "text": "我想了解深海生物为什么会发光。",
+          "source_type": "paste",
+          "source_reference": null
+        },
+        "preferences": {},
+        "retrieved_stars": [],
+        "id_map": {},
+        "raw_output": {
+          "draft": {
+            "title": "深海生物的发光",
+            "original_text": "我想了解深海生物为什么会发光。",
+            "source_type": "paste",
+            "source_reference": null,
+            "description": "对深海生物发光机制的好奇",
+            "category": "自然",
+            "tags": [
+              "深海",
+              "发光"
+            ],
+            "interest_reason": null,
+            "estimated_minutes": null,
+            "estimated_budget": null,
+            "energy_level": null
+          },
+          "missing_fields": [
+            "interest_reason"
+          ],
+          "questions": [
+            "你最想了解哪种发光生物？"
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "grounded-explore",
+      "status": "executed",
+      "capture": {
+        "observation_layer": "adapter_dto",
+        "generation_versions": {
+          "prompt_version": "fixture-only-v1",
+          "workflow_version": "fixture-only-v1",
+          "retrieval_version": "fixture-only-v1"
+        },
+        "input": {
+          "request_type": "explore",
+          "text": "深海发光",
+          "available_minutes": 10,
+          "budget": 0,
+          "energy_level": "low"
+        },
+        "preferences": {},
+        "retrieved_stars": [
+          {
+            "star_id": "00000000-0000-4000-8000-000000000001",
+            "title": "深海发光",
+            "original_text": "我对深海生物发光很好奇。",
+            "category": "自然",
+            "tags": [
+              "深海",
+              "发光"
+            ]
+          }
+        ],
+        "id_map": {
+          "00000000-0000-4000-8000-000000000001": "public-star-ocean"
+        },
+        "raw_output": {
+          "proposals": [
+            {
+              "title": "记录发光问题",
+              "description": "围绕发光记录问题",
+              "estimated_minutes": 10,
+              "estimated_budget": 0,
+              "energy_level": "low",
+              "steps": [
+                "写下想了解的发光问题"
+              ],
+              "based_on_star_ids": [
+                "00000000-0000-4000-8000-000000000001"
+              ],
+              "rationale": "来自收藏的发光兴趣",
+              "uncertainties": [
+                "不保证解答科学问题"
+              ]
+            }
+          ],
+          "questions": []
+        }
+      }
+    }
+  ]
+}

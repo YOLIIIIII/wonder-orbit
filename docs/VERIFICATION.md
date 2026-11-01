@@ -1125,3 +1125,85 @@ explore run_id=**83200791-e774-47a3-8dc7-8d15f17dc7f4**。先只读检索确认�
 
 
 远程交付实际结果：功能提交 `947315b8a3d663aadbfed666c4981a92a5a8bca7`，信息 `feat(ux): add guided home entry points`；Author/Committer 均为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>。`git push origin main` exit 1（本地代理 127.0.0.1:7897 未监听）；命令级 `git -c http.proxy= -c https.proxy= -c http.version=HTTP/1.1 push origin main` exit 1（GitHub 443 连接 21s 超时），未变更代理配置、未强推。GitHub 连接查询此 SHA 的 Actions runs 返回 total_count=0，故本提交 CI 未触发/未执行，不是通过。远程仍为预期旧基线，UX-006 保留 in_progress，依赖网络恢复后普通推送并核对 CI。测试回环服务已停止，个人配置/数据库未改。补充此记录为独立文档提交；仅检查 Markdown/范围与 diff，不将此前应用测试冒称再次重跑。
+
+
+<a id="eval-001-phase2-prep-20261101"></a>
+
+## 2026-11-01：EVAL-001 第二阶段离线准备、UX-006 邀请入口与长期需求记录
+
+### 基线、历史证据与范围
+
+本地 main/HEAD 为 `ff8ae6c5bfcd012168080f81bb0e488872abf1f4`，初始工作区和暂存区干净。按 AGENTS 顺序读取 ROADMAP/Backlog、相关 IDEA 和最新实证，核对质量规范/固定集/检查器/两个 Live runner 与首页/测试/实际生成检索链路。GitHub 连接实际 GET 远程 main 一致；[历史运行 41296127363](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/41296127363) 对应相同 SHA，completed/success，backend/frontend 均 success。上一轮网络依赖已解除，这不是本轮测试或本轮 CI。
+
+本轮明确只本地实现/离线测试，不 commit/push；真实模型请求 **0**。不读/输出 .env、Key、私人 Host 或私人历史模型报告，不访问个人业务库；不修改生产后端、Prompt、Agent 规则、Live runner、依赖、Schema/迁移。IDEA-016 只记候选，模糊故事游戏念头、邀请式入口反馈、小绿藻素材缺口已记录并去重；所有未完成任务含 deferred 完整复评见 Backlog。
+
+### 实现与已知限制
+
+UX-006：原三个 button 变为浅色紧凑邀请卡，标题/说明/图标/箭头、hover/active/focus-visible 与展开态，保留奶油白/紫/暖黄与星球、最近星星。可访问名称/说明由 aria-labelledby/describedby 关联；第三项仍由 aria-expanded 控制原规则区，明确只按保存时间，不声称个性或实时状态理解。原 collect/archive/只读详情/忽略/审批保持不变。
+
+EVAL-001：没有新建评分器或重写人工规则。在 check_results 增加 `--prepare-captures`，互斥于原 --results，显式公开 JSON→严格封装/案例/版本/输入/偏好/检索快照/一一 ID 映射→stdout 既有结果封装（保留 capture 原始 DTO/ID/版本/观察层）→原检查器。只变合法 ProposalResult.based_on_star_ids 的精确元素，不改描述、依据、步骤等文本；重检核对归一化输出，拒绝证据漂移。错误 DTO 不修复，仍报告 failed；缺人工分为 not_rated，缺执行为 not_run。公开两条 Fake 自测样例复用旧手写测试内容、合成 UUID，绝非新 Qwen 输出或质量成绩。模式/版本为提交者声明，工具无法证明供应商来源或源码真实性。
+
+源码确定的边界：run_live 是旧 extraction collect、run_workflow_live 是单深海闭环；都没有新固定案例完整元数据。本轮 workflow.generate 的 stars 包含 text/score/match_basis，固定质量快照则为 original_text 等，不能仅替换 UUID 或删字段说一致；严格准备入口拒绝不等价内容。仅未来明确 adapter_dto 层实际提供同一固定快照的结果可按本格式接入；workflow 固定集接入还需先另行定义/版本化实际检索上下文并离线核对，再授权采集，未在本轮实现。历史“未分类/机械描述/三问重复”只是探索性观察，未填入新集/人工分数。
+
+### 本轮真实验证
+
+Windows PowerShell / 项目 Python 3.12.15 与 Node 22.23.3，PATH 进程内前置 .tools/node/node_modules/node/bin；已有依赖未安装/升级。
+
+| 实际命令/环境 | 本轮结果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m ruff check backend evals` | passed |
+| `.venv/Scripts/python.exe -m ruff format --check backend evals` | passed，28 files |
+| `.venv/Scripts/python.exe -m pytest -q`（最终源码轮） | **239 passed / 1 skipped**，23.85s；无 TEST_POSTGRES_URL，本机 PG 跳过不算通过 |
+| 前端仅变更文件 prettier --write；`npm run format:check` / `lint` / `typecheck` / `test` / `build` | 全部 passed；**85 tests / 4 files**，1581 modules，build 17.40s |
+| `python -X utf8 evals/check_results.py --prepare-captures evals/sample_public_captures.json` → subprocess 捕获并 UTF-8 写入新建临时公开 JSON → 原 `--results` | 两阶段 exit 0；14 passed / 0 failed / 8 not_run / 2 not_rated；人工 0 rated / 60 not_rated；仅工具自测。临时公开 JSON 已移除，不进入交付 |
+| 独立子进程 audit hook 禁 socket/SQLite、.env/.cache/数据库打开和运行时配置/模型/图导入，执行真实准备 CLI | passed；证明默认离线、无私人路径读取，非仅 mock 函数断言 |
+| `npm run test:e2e`，E2E_BASE_URL=http://127.0.0.1:5176 | exit 0；隔离库 Mock 完整双尺寸回归，下述证据 |
+
+最终新增 30 项后端专项回归（既有 44 → 74）：输入/来源/偏好/检索快照差异、UUID 映射缺失/重复/错误来源、重复案例、版本不匹配、非法/缺失 DTO、未知人工维度或分值、not_run、转换后原始证据保留/漂移、CLI 路径保护与独立进程离线边界。没有重建原人工评分规则。前端新增邀请卡可访问标题/说明与规则透明断言，原状态/导航/审批回归保留。
+
+浏览器：新建 `.cache/eval002-ux006-polish.db`，启动器先断言文件不存在、禁用 .env、强制 Mock/空 Key、关 tracing，运行 Alembic 并核对实际 engine.url.database。回环 Vite 5176→8026，不复用已有 5173/8000 服务；一次性 timeout fixture 仅隔离测试进程。PLAYWRIGHT_BROWSERS_PATH=.cache/browsers，E2E_ALLOW_WRITE=true，E2E_INJECTED_FAILURE=true，产物 .cache/eval002-ux006-polish。1440/390px 邀请入口边界/不重叠、Tab→焦点可见→Enter 展开、建议只读详情/忽略及整个入口段请求监听（无非 GET，包括无生成 POST）通过；原收集/批准/搜索/关联/探索/反馈/偏好/审计、结果定位/恢复/精确 ID/失败重试/只读编辑回归三条 PASS。实际查看桌面首页与移动展开建议截图，标题/说明可读、焦点框清楚、未裁切，最近星星仍可找到；不称人工主观满意度或用户本人验收。
+
+失败/重跑保留：首轮后端专项 70 passed/1 failed，独立子进程中文 stdout 使用 Windows 默认编码，父进程按 UTF-8 解码失败；为该子进程显式 -X utf8，不改业务/保护。随后专项 71 passed；补预算 bool/来源/空白版本边界后完整最终如表。首轮全后端 236 passed/1 skipped，最终 239 passed/1 skipped，不以首轮冒称最终。本轮前端完整链与 E2E 无失败。纯文档收尾不冒称再跑应用测试。
+
+未执行：真实 Qwen、真实固定集基线/人工评分、AGENT-004 模板改进、workflow 固定集自动采集/导出、本机 PG 回滚/并发/完整容器、本轮远程 CI、commit/push。未授权远程交付不是网络阻塞；历史 CI success 不作为本轮源码成绩。EVAL-001 仍 in_progress；UX-006 原首页基础认可/历史 CI 已有证据，新邀请视觉仍待用户体验，保留 in_progress。
+
+### 三问复盘与下一步
+
+- 为什么用户需要？用户知道自己想靠近什么时能自主进入，没方向时可轻点求助或搁置；邀请式说明减少工具面板感。将来质量改进也需要公开、可核对的输入输出，避免只凭“能生成”判断有用。
+- 在 AI Agent 系统解决什么？首页是 UX 表达，没有增强模型能力；离线准备则补足评测证据的案例/版本/上下文/ID 对应与保真，保留人工未知，防止将不同兴趣上下文或不同 DTO 层混成基线。
+- 学到了什么？UUID 对照不足以证明同一来源，生成实际看到的检索内容也必须相同；安全可执行与探索价值仍是两回事。渐进陪伴需要未来有历史和继续意图的证据，本轮只记录，不用邀请文案包装成长期 Agent。
+
+当前 M3，穿插 M2 体验；无新增已证实 P0。剩余 P1：UX-003、INFRA-001/002、EVAL-001、UX-006。下一步先体验邀请入口并 review 本地差异；若要推进真实质量基线，先确定 adapter/workflow 观察层及检索快照版本，再独立明确采集范围/额度。未授权不调用、不提交、不推送。
+
+
+交付前实际收尾：349 个本地 Markdown 链接/锚点、29 项任务索引/详情和 16 个唯一 IDEA ID 一致；15 个预期文件（含新增公开 Fake capture 样例），git diff --check 通过。变更文件密钥/Bearer/私钥签名扫描无命中，.env 被忽略且未跟踪；暂存区为空，HEAD 仍 ff8ae6c，无 commit/push。生产后端、依赖、Live runner、迁移未改；仅本轮 5176/8026 且命令行匹配本轮启动器的测试服务已停止，未操作已有其他服务。纯文档收尾只复核链接/任务/范围，不重复宣称运行应用测试。
+
+
+<a id="ux-006-tint-docs-20261101"></a>
+
+## 2026-11-01：UX-006 淡底色微调与产品/工程文档一致性（合并未提交批次）
+
+开始先执行 `git status --short`、`git diff --stat`：14 个已修改文件 + 未跟踪公开 Fake capture 样例，共 15 个现存未提交文件，与上一轮一致；HEAD 为 ff8ae6c。将这 15 个文件的开始 SHA256 写到忽略缓存作保留核对，不 reset/clean/stash，不覆盖或重建上一轮源码。顺序读取 AGENTS/ROADMAP/Backlog、近期 IDEA/验证与相关样式/浏览器检查，复评记录追加到 Backlog；沿用 UX-006/IDEA-015/016，无新任务或提级。
+
+本轮增量：styles.css 仅将三张邀请卡设为淡薰衣草紫 #f4eefb、暖奶油黄 #fbf5e5、浅紫粉 #f8eff5，分别配低饱和边框/hover/active 底色，hover/focus 增加轻阴影，第二张图标用暖金；保留 3px 可见焦点框。尺寸、布局、标题说明、插画/最近星星与原导航/规则建议/审批不变，App.tsx 本轮未改。smoke.mjs 在原回归上补双尺寸底色区分、hover/按下反馈、Space/Tab/Enter 及焦点框断言，保留入口段无非 GET 请求与原主流程检查。
+
+文档仅更新 README、ROADMAP、Backlog、IDEA_LOG、CHANGELOG 和本验证记录：统一“星屿不是 To-do List，念头可搁置/重新拾起，有方向自主选、无方向按需引导，AI 建议由用户决定”；README 保留全部技术/安装/能力说明，新增已实现与长期候选边界；ROADMAP 顶部改为 M3 穿插 M2，AGENT-001 既定真实闭环已验收，EVAL-001 无固定真实质量基线，INFRA-001/002 完整环境待验收；旧失败/阶段/排序保留且标历史语境。Backlog 旧基线与旧推荐顺序加日期语境，任务状态不变；IDEA-015 追加最新浅底色反馈、IDEA-016 补历史经历找方向，未新增 IDEA。小绿藻正式形象和渐进/个性化接续继续候选，未写成已实现。
+
+### 本轮实际检查
+
+| 检查 | 实际结果 |
+| --- | --- |
+| 前端 `npx prettier --write src/styles.css e2e/smoke.mjs`、`npm run format:check` / `lint` / `typecheck` / `test` / `build` | 全部 passed；85 tests / 4 files，1581 modules，build 4.74s；Node 22.23.3，进程 PATH 使用项目已有工具，未升级依赖 |
+| `npm run test:e2e` | exit 0；1440/390px 的三卡底色、hover、按下/展开、Space 收起、Tab/Enter、焦点框、无额外写请求检查通过；原收集/草稿审批/搜索/探索/反馈/偏好/审计、只读详情/编辑/失败恢复等三条 PASS |
+| 视觉核对 | 实际查看 .cache/ux006-tint-docs/我的星屿-1440.png 与 我的星屿-390.png；浅底色可分辨，无裁切/重叠，尺寸和留白仍稳定，不称用户本人验收 |
+
+浏览器仅使用新建隔离 `.cache/ux006-tint-docs.db`，启动前断言不存在、Alembic 初始化、核对实际 engine.url.database，关闭 .env 读取、强制 Mock/空 Key/关闭 tracing，一次性 timeout fixture 只在本轮隔离进程。E2E_BASE_URL=http://127.0.0.1:5176，代理到回环 8026；PLAYWRIGHT_BROWSERS_PATH=.cache/browsers，E2E_ALLOW_WRITE/E2E_INJECTED_FAILURE=true，产物在忽略缓存 .cache/ux006-tint-docs。未访问个人业务库。
+
+未执行后端 pytest/Ruff：本轮只改 CSS、浏览器检查和文档，未变更上一轮 EVAL 源码/测试/样例或生产后端，依用户本轮最小充分验证要求保留上一轮 239 passed/1 skipped 与 Ruff 结论，**不是本轮重跑**。本轮真实模型请求 0，未读取 .env/Key/私人 Host 或私人模型历史缓存，未新增迁移/依赖/大需求。远程 CI 不重跑；历史 41296127363 success 只属于 ff8ae6c 旧首页基线。当前邀请卡、EVAL 离线准备和本轮整理仍未 commit/push，暂存区未操作。
+
+三问复盘：用户需要更易察觉的温柔入口，并能从文档看清项目为何存在及哪些能力可用；本轮解决的是 UI 可发现性、Agent 建议/用户决定边界和工程事实的一致表达，不是模型能力增强。学到的是可以用低饱和底色加强可点击性，同时用有日期的历史上下文保留失败证据；产品愿景和真实验证必须分开。
+
+当前仍 M3 穿插 M2；AGENT-001 保持 done，EVAL-001/UX-006 保持 in_progress（新视觉待用户检查），UX-003 人工缺口、INFRA-001/002 环境验收保留，无新增 P0。下一步建议用户检查合并工作区后另行确认统一提交/推送；本轮停止，不自动执行。
+
+
+收尾实证：353 个本地 Markdown 链接/锚点、29 项任务索引/详情、16 个唯一 IDEA ID 一致，git diff --check 通过。相对开始 SHA256 清单，本轮只追加修改 8 个授权文件（六份文档 + styles.css/smoke.mjs）；此前 15 个未提交文件均保留，EVAL 源码/测试/公开样例、App.tsx/App.test.tsx、evals README/项目导航与开始内容逐字节相同。四份产品文档定位/候选边界、指定任务状态检查通过。密钥/Bearer/私钥签名扫描无命中，.env 仍被忽略且未跟踪，暂存区为空、HEAD 保持 ff8ae6c；本轮 5176/8026 测试服务按端口及本轮启动命令核对后已停止，不影响其他服务。

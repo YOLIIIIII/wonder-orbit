@@ -143,3 +143,55 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 报告含各案例实际检查与人工字段、版本、模式、证据类型及两套计数。Fake 标记 tool_self_test，Mock 标记 application_mock，Live 标记 supplied_live_output_unverified：工具只评价所提供输出，不能证明它来自供应商。人工未评分不算确定性失败；退出 0 不等于完整评价通过。退出 1 为确定性失败，2 为输入/版本错误（错误信息不回显输入）。手写样例只执行一个 Collect，其他九项 not_run，人工均 not_rated；它不是 Qwen 质量基线。
 
 本轮真实模型请求 0；AGENT-001 既有真实闭环结论不变。EVAL-001 只交付第一阶段，正式状态见 Backlog；完整真实输出/人工质量基线、Prompt 对比与真实体验效果均未采集。本轮禁止运行上述历史 Live 命令，交付后停止。
+
+
+## EVAL-001 第二阶段：审核公开结果的离线准备
+
+本入口只准备人工审核过的公开 capture，不发请求、不导入 Settings/数据库/适配器/工作流，不搜索或读取 `.cache`/`.env`/私人历史报告；输出到 stdout，不自动保存。仍使用上面的质量 v1 和同一份 `quality_cases.json`，不新建评分器。`public_data=true` 是提交者的审核声明，不能由程序证明数据来自供应商或已人工脱敏。
+
+已有工具边界：`run_live.py` 只跑旧 `cases.json.extraction` 的 collect，报告没有新固定集输入/检索快照且旧 v1 标识不能证明实际源码版本；`run_workflow_live.py` 仅固定深海闭环、隔离库 UUID、输入也与新固定集不完全相同。两者都不能直接改 case_id 就当作固定质量基线。本轮未改 runner、未执行真实调用；历史深海的未分类/机械描述/复述三问，只是探索性观察，不能填成新集结果或人工分数。未来固定集 Live 采集仍需另行明确调用额度和接入授权。
+
+### 对应关系与数据格式
+
+完整可运行格式见 [sample_public_captures.json](sample_public_captures.json)：两个**手写 Fake 自测夹具**（Collect 复用旧 fake 样例、Explore 复用离线测试内容），UUID 为合成映射示例，不是历史 Qwen 输出。`fixture-only-v1` 仅标识自测数据，不能用作真实生成版本。
+
+| Capture 字段 | 与固定案例/输出的关系 |
+| --- | --- |
+| 顶层 `format_version` | `public-captures-v1`；准备后变为既有 `offline-results-v1` |
+| `public_data`、`mode`、`model` | 审核声明、fake/mock/live 证据类型、实际模型标识；live 标签仍未验证供应商来源 |
+| `case_version`、`rubric_version` | 必须与固定文件及检查器一致，ID 不重命名、不按主题猜测匹配 |
+| `prompt_version`、`workflow_version`、`retrieval_version` | 必须明确非空且非 unknown/not_recorded；每条 capture.generation_versions 必须完全相同。推荐用实际采集源码 SHA256 + 提交 SHA，不能从当前代码倒推旧生成版本 |
+| `case_id`、`status` | 同一案例批次最多一次；executed 必须有 capture；缺条目/not_run 保持未执行 |
+| `capture.observation_layer` | `adapter_dto` 或 `workflow_dto`；分别表示适配器结果/工作流公开 DTO。不是原始 HTTP 响应或隐藏推理；比较时必须同层 |
+| `capture.input` | 与案例 input 逐字段相同，包含来源/引用/时间预算精力。不能只复制文本、忽略来源 |
+| `capture.preferences` | 与案例 preferences 相同；没有则 `{}`，不能使用个人偏好 |
+| `capture.retrieved_stars` | 实际传给本层生成的公开检索内容，字段集合与固定快照相同，star_id 保留运行时 ID；不能只提供标题/ID 而无原文/分类/标签 |
+| `capture.id_map` | 运行时 ID→公开 Star ID 一一对应；必须覆盖且仅覆盖本案例检索集，内容也要一致。Collect/空检索为 `{}` |
+| `capture.raw_output` | Collect 为 DraftResult，Explore 为 ProposalResult；原样保留所选 DTO 层的值，缺输出为 null，不能编造输出 |
+| `manual`、`approval` | 沿用原结果格式和外部审批证据；缺评分保留 not_rated，未观察到审批不从模型文本推断 |
+
+所有字段直接见样例，未知字段拒绝。必须先由人确认只含公开数据；不要把私人历史缓存换个名字导入。新入口会拒绝已带 normalized output 的 capture，避免两份结果打架。
+
+### UUID 映射与保真边界
+
+程序要求映射无重复目标、无缺失/额外检索项，并逐字段核对实际公开内容与固定检索快照；不能凭 UUID、标题或主题相近认定同源。只转换合法 ProposalResult 内 `based_on_star_ids` 的精确 ID 元素；标题/说明/rationale/步骤等文本、顺序和重复项不改。原始 DTO、原始运行 ID、映射和观察层保留在准备结果的 `capture` 中，检查报告也保留；再次检查会重新计算并拒绝归一化结果与原始证据漂移。程序不查询库，不能证明调用者提供的 ID 或快照真由数据库产生。
+
+若实际工作流使用的 Star 内容或输入不同（包括先 collect 的真实草稿与固定 fixture 不同），不能无损归到该案例，本工具直接拒绝。不要伪造一致性、补齐成预期字段或将科学主题近似看成同一输入。应另获授权后在隔离库设置匹配的公开 fixture，记录真实 UUID/实际提供的快照再采集；实际执行检索得到额外/缺失项时保留失败，不手工删改来过检查。运行 API 的其他字段可在人工选取 DTO 前另行存公开旁证，不能悄悄改变模型实际看到的内容。
+
+源码核对到的具体缺口：`workflow.retrieve/generate` 传给 `ModelAdapter.proposals` 的排序检索项含 `text/score/match_basis`，text 是 description 或 original_text；`star_details` 虽读取，但并未作为该生成方法的 stars 参数。固定质量案例目前是 `original_text/category/tags` 快照。因此当前真实工作流 payload 与 fixture **不等价**，本轮明确不提供自动工作流报告转换，也不把 text 改名当原文或删除额外字段来蒙混。本离线映射可用于未来明确选择 adapter_dto 层、实际向适配器提供固定公开快照的采集；完整 workflow_dto 接入仍需先另行定义/版本化实际检索快照并离线核对，再获真实采集授权。已有 runner 仍只证明既定历史闭环。样例的两个 UUID/映射只是验证这种转换方法，不证明现有工作流已经兼容固定集。
+
+非法 DTO 保留不修复，仍由现有检查器报告 output_schema failed；executed 缺输出报告 failed。错误引用或映射/上下文/版本不匹配则准备失败 exit 2，输出通用错误，不回显输入。准备 exit 0 仅表示转换完成，不代表质量通过；人工缺分既不算 0 也不算 passed。
+
+### 本轮可安全执行的自测与未来人工评审
+
+仅运行公开 Fake 样例，不运行上文历史 Live 命令：
+
+```powershell
+# stdout 是准备好的结果封装；显式按 UTF-8 保存，避免 Windows 重定向编码差异。
+.venv/Scripts/python.exe -X utf8 evals/check_results.py --prepare-captures evals/sample_public_captures.json
+# 已审核的真实 capture 将来走同一入口，但需要先有独立真实采集授权。
+```
+
+若要保存再检查，可用 Python subprocess 捕获 stdout，并以 `Path(...).write_text(text, encoding="utf-8")` 写入明确的公开 JSON 路径（不要存 `.cache` 再交给此工具，也不要覆盖输入）；随后 `python evals/check_results.py --results <公开准备结果.json>`。原始 capture/准备结果/检查报告都应保留，以便追溯 ID 与版本；本工具不自动发布文件。
+
+人工步骤：先核对案例输入、真实生成版本/模型/观察层和检索来源，再看确定性失败，然后按 [QUALITY_RUBRIC](QUALITY_RUBRIC.md) 在准备结果 `manual` 填 0/1/2 和具体依据，未审项保留 not_rated。不要编辑 capture/raw_output 来“修正”模型；要修模型另开有版本的新批次。无建议场景不能观察的质量维度继续 not_rated。最后重跑原 `--results`，逐项看结果和备注，不将缺执行/缺评分解释成高质量，不跨观察层或版本合并分数。

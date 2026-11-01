@@ -29,13 +29,15 @@ try {
     "首次引导必须使用全新隔离空库",
   );
   await page
-    .getByRole("button", { name: "记一颗新星星", exact: true })
+    .getByRole("button", { name: "我有一个新念头", exact: true })
     .waitFor();
   await page.screenshot({
     path: artifact + "/home-before.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "记一颗新星星", exact: true }).click();
+  await page
+    .getByRole("button", { name: "我有一个新念头", exact: true })
+    .click();
   await page
     .getByText(/一次整理生成一张可编辑草稿，确认后才会加入正式档案/)
     .waitFor();
@@ -83,7 +85,9 @@ try {
     0,
   );
   await page.getByRole("button", { name: "我的星屿", exact: true }).click();
-  await page.getByRole("button", { name: "记一颗新星星", exact: true }).click();
+  await page
+    .getByRole("button", { name: "我有一个新念头", exact: true })
+    .click();
   await page.getByRole("button", { name: "整理成草稿" }).click();
   await page.getByText(/草稿已经生成，还没有加入正式档案/).waitFor();
   const draftNote = await page.locator(".soft-note").textContent();
@@ -116,10 +120,10 @@ try {
   await page.getByRole("button", { name: "我的星屿", exact: true }).click();
   const coreActions = page.getByRole("group", { name: "首页核心功能" });
   await coreActions
-    .getByRole("button", { name: "帮我想想", exact: true })
+    .getByRole("button", { name: "今天想找点灵感", exact: true })
     .waitFor();
   await coreActions
-    .getByRole("button", { name: "记一颗新星星", exact: true })
+    .getByRole("button", { name: "我有一个新念头", exact: true })
     .click();
   await page
     .getByRole("region", { name: "保存后的下一步" })
@@ -257,6 +261,14 @@ try {
           );
       }
       if (name === "我的星屿") {
+        const entryWrites = [];
+        const observeEntry = (request) => {
+          if (request.method() !== "GET")
+            entryWrites.push(
+              request.method() + " " + new URL(request.url()).pathname,
+            );
+        };
+        page.on("request", observeEntry);
         const actions = page.getByRole("group", { name: "首页核心功能" });
         const buttons = actions.locator(".hero-core-action");
         assert.equal(await buttons.count(), 3);
@@ -286,11 +298,74 @@ try {
                 rects[i].y + rects[i].height <= rects[j].y,
               "首页按钮不得重叠",
             );
+        const restingColors = await buttons.evaluateAll((els) =>
+          els.map((el) => getComputedStyle(el).backgroundColor),
+        );
+        assert.equal(
+          new Set(restingColors).size,
+          3,
+          "三个入口有克制的独立底色",
+        );
+        await buttons.nth(0).hover();
+        await page.waitForTimeout(180);
+        assert.notEqual(
+          await buttons
+            .nth(0)
+            .evaluate((el) => getComputedStyle(el).backgroundColor),
+          restingColors[0],
+          "hover 应有可见反馈",
+        );
+        await page.screenshot({
+          path: artifact + `/home-invitation-hover-${width}.png`,
+          fullPage: true,
+        });
+        const inspire = actions.getByRole("button", {
+          name: "今天想找点灵感",
+          exact: true,
+        });
+        await inspire.hover();
+        await page.waitForTimeout(180);
+        const hoverColor = await inspire.evaluate(
+          (el) => getComputedStyle(el).backgroundColor,
+        );
+        await page.mouse.down();
+        await page.waitForTimeout(180);
+        assert.notEqual(
+          await inspire.evaluate((el) => getComputedStyle(el).backgroundColor),
+          hoverColor,
+          "按下态应有反馈",
+        );
+        await page.mouse.up();
+        await page.getByRole("region", { name: "一点小建议" }).waitFor();
+        await page.keyboard.press("Space");
+        await page
+          .getByRole("region", { name: "一点小建议" })
+          .waitFor({ state: "hidden" });
         await actions
-          .getByRole("button", { name: "帮我想想", exact: true })
-          .click();
+          .getByRole("button", { name: "我有一个新念头", exact: true })
+          .focus();
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Tab");
+        assert.equal(
+          await inspire.evaluate(
+            (el) =>
+              el === document.activeElement && el.matches(":focus-visible"),
+          ),
+          true,
+        );
+        assert.ok(
+          await inspire.evaluate(
+            (el) => parseFloat(getComputedStyle(el).outlineWidth) >= 2,
+          ),
+          "键盘焦点边框清晰",
+        );
+        await page.keyboard.press("Enter");
         const suggestion = page.getByRole("region", { name: "一点小建议" });
         await suggestion.waitFor();
+        await page.screenshot({
+          path: artifact + `/home-invitation-help-${width}.png`,
+          fullPage: true,
+        });
         await suggestion.getByRole("button", { name: "看看这颗星星" }).click();
         await page
           .getByRole("dialog")
@@ -298,7 +373,6 @@ try {
           .waitFor();
         await page.keyboard.press("Escape");
         await suggestion.getByRole("button", { name: "先放一放" }).click();
-        assert.equal(rects[0].height, rects[1].height);
         assert.equal(rects[0].weight, rects[1].weight);
         const before = await Promise.all(
           ["stars", "quests"].map(
@@ -307,7 +381,7 @@ try {
                 .length,
           ),
         );
-        for (const label of ["记一颗新星星", "看看以前的星星"]) {
+        for (const label of ["我有一个新念头", "我想看看以前的星星"]) {
           await actions
             .getByRole("button", { name: label, exact: true })
             .click();
@@ -324,6 +398,8 @@ try {
           ),
         );
         assert.deepEqual(after, before, "首页导航不创建 Star 或 Quest");
+        page.off("request", observeEntry);
+        assert.deepEqual(entryWrites, [], "邀请入口不生成模型请求或写入");
       }
       await guideToggle.focus();
       await page.keyboard.press("Enter");

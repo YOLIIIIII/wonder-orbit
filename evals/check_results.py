@@ -1,6 +1,7 @@
 """Offline public-result checker. Imports DTOs/constants only; stdout report, no application runtime."""
 
 import argparse
+from copy import deepcopy
 from collections import Counter
 import json
 from pathlib import Path
@@ -46,12 +47,24 @@ class ApprovalEvidence(Record):
     authorization: Literal["user_api", "isolated_test_simulation", "none"]
 
 
+class Capture(Record):
+    # Explicitly reviewed public data only. Never load a runner report or DB here.
+    observation_layer: Literal["adapter_dto", "workflow_dto"]
+    generation_versions: dict[str, str]
+    input: dict
+    preferences: dict = Field(default_factory=dict)
+    retrieved_stars: list[dict] = Field(default_factory=list)
+    id_map: dict[str, str] = Field(default_factory=dict)  # runtime ID -> public fixture ID
+    raw_output: dict | None = None
+
+
 class Result(Record):
     case_id: str
     status: Literal["executed", "not_run"]
     output: dict | None = None
     manual: dict[str, Rating] = Field(default_factory=dict)
     approval: ApprovalEvidence | None = None
+    capture: Capture | None = None
 
 
 class Results(Record):
@@ -80,9 +93,85 @@ def load_public_json(path):
     )
 
 
+def load_suite():
+    return json.loads(Path(__file__).with_name("quality_cases.json").read_text(encoding="utf-8"))
+
+
+def normalize_capture(capture, case, batch):
+    versions = {k: getattr(batch, k) for k in ("prompt_version", "workflow_version", "retrieval_version")}
+    if capture.generation_versions != versions or any(
+        not v.strip() or v.strip().lower() in {"unknown", "not_recorded"} for v in versions.values()
+    ):
+        raise ValueError("capture_version_mismatch")
+    AgentRequest.model_validate(capture.input, strict=True)
+    Preferences.model_validate(capture.preferences, strict=True)
+    # Exact case context, not title-only matching or an inference from model text.
+    if capture.input != case["input"] or capture.preferences != case.get("preferences", {}):
+        raise ValueError("capture_context_mismatch")
+    expected = {star["star_id"]: star for star in case.get("retrieved_stars", [])}
+    mapping = capture.id_map
+    if (
+        len(set(mapping.values())) != len(mapping)
+        or set(mapping.values()) != set(expected)
+        or any(not key.strip() for key in mapping)
+    ):
+        raise ValueError("capture_mapping_not_bijective")
+    actual = {}
+    for star in capture.retrieved_stars:
+        runtime_id = star.get("star_id")
+        if not isinstance(runtime_id, str) or runtime_id not in mapping or runtime_id in actual:
+            raise ValueError("capture_retrieval_mismatch")
+        public_id = mapping[runtime_id]
+        if {**star, "star_id": public_id} != expected[public_id]:
+            raise ValueError("capture_star_content_mismatch")
+        actual[runtime_id] = star
+    if set(actual) != set(mapping):
+        raise ValueError("capture_retrieval_missing")
+    output = deepcopy(capture.raw_output)
+    if case["input"]["request_type"] == "explore" and output is not None:
+        try:
+            ProposalResult.model_validate(output, strict=True)
+        except ValidationError:
+            # Keep malformed DTO unchanged so the existing checker reports schema failure.
+            return output
+        for proposal in output["proposals"]:
+            ids = proposal["based_on_star_ids"]
+            if any(star_id not in mapping for star_id in ids):
+                raise ValueError("capture_output_source_mismatch")
+            proposal["based_on_star_ids"] = [mapping[star_id] for star_id in ids]
+    return output
+
+
+def prepare_captures(data):
+    # Produces the existing result envelope plus lossless, revalidated provenance.
+    if not isinstance(data, dict) or data.get("format_version") != "public-captures-v1":
+        raise ValueError("capture_format_required")
+    batch = Results.model_validate({**data, "format_version": "offline-results-v1"})
+    suite = load_suite()
+    if batch.case_version != suite["version"] or batch.rubric_version != VERSION:
+        raise ValueError("version_mismatch")
+    cases = {case["id"]: case for case in suite["cases"]}
+    ids = [result.case_id for result in batch.results]
+    if len(ids) != len(set(ids)) or set(ids) - cases.keys():
+        raise ValueError("duplicate_or_unknown_case")
+    for result in batch.results:
+        if result.output is not None:
+            raise ValueError("capture_cannot_supply_normalized_output")
+        if result.status == "executed":
+            if result.capture is None:
+                raise ValueError("capture_required")
+            result.output = normalize_capture(result.capture, cases[result.case_id], batch)
+        elif result.capture is not None:
+            raise ValueError("not_run_has_capture")
+    prepared = batch.model_dump(mode="json", exclude_none=True)
+    # Reuse all existing manual/approval/envelope validation without duplicating the rubric.
+    evaluate(prepared)
+    return prepared
+
+
 def evaluate(data):
     batch = Results.model_validate(data)
-    suite = json.loads(Path(__file__).with_name("quality_cases.json").read_text(encoding="utf-8"))
+    suite = load_suite()
     cases = {case["id"]: case for case in suite["cases"]}
     if batch.case_version != suite["version"] or batch.rubric_version != VERSION:
         raise ValueError("version_mismatch")
@@ -94,6 +183,9 @@ def evaluate(data):
         result = next((r for r in batch.results if r.case_id == case_id), None)
         kind = case["input"]["request_type"]
         checks = []
+        if result and result.capture is not None:
+            if result.status != "executed" or result.output != normalize_capture(result.capture, case, batch):
+                raise ValueError("capture_output_changed")
 
         def check(name, ok=None):
             checks.append(
@@ -111,7 +203,7 @@ def evaluate(data):
                     raise ValueError("rating_requires_score_and_note")
                 manual[metric] = rating.model_dump()
         if not result or result.status == "not_run":
-            if result and (result.output is not None or result.approval or result.manual):
+            if result and (result.output is not None or result.approval or result.manual or result.capture):
                 raise ValueError("not_run_has_evidence")
             checks.append({"name": "output", "status": "not_run"})
         elif result.output is None:
@@ -196,7 +288,14 @@ def evaluate(data):
                 )
             else:
                 check("approval_boundary")
-        rows.append({"case_id": case_id, "checks": checks, "manual": manual})
+        rows.append(
+            {
+                "case_id": case_id,
+                "checks": checks,
+                "manual": manual,
+                "capture": result.capture.model_dump(mode="json") if result and result.capture else None,
+            }
+        )
     counts = Counter(c["status"] for row in rows for c in row["checks"])
     return {
         "report_version": "offline-report-v1",
@@ -218,11 +317,17 @@ def evaluate(data):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--results", type=Path, required=True, help="Explicit public JSON; never a private cache"
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--results", type=Path, help="Explicit public JSON; never a private cache")
+    group.add_argument(
+        "--prepare-captures", type=Path, help="Reviewed public captures -> result JSON on stdout"
     )
     args = parser.parse_args(argv)
     try:
+        if args.prepare_captures:
+            prepared = prepare_captures(load_public_json(args.prepare_captures))
+            print(json.dumps(prepared, ensure_ascii=False, indent=2))
+            return 0  # Conversion success; run --results separately to assess the output.
         report = evaluate(load_public_json(args.results))
     except (ValueError, OSError):
         # Do not echo input, raw validation errors, filesystem paths, or private content.

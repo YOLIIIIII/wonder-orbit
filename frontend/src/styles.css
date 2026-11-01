@@ -333,22 +333,6 @@ main {
   color: #92859d;
   line-height: 2.05;
 }
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-top: 23px;
-}
-.hero-actions .hero-core-action {
-  min-width: 136px;
-  min-height: 46px;
-  padding: 12px 19px;
-  font-weight: 500;
-}
-.hero-core-action.secondary {
-  background: #f0e8f8;
-}
 .primary,
 .secondary {
   display: inline-flex;
@@ -1564,4 +1548,90 @@ nav button {
 .home-help p {
   line-height: 1.9;
   overflow-wrap: anywhere;
+}
+
+/* Compact invitations keep the existing page and archive hierarchy. */
+.hero-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+.hero-actions .home-entry {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 78px;
+  padding: 14px 16px;
+  text-align: left;
+  color: #624d7e;
+  --entry-bg: #f4eefb;
+  --entry-border: #e0d2ef;
+  --entry-hover: #ece2f7;
+  --entry-active: #e7d9f3;
+  background: var(--entry-bg);
+  border: 1px solid var(--entry-border);
+  border-radius: 14px;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+/* The three existing entry positions retain their original actions. */
+.hero-actions .home-entry:nth-child(2) {
+  --entry-bg: #fbf5e5;
+  --entry-border: #e9ddbe;
+  --entry-hover: #f6edcf;
+  --entry-active: #f1e4bb;
+}
+.hero-actions .home-entry:nth-child(3) {
+  --entry-bg: #f8eff5;
+  --entry-border: #e8d7e5;
+  --entry-hover: #f1e2ee;
+  --entry-active: #ead7e6;
+}
+.hero-actions .home-entry:nth-child(2) .home-entry-icon {
+  color: #9a7b3d;
+}
+.home-entry-icon {
+  flex: 0 0 auto;
+  color: #9471b3;
+}
+.home-entry-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.home-entry-copy strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.home-entry-copy > span {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #7c6b88;
+}
+.home-entry-arrow {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: #a78bba;
+}
+.hero-actions .home-entry:hover,
+.hero-actions .home-entry:focus-visible {
+  background: var(--entry-hover);
+  border-color: #b69acb;
+  box-shadow: 0 3px 12px rgb(98 77 126 / 8%);
+}
+.hero-actions .home-entry:active,
+.hero-actions .home-entry[aria-expanded="true"] {
+  background: var(--entry-active);
+  border-color: #aa8bc1;
+}
+.hero-actions .home-entry:focus-visible {
+  outline: 3px solid #8664aa;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-actions .home-entry {
+    transition: none;
+  }
 }

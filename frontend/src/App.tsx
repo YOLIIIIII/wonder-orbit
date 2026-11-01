@@ -635,27 +635,77 @@ export default function App() {
                     aria-label="首页核心功能"
                   >
                     <button
-                      className="primary hero-core-action"
+                      className="home-entry hero-core-action"
+                      aria-labelledby="home-new-title"
+                      aria-describedby="home-new-description"
                       onClick={() => setPage("collect")}
                     >
-                      <Plus size={17} />
-                      记一颗新星星
+                      <Plus
+                        className="home-entry-icon"
+                        size={20}
+                        aria-hidden="true"
+                      />
+                      <span className="home-entry-copy">
+                        <strong id="home-new-title">我有一个新念头</strong>
+                        <span id="home-new-description">
+                          先把它留在这里，不需要马上做点什么。
+                        </span>
+                      </span>
+                      <ArrowUpRight
+                        className="home-entry-arrow"
+                        size={17}
+                        aria-hidden="true"
+                      />
                     </button>
                     <button
-                      className="secondary hero-core-action"
+                      className="home-entry hero-core-action"
+                      aria-labelledby="home-archive-title"
+                      aria-describedby="home-archive-description"
                       onClick={() => setPage("archive")}
                     >
-                      <BookOpen size={17} />
-                      看看以前的星星
+                      <BookOpen
+                        className="home-entry-icon"
+                        size={20}
+                        aria-hidden="true"
+                      />
+                      <span className="home-entry-copy">
+                        <strong id="home-archive-title">
+                          我想看看以前的星星
+                        </strong>
+                        <span id="home-archive-description">
+                          翻翻曾经留下的想法，挑一颗今天想靠近的。
+                        </span>
+                      </span>
+                      <ArrowUpRight
+                        className="home-entry-arrow"
+                        size={17}
+                        aria-hidden="true"
+                      />
                     </button>
                     <button
-                      className="secondary hero-core-action"
+                      className="home-entry hero-core-action"
+                      aria-labelledby="home-inspire-title"
+                      aria-describedby="home-inspire-description"
                       aria-expanded={homeHelpOpen}
                       aria-controls="home-help"
                       onClick={() => setHomeHelpOpen((open) => !open)}
                     >
-                      <Sparkles size={17} />
-                      帮我想想
+                      <Sparkles
+                        className="home-entry-icon"
+                        size={20}
+                        aria-hidden="true"
+                      />
+                      <span className="home-entry-copy">
+                        <strong id="home-inspire-title">今天想找点灵感</strong>
+                        <span id="home-inspire-description">
+                          还没想好做什么？先从最近留下的星星里找找可能。
+                        </span>
+                      </span>
+                      <ArrowUpRight
+                        className="home-entry-arrow"
+                        size={17}
+                        aria-hidden="true"
+                      />
                     </button>
                   </div>
                 </div>
@@ -668,6 +718,9 @@ export default function App() {
                   aria-label="一点小建议"
                 >
                   <h2>一点小建议</h2>
+                  <p className="field-hint">
+                    这里只按保存时间回看已有星星，没有分析你此刻的状态。
+                  </p>
                   <p>
                     {!connected
                       ? "暂时还读不到档案，连接后再来看看。也可以先留下一个念头。"

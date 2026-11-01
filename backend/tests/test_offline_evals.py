@@ -208,7 +208,7 @@ sys.argv=['check_results.py','--results','evals/sample_fake_results.json']
 runpy.run_path('evals/check_results.py',run_name='__main__')
 """
     result = subprocess.run(
-        [sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, encoding="utf-8"
+        [sys.executable, "-X", "utf8", "-c", code], cwd=ROOT, capture_output=True, text=True, encoding="utf-8"
     )
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["evidence_type"] == "tool_self_test"
@@ -262,3 +262,116 @@ def test_offline_constraints_match_existing_tool(changes):
     tool = SimpleNamespace(session=SimpleNamespace(get=lambda *_: True))
     expected = ToolRegistry.validate_quest_proposal(tool, args)["valid"]
     assert (checker.evaluate(data)["deterministic"]["failed"] == 0) == expected
+
+
+def captures():
+    return json.loads((ROOT / "evals/sample_public_captures.json").read_text(encoding="utf-8"))
+
+
+def test_capture_roundtrip_keeps_original_ids_dtos_and_unrated_scores():
+    data = captures()
+    before = deepcopy(data)
+    prepared = checker.prepare_captures(data)
+    assert data == before
+    row = prepared["results"][1]
+    assert row["capture"]["raw_output"] == data["results"][1]["capture"]["raw_output"]
+    assert row["output"]["proposals"][0]["based_on_star_ids"] == ["public-star-ocean"]
+    report = checker.evaluate(prepared)
+    assert report["deterministic"]["failed"] == 0
+    assert report["manual"] == {"rated": 0, "not_rated": 60}
+    assert report["evidence_type"] == "tool_self_test"
+    assert report["cases"][5]["capture"]["id_map"] == row["capture"]["id_map"]
+    assert prepared["results"][0]["output"] == data["results"][0]["capture"]["raw_output"]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda d: d["results"][0].pop("capture"),
+        lambda d: d["results"].append(deepcopy(d["results"][0])),
+        lambda d: d.update(case_version="future"),
+        lambda d: d.update(rubric_version="future"),
+        lambda d: d.update(prompt_version="other"),
+        lambda d: d["results"][0]["capture"]["generation_versions"].update(workflow_version="unknown"),
+        lambda d: d["results"][0]["capture"]["input"].update(text="different input"),
+        lambda d: d["results"][1]["capture"]["input"].update(budget=False),
+        lambda d: d["results"][0]["capture"]["input"].update(source_reference="https://example.org/wrong"),
+        lambda d: d["results"][0]["capture"]["generation_versions"].update(prompt_version=" unknown "),
+        lambda d: d["results"][1]["capture"].update(preferences={"max_budget": 1}),
+        lambda d: d["results"][1]["capture"].update(id_map={}),
+        lambda d: d["results"][1]["capture"]["id_map"].update(duplicate="public-star-ocean"),
+        lambda d: d["results"][1]["capture"]["retrieved_stars"][0].update(original_text="different source"),
+        lambda d: d["results"][1]["capture"]["retrieved_stars"][0].pop("tags"),
+        lambda d: d["results"][1]["capture"]["retrieved_stars"].append(
+            deepcopy(d["results"][1]["capture"]["retrieved_stars"][0])
+        ),
+        lambda d: d["results"][1]["capture"]["raw_output"]["proposals"][0].update(
+            based_on_star_ids=["unmapped"]
+        ),
+        lambda d: d["results"][0].update(manual={"imagined": {"score": "not_rated"}}),
+        lambda d: d["results"][0].update(manual={"topic": {"score": "unknown"}}),
+        lambda d: d["results"][0].update(status="not_run"),
+        lambda d: d["results"][0].update(output={"draft": {}}),
+        lambda d: d.update(public_data=False),
+    ],
+)
+def test_capture_rejects_unverifiable_context_and_invalid_metadata(mutation):
+    data = captures()
+    mutation(data)
+    with pytest.raises(ValueError):
+        checker.prepare_captures(data)
+
+
+@pytest.mark.parametrize("output", [None, {"draft": {}}, {"proposals": "invalid"}])
+def test_capture_missing_or_bad_dto_is_not_invented_or_repaired(output):
+    data = captures()
+    data["results"][1]["capture"]["raw_output"] = output
+    prepared = checker.prepare_captures(data)
+    assert prepared["results"][1].get("output") == output
+    assert checker.evaluate(prepared)["deterministic"]["failed"] > 0
+
+
+def test_prepared_output_and_provenance_cannot_drift():
+    prepared = checker.prepare_captures(captures())
+    prepared["results"][1]["output"]["proposals"][0]["title"] = "edited after preparation"
+    with pytest.raises(ValueError):
+        checker.evaluate(prepared)
+
+
+def test_explicit_not_run_and_manual_observations_are_kept():
+    data = captures()
+    data["results"][0]["manual"] = {"topic": {"score": "not_rated", "note": "尚未人工复核"}}
+    data["results"].append({"case_id": "empty-history", "status": "not_run"})
+    report = checker.evaluate(checker.prepare_captures(data))
+    assert report["cases"][0]["manual"]["topic"]["score"] == "not_rated"
+    assert report["cases"][6]["checks"] == [{"name": "output", "status": "not_run"}]
+
+
+def test_preparation_cli_never_imports_runtime_or_reads_private_paths():
+    code = r"""
+import sys, runpy
+
+def guard(event, args):
+    if event.startswith(('socket.', 'sqlite3.')):
+        raise AssertionError('network/database access')
+    if event == 'open':
+        path = str(args[0]).replace('\\', '/').lower()
+        if '/.env' in path or '/.cache/' in path or path.endswith(('.db', '.sqlite')):
+            raise AssertionError('private read')
+    if event == 'import' and args[0] in {'app.config','app.db','app.model_adapter','app.tools','app.workflow'}:
+        raise AssertionError('runtime import')
+sys.addaudithook(guard)
+sys.argv=['check_results.py','--prepare-captures','evals/sample_public_captures.json']
+runpy.run_path('evals/check_results.py',run_name='__main__')
+"""
+    result = subprocess.run(
+        [sys.executable, "-X", "utf8", "-c", code], cwd=ROOT, capture_output=True, text=True, encoding="utf-8"
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["format_version"] == "offline-results-v1"
+
+
+def test_preparation_cli_refuses_cache_and_old_runner_format(capsys):
+    assert checker.main(["--prepare-captures", ".cache/private-report.json"]) == 2
+    assert checker.main(["--prepare-captures", "evals/sample_fake_results.json"]) == 2
+    assert "private-report" not in capsys.readouterr().out

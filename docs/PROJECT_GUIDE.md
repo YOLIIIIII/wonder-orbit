@@ -599,3 +599,6 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 - `backend/tests/test_offline_evals.py`：合法/错误/缺失/版本/证据分层及独立进程网络、配置、数据库访问防护验证。
 
 命令：`python evals/check_results.py --results evals/sample_fake_results.json`；使用项目 .venv。退出码及格式见 [evals/README](../evals/README.md#offline-quality-v1)。生产调用链、启动与数据库结构未变。
+
+
+2026-11-01（EVAL-001 第二阶段准备 / UX-006 打磨）局部导航更新：`evals/check_results.py` 仍是同一离线评价器，新增 Capture DTO、normalize_capture/prepare_captures 与互斥 `--prepare-captures` 命令；输入明确公开 JSON→核对案例/版本/输入/偏好/检索快照与一一 ID 映射→stdout 既有结果封装（附原始 capture）→原 `--results` 重新验证及人工评分。只导入既有 DTO/规则，不触及 Live runner、模型、配置或数据库；无生产调用链/启动命令变化。新增 `evals/sample_public_captures.json` 是两个手写 Fake 自测夹具与合成 UUID，非真实报告；`backend/tests/test_offline_evals.py` 扩展映射/来源/版本/离线边界回归。首页仅把原三个 button 改成含标题/说明的紧凑邀请卡，保留 aria-expanded、原导航和审批，复用首页规则建议/StarDetails。使用说明见 [evals README](../evals/README.md)，证据见 [本轮验证](VERIFICATION.md#eval-001-phase2-prep-20261101)。
