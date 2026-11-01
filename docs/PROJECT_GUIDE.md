@@ -28,6 +28,8 @@
 
 2026-10-25（interest_reason 语义修正）局部更新：model_adapter.py 内新增 explicit_interest_reason 与 collect 专用字段提示，实际链路仍为 request 的唯一工具/Pydantic → draft 原文来源覆盖 → 原因证据过滤与该字段 missing_fields 一致性 → ToolRegistry/DraftResult → AgentRun 待确认 → 用户 decision。手动输入或用户编辑的明确值仍走原 Schema/审批，不由这个模型提取规则重判。没有 API、生产 Schema、迁移、依赖或写权限变化；原 Live runner/隔离/上限保持不变，本轮不能运行真实入口。新增公开 JSON 夹具见评测索引，测试把旧主题输出的结果仍断言为 null，并在批准前确认零正式记录，不把修正后的 Fake 当成 Live 成功。
 
+2026-11-01（UX-006）局部更新：App 内 homeHelpOpen 只控制首页按需展开，切页收起；suggestedStar 从 refresh 成功后的真实 Star 按 created_at 降序选择未归档项（同时间按 ID），不依据猜测偏好。三个入口分别 setPage(collect/archive) 或展开建议，建议阅读复用 setSelectedStar/StarDetails，关闭回到原按钮；归档分支仅导航，不自动恢复。原收集/生成/审批/探索链路及 API 不变，无新源码模块/依赖/表。App.test 覆盖状态与无写入，smoke.mjs 同步入口选择器、三按钮边界与建议阅读检查，仍运行既有双尺寸闭环；验证见 [UX-006 实证](VERIFICATION.md#ux-006-20261101)。
+
 ## 一、整体地图与阅读入口
 
 ```text

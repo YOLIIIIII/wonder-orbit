@@ -151,16 +151,67 @@ describe("后端数据与操作边界", () => {
     backend();
     render(<App />);
     expect(await screen.findByText("Mock 模式 · 规则生成")).toBeInTheDocument();
-    expect(screen.getByText("从收藏第一颗星星开始")).toBeVisible();
+    expect(screen.getByText("这里可以安放你的好奇")).toBeVisible();
+    expect(screen.getByRole("button", { name: "记一颗新星星" })).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "收集第一颗星星" }),
-    ).toBeVisible();
-    expect(
-      screen.getByText(
-        "星星是你收藏的兴趣或好奇。从收藏第一颗星星开始，探索才有真实依据。",
-      ),
+      screen.getByText("今天有什么想法吗？或者，我们看看以前留下的星星。"),
     ).toBeVisible();
     expect(screen.queryByText("深海的微光")).not.toBeInTheDocument();
+  });
+  it("空档案建议可忽略、重开并进入收集，不询问资源或写入", async () => {
+    backend();
+    render(<App />);
+    await screen.findByText("Mock 模式 · 规则生成");
+    const help = screen.getByRole("button", { name: "帮我想想" });
+    fireEvent.click(help);
+    expect(help).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("region", { name: "一点小建议" }),
+    ).toHaveTextContent("还没有正式保存的星星");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "先放一放" }));
+    expect(help).toHaveFocus();
+    expect(help).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(help);
+    fireEvent.click(screen.getByRole("button", { name: "记下一点好奇" }));
+    expect(screen.getByLabelText("你最近对什么感到好奇？")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "我的星屿" }));
+    expect(
+      screen.queryByRole("region", { name: "一点小建议" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "看看以前的星星" }));
+    expect(screen.getByRole("heading", { name: "星星档案" })).toBeVisible();
+    expect(
+      mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
+    ).toBe(true);
+  });
+  it("建议按保存时间选择真实未归档星星，不受列表顺序或最近编辑影响", async () => {
+    backend(true, null, [
+      { ...savedStar, title: "旧收藏", updated_at: "2026-11-01T00:00:00Z" },
+      {
+        ...savedStar,
+        id: "archived",
+        title: "新归档",
+        status: "archived",
+        created_at: "2026-11-01T00:00:00Z",
+      },
+      {
+        ...savedStar,
+        id: "latest",
+        title: "最近的好奇",
+        created_at: "2026-10-30T00:00:00Z",
+      },
+    ]);
+    render(<App />);
+    await screen.findByText("Mock 模式 · 规则生成");
+    fireEvent.click(screen.getByRole("button", { name: "帮我想想" }));
+    const suggestion = screen.getByRole("region", { name: "一点小建议" });
+    expect(suggestion).toHaveTextContent("最近的好奇");
+    expect(suggestion).not.toHaveTextContent("旧收藏");
+    expect(suggestion).not.toHaveTextContent("新归档");
+    expect(
+      mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
+    ).toBe(true);
   });
   it("创建草稿不自动调用正式写入 API", async () => {
     backend();
@@ -239,12 +290,16 @@ describe("后端数据与操作边界", () => {
     );
     expect(screen.getByText("等待后端连接")).toBeInTheDocument();
     const actions = screen.getByRole("group", { name: "首页核心功能" });
-    expect(within(actions).getAllByRole("button")).toHaveLength(1);
+    expect(within(actions).getAllByRole("button")).toHaveLength(3);
     expect(
-      within(actions).getByRole("button", { name: "收集一颗星星" }),
+      within(actions).getByRole("button", { name: "记一颗新星星" }),
     ).toBeVisible();
+    fireEvent.click(within(actions).getByRole("button", { name: "帮我想想" }));
     expect(
-      screen.queryByRole("button", { name: "收集第一颗星星" }),
+      screen.getByRole("region", { name: "一点小建议" }),
+    ).toHaveTextContent("暂时还读不到档案");
+    expect(
+      screen.queryByText("还没有正式保存的星星。"),
     ).not.toBeInTheDocument();
   });
   it("单兴趣示例、确认边界和链接用途可见，原始文字仍必填", async () => {
@@ -413,59 +468,54 @@ describe("后端数据与操作边界", () => {
     ).toBe(false);
   });
   it.each(["collected", "exploring"] as const)(
-    "已有 %s 星星时收集与探索都有明确按钮，导航不写入",
+    "已有 %s 星星时三个入口明确，建议仅打开阅读，不写入",
     async (status) => {
       backend(true, null, [{ ...savedStar, status }]);
       render(<App />);
       await screen.findByText("Mock 模式 · 规则生成");
-      expect(
-        screen.queryByRole("button", { name: "收集第一颗星星" }),
-      ).not.toBeInTheDocument();
       const actions = screen.getByRole("group", { name: "首页核心功能" });
-      for (const name of ["收集星星", "微型探索"]) {
-        const button = within(actions).getByRole("button", { name });
-        expect(button).toBeVisible();
-        expect(button).toHaveClass("hero-core-action");
-        expect(button).not.toHaveClass("text-button");
+      for (const name of ["记一颗新星星", "看看以前的星星", "帮我想想"]) {
+        expect(within(actions).getByRole("button", { name })).toHaveClass(
+          "hero-core-action",
+        );
       }
-      expect(within(actions).getAllByRole("button")).toHaveLength(2);
+      expect(within(actions).getAllByRole("button")).toHaveLength(3);
       expect(
-        screen.getByText(/随时收集新的好奇.*体验又能带来新的好奇/),
-      ).toBeVisible();
+        screen.queryByRole("region", { name: "一点小建议" }),
+      ).not.toBeInTheDocument();
       fireEvent.click(
-        within(actions).getByRole("button", { name: "微型探索" }),
+        within(actions).getByRole("button", { name: "帮我想想" }),
       );
-      expect(screen.getByLabelText("今天想靠近哪份好奇？")).toBeVisible();
-      fireEvent.click(screen.getByRole("button", { name: "我的星屿" }));
-      fireEvent.click(
-        within(screen.getByRole("group", { name: "首页核心功能" })).getByRole(
-          "button",
-          { name: "收集星星" },
-        ),
-      );
-      expect(screen.getByLabelText("你最近对什么感到好奇？")).toBeVisible();
+      expect(
+        screen.getByRole("region", { name: "一点小建议" }),
+      ).toHaveTextContent("海洋");
+      fireEvent.click(screen.getByRole("button", { name: "看看这颗星星" }));
+      expect(screen.getByRole("dialog")).toBeVisible();
+      expect(screen.getByRole("button", { name: "编辑星星" })).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "确认保存星星" }),
+      ).not.toBeInTheDocument();
       expect(
         mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
       ).toBe(true);
     },
   );
-  it("只有归档星星时解释推荐边界，保留档案入口", async () => {
+  it("只有归档星星时给出收集或档案选择，不恢复或自动探索", async () => {
     backend(true, null, [{ ...savedStar, status: "archived" }]);
     render(<App />);
     await screen.findByText("Mock 模式 · 规则生成");
-    expect(screen.getByText(/归档星星不参与推荐/)).toBeVisible();
-    expect(screen.getByRole("button", { name: "查看星星档案" })).toBeVisible();
-    const actions = screen.getByRole("group", { name: "首页核心功能" });
+    fireEvent.click(screen.getByRole("button", { name: "帮我想想" }));
     expect(
-      within(actions).getByRole("button", { name: "继续收集星星" }),
-    ).toBeVisible();
+      screen.getByRole("region", { name: "一点小建议" }),
+    ).toHaveTextContent("归档星星不参与推荐");
     expect(
-      within(actions).queryByRole("button", { name: "微型探索" }),
+      screen.queryByRole("button", { name: "看看这颗星星" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "微型探索" }));
+    fireEvent.click(screen.getByRole("button", { name: "去档案看看" }));
+    expect(screen.getByRole("heading", { name: "星星档案" })).toBeVisible();
     expect(
-      screen.getByRole("region", { name: "探索前的准备" }),
-    ).toHaveTextContent("归档星星不会用于推荐");
+      mockedApi.mock.calls.every(([, method]) => !method || method === "GET"),
+    ).toBe(true);
   });
   it("草稿待确认与放下均不当作已收藏星星", async () => {
     collectionBackend();
@@ -475,9 +525,7 @@ describe("后端数据与操作边界", () => {
       screen.queryByRole("region", { name: "保存后的下一步" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "我的星屿" }));
-    expect(
-      screen.getByRole("button", { name: "收集第一颗星星" }),
-    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "记一颗新星星" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /^收集星星/ }));
     fireEvent.click(screen.getByRole("button", { name: "暂不保存" }));
     await screen.findByText("这张草稿已放下，没有加入正式档案。");
@@ -486,9 +534,7 @@ describe("后端数据与操作边界", () => {
       screen.queryByRole("region", { name: "保存后的下一步" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "我的星屿" }));
-    expect(
-      screen.getByRole("button", { name: "收集第一颗星星" }),
-    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "记一颗新星星" })).toBeVisible();
     expect(
       mockedApi.mock.calls.filter(
         ([path, method]) => path.endsWith("/decision") && method === "POST",

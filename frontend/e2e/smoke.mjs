@@ -29,15 +29,13 @@ try {
     "首次引导必须使用全新隔离空库",
   );
   await page
-    .getByRole("button", { name: "收集第一颗星星", exact: true })
+    .getByRole("button", { name: "记一颗新星星", exact: true })
     .waitFor();
   await page.screenshot({
     path: artifact + "/home-before.png",
     fullPage: true,
   });
-  await page
-    .getByRole("button", { name: "收集第一颗星星", exact: true })
-    .click();
+  await page.getByRole("button", { name: "记一颗新星星", exact: true }).click();
   await page
     .getByText(/一次整理生成一张可编辑草稿，确认后才会加入正式档案/)
     .waitFor();
@@ -85,9 +83,7 @@ try {
     0,
   );
   await page.getByRole("button", { name: "我的星屿", exact: true }).click();
-  await page
-    .getByRole("button", { name: "收集第一颗星星", exact: true })
-    .click();
+  await page.getByRole("button", { name: "记一颗新星星", exact: true }).click();
   await page.getByRole("button", { name: "整理成草稿" }).click();
   await page.getByText(/草稿已经生成，还没有加入正式档案/).waitFor();
   const draftNote = await page.locator(".soft-note").textContent();
@@ -120,10 +116,10 @@ try {
   await page.getByRole("button", { name: "我的星屿", exact: true }).click();
   const coreActions = page.getByRole("group", { name: "首页核心功能" });
   await coreActions
-    .getByRole("button", { name: "微型探索", exact: true })
+    .getByRole("button", { name: "帮我想想", exact: true })
     .waitFor();
   await coreActions
-    .getByRole("button", { name: "收集星星", exact: true })
+    .getByRole("button", { name: "记一颗新星星", exact: true })
     .click();
   await page
     .getByRole("region", { name: "保存后的下一步" })
@@ -263,7 +259,7 @@ try {
       if (name === "我的星屿") {
         const actions = page.getByRole("group", { name: "首页核心功能" });
         const buttons = actions.locator(".hero-core-action");
-        assert.equal(await buttons.count(), 2);
+        assert.equal(await buttons.count(), 3);
         const rects = await buttons.evaluateAll((els) =>
           els.map((el) => {
             const { x, y, width, height } = el.getBoundingClientRect();
@@ -277,11 +273,33 @@ try {
           }),
         );
         for (const rect of rects)
-          assert.ok(rect.width >= 130 && rect.height >= 44);
-        assert.equal(rects[0].width, rects[1].width);
+          assert.ok(
+            rect.width >= 130 &&
+              rect.height >= 44 &&
+              rect.x >= 0 &&
+              rect.x + rect.width <= width,
+          );
+        for (let i = 0; i < rects.length; i++)
+          for (let j = i + 1; j < rects.length; j++)
+            assert.ok(
+              rects[i].x + rects[i].width <= rects[j].x ||
+                rects[i].y + rects[i].height <= rects[j].y,
+              "首页按钮不得重叠",
+            );
+        await actions
+          .getByRole("button", { name: "帮我想想", exact: true })
+          .click();
+        const suggestion = page.getByRole("region", { name: "一点小建议" });
+        await suggestion.waitFor();
+        await suggestion.getByRole("button", { name: "看看这颗星星" }).click();
+        await page
+          .getByRole("dialog")
+          .getByRole("button", { name: "编辑星星" })
+          .waitFor();
+        await page.keyboard.press("Escape");
+        await suggestion.getByRole("button", { name: "先放一放" }).click();
         assert.equal(rects[0].height, rects[1].height);
         assert.equal(rects[0].weight, rects[1].weight);
-        if (width === 1440) assert.equal(rects[0].y, rects[1].y);
         const before = await Promise.all(
           ["stars", "quests"].map(
             async (resource) =>
@@ -289,7 +307,7 @@ try {
                 .length,
           ),
         );
-        for (const label of ["收集星星", "微型探索"]) {
+        for (const label of ["记一颗新星星", "看看以前的星星"]) {
           await actions
             .getByRole("button", { name: label, exact: true })
             .click();

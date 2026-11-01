@@ -336,7 +336,7 @@ main {
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 21px;
+  gap: 12px;
   align-items: center;
   margin-top: 23px;
 }
@@ -1553,4 +1553,15 @@ nav button {
   .star-card > p {
     font-size: 13px;
   }
+}
+
+.home-help {
+  margin: 20px 0;
+}
+.home-help h2 {
+  font-size: 18px;
+}
+.home-help p {
+  line-height: 1.9;
+  overflow-wrap: anywhere;
 }

@@ -1,5 +1,12 @@
 # 交付记录
 
+### 2026-11-01：UX-006 陪伴式首页 MVP
+
+- 轻问候与三个自主入口：直接记新星星、看以前的星星、按需“帮我想想”；复用现有收集/档案/只读详情。
+- 规则建议区分断连、无正式 Star、未归档 Star 与仅归档；按保存时间选最近未归档收藏，允许忽略或改看档案。没有自动探索/保存/恢复或新模型/API/数据库行为。
+- 从功能入口向陪伴式首页靠拢，仍为 MVP，未实现完整引导式 Agent。实际测试、交付边界与三问复盘见 [VERIFICATION](docs/VERIFICATION.md#ux-006-20261101)。
+
+
 只记录实际交付，未开始/未完成的改进见 [PRODUCT_BACKLOG](docs/PRODUCT_BACKLOG.md)，想法和决策见 [IDEA_LOG](docs/IDEA_LOG.md)，验收证据见 [VERIFICATION](docs/VERIFICATION.md)。记录日期为本地完成/复查日期，不代表 Git 提交、远程发布或版本标签；当前尚无正式发布。
 
 ## Unreleased

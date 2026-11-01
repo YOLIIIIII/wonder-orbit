@@ -1086,3 +1086,39 @@ explore run_id=**83200791-e774-47a3-8dc7-8d15f17dc7f4**。先只读检索确认�
 当前 M3；无新增已证实 P0，未完成 P1：UX-003、INFRA-001、INFRA-002、EVAL-001。下一项仅建议另行授权后采集同版本公开输出并人工复核；本轮交付后停止，不执行真实质量测试。提交前链接/状态/范围/暂存安全检查与最终前端结果在交付前追加；提交/本次 CI 实际终态在最终报告给出，不提前记成功。
 
 交付前实际检查追加：全仓 Markdown 本地链接/锚点 330 处、28 个任务索引/详情状态、14 个唯一 IDEA ID 均通过；案例条目 50（原 40 + 新 10）。暂存 12 个预期文件，无生产源码/依赖/前端/迁移或旧案例变更；git diff --check 通过。.env 被忽略且未跟踪；暂存文件 Key/Bearer 签名 0、非示例北京 Host 0，无 .env/.cache/数据库产物。没有读取私人配置或历史缓存，未覆盖初始未知改动（初始干净）。Node 22 最终前端全项通过见表；本提交 CI 将在普通推送后核对，最终报告给出，历史 CI 成功不替代本次。
+
+
+<a id="ux-006-20261101"></a>
+
+## 2026-11-01：UX-006 轻问候、自主入口与按需引导首页 MVP
+
+基线：main/HEAD 69cf73bc3b8c3717b6628e40d75f8fef63b4bd4c，初始工作区/暂存区干净；GitHub 连接读取远程 main 一致。按顺序读取 AGENTS/ROADMAP/Backlog、IDEA-001/009/014 与最新 UX/AGENT/EVAL 实证，新增 IDEA-015/UX-006 并完整复评未完成任务（含 deferred）。本轮只修改前端首页、其组件/浏览器测试及相关文档，不改后端/审批/Prompt/依赖/表/迁移。
+
+实现：三个入口始终可见，轻问候不问时间/预算/精力。homeHelpOpen 由用户点击展开/收起，切页收起；断连提示读不到档案；无正式 Star 建议收集；存在未归档项按 created_at 降序（同时间按 ID）选一颗，引用真实标题且按钮打开既有只读详情；仅归档提示收集或档案，由用户明确编辑状态。忽略会收起并恢复按钮焦点；不自动调用生成/批准、写入或恢复。原草稿/审批与探索流程保持，用户仍可从导航进入微型探索。
+
+实际环境：Windows PowerShell / 项目 Python 3.12.15、Node 22.23.3（进程 PATH 前置 .tools/node/node_modules/node/bin），已有依赖未安装升级。所有后端测试为隔离库/Fake/内存 SDK，真实模型请求 0；未读 .env 或个人业务库内容。
+
+| 本轮实际命令 | 结果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest -q` | 209 passed / 1 skipped，8.02s；无 TEST_POSTGRES_URL，本机 PG 跳过不算通过 |
+| `.venv/Scripts/python.exe -m ruff check backend evals` | passed（后端未改，额外回归） |
+| `.venv/Scripts/python.exe -m ruff format --check backend evals` | passed，28 files |
+| 前端 `npx prettier --write`（仅本轮四个前端文件）、`npm run format:check` / `lint` / `typecheck` / `test` / `build` | passed；84 tests / 4 files；1581 modules，build 1.96s |
+
+状态测试覆盖：三入口/只读建议、collected/exploring、仅归档、零正式 Star、断连不误判、按保存时间而非修改时间/数组顺序、排除归档、忽略/重开/切页重置、所有建议操作无非 GET 请求；原 UX-001/002/003 组件及 AGENT-001 后端基础回归保留。
+
+浏览器使用回环 Vite 5173→8000，新建 `.cache/ux006-e2e-final.db`，启动器先断言文件不存在、禁用 .env、强制 Mock/空 Key/关闭 tracing，运行 Alembic 并核对实际 engine.url.database；不使用个人库。一次性 Mock timeout fixture 仅隔离进程内用于既有失败恢复回归。产物留在忽略的 .cache/ux006-e2e-final。浏览器终态及交付安全检查在本节后追加。
+
+失败/调整：第一次 Playwright 未设置已有浏览器目录，启动失败；设置 PLAYWRIGHT_BROWSERS_PATH=.cache/browsers 后无需安装。首轮浏览器因既有脚本仍查找首页旧“微型探索”按钮超时；同步剩余选择器后在全新隔离库重跑，不放宽审批/写入断言。不是应用生成失败。Git 默认代理 127.0.0.1:7897 不可达，命令级去代理的直连重试也连接失败；未改全局/仓库代理或启动外部服务，普通 push/CI 实际结果交付前记录。
+
+未执行：真实模型/质量基线、人工主观满意度验收、本机 PG 回滚/并发与完整容器；本轮浏览器自动检查不冒称用户亲测。多轮引导式 Agent、通知、mascot 均未实现。
+
+三问复盘：为什么用户需要？好奇允许搁置，有方向直接进入，无方向再要帮助，减少被要求完成任务的压力。它在 AI Agent 系统中解决什么？将建议触发权与执行/写入批准分开，展示真实来源、简单排序和只读入口；这是 UI/UX 与安全交互表达，未提升模型推理能力。我们学到什么？“主动一点”可以先由透明规则和可忽略建议实现，不需要强制对话；连接未知、无正式记录与归档必须分别处理，合法候选也不等于用户接受。
+
+当前 M3、穿插 M2 首页体验；无已证实新增 P0，剩余 P1 为 UX-003（人工缺口）、INFRA-001/002（目标环境）、EVAL-001（真实基线）。下一项建议用户体验首页后反馈；本轮结束即停止，不继续开发多轮或通知。
+
+
+浏览器最终实证：设置 PLAYWRIGHT_BROWSERS_PATH 为项目已有 .cache/browsers、E2E_ALLOW_WRITE=true、E2E_INJECTED_FAILURE=true、E2E_ARTIFACT_DIR=../.cache/ux006-e2e-final，执行 `npm run test:e2e` exit 0。三条 PASS：全部 Star 入口只读/编辑取消/服务器确认/失败恢复/归档保护；UX-002 结果定位/减少动画/恢复/精确 ID/无重复写入与真实 failed run 重试；收集→草稿批准→档案搜索→关联→候选批准→编辑→反馈→偏好确认→审计。两种尺寸 1440/390 的首页三按钮边界/不重叠及建议阅读检查通过，并实际查看“我的星屿-1440.png”和“我的星屿-390.png”，无裁切重叠。启动器/数据库/截图均留在忽略缓存，不加入 Git。
+
+
+交付前检查：339 个本地 Markdown 链接/锚点、29 项任务索引/详情优先级及状态、15 个唯一 IDEA ID 一致；11 个预期文件，无后端/依赖/迁移或缓存变更。最终 `npm run format:check` 和 `git diff --check` 通过。.env 被忽略且未跟踪，变更文件 Key/Bearer/私钥签名扫描无命中；暂存仅上述源码/测试/文档，不含私人配置或数据库。指定身份创建本地提交；普通推送/CI 以最终报告实际结果为准，不提前写通过。UX-006 本地验收通过，远程交付仍待网络恢复，正式状态暂保留 in_progress。

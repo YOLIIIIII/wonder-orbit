@@ -142,6 +142,7 @@ export default function App() {
     id: string;
   } | null>(null);
   function setPage(next: Page) {
+    setHomeHelpOpen(false);
     navigation.current += 1;
     activePage.current = next;
     setFocusTarget(null);
@@ -160,6 +161,7 @@ export default function App() {
   const [preferences, setPreferences] = useState(initialPreferences);
   const [mock, setMock] = useState<boolean | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [homeHelpOpen, setHomeHelpOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [errorRunId, setErrorRunId] = useState<string | null>(null);
@@ -482,6 +484,13 @@ export default function App() {
   const connected = mock !== null;
   const hasStars = stars.length > 0;
   const canExplore = stars.some((star) => star.status !== "archived");
+  // 只从真实、未归档的收藏中按保存时间选择，不推测适合程度。
+  const suggestedStar = stars
+    .filter((star) => star.status !== "archived")
+    .sort(
+      (a, b) =>
+        b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id),
+    )[0];
   const draftDecision = draftRun?.decisions.star;
   const draftPending =
     draftRun?.request_type === "collect" &&
@@ -617,73 +626,98 @@ export default function App() {
                     <span /> A SPACE FOR YOUR CURIOSITY
                   </span>
                   <h1>
-                    给好奇心，
-                    <br />
-                    一座小小的<span>星屿。</span>
+                    欢迎回到<span>星屿</span>
                   </h1>
-                  <p>
-                    {!connected
-                      ? "连接档案后，会根据已保存的兴趣给你下一步提示。"
-                      : !hasStars
-                        ? "星星是你收藏的兴趣或好奇。从收藏第一颗星星开始，探索才有真实依据。"
-                        : canExplore
-                          ? "随时收集新的好奇，也让已有兴趣慢慢变成小行动。微型探索参考真实收藏和明确偏好，体验又能带来新的好奇。"
-                          : "你已收藏过兴趣，但归档星星不参与推荐。可先到档案恢复一颗星星，或继续收集。"}
-                  </p>
+                  <p>今天有什么想法吗？或者，我们看看以前留下的星星。</p>
                   <div
                     className="hero-actions"
                     role="group"
                     aria-label="首页核心功能"
                   >
-                    {connected && canExplore ? (
-                      <>
-                        <button
-                          className="secondary hero-core-action"
-                          onClick={() => setPage("collect")}
-                        >
-                          <Plus size={17} />
-                          收集星星
-                        </button>
-                        <button
-                          className="primary hero-core-action"
-                          onClick={() => setPage("explore")}
-                        >
-                          <Compass size={17} />
-                          微型探索
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          className="primary"
-                          onClick={() =>
-                            setPage(
-                              connected && hasStars ? "archive" : "collect",
-                            )
-                          }
-                        >
-                          <Plus size={17} />
-                          {connected && hasStars
-                            ? "查看星星档案"
-                            : connected
-                              ? "收集第一颗星星"
-                              : "收集一颗星星"}
-                        </button>
-                        {connected && hasStars && (
-                          <button
-                            className="text-button"
-                            onClick={() => setPage("collect")}
-                          >
-                            继续收集星星
-                            <ArrowRight size={17} />
-                          </button>
-                        )}
-                      </>
-                    )}
+                    <button
+                      className="primary hero-core-action"
+                      onClick={() => setPage("collect")}
+                    >
+                      <Plus size={17} />
+                      记一颗新星星
+                    </button>
+                    <button
+                      className="secondary hero-core-action"
+                      onClick={() => setPage("archive")}
+                    >
+                      <BookOpen size={17} />
+                      看看以前的星星
+                    </button>
+                    <button
+                      className="secondary hero-core-action"
+                      aria-expanded={homeHelpOpen}
+                      aria-controls="home-help"
+                      onClick={() => setHomeHelpOpen((open) => !open)}
+                    >
+                      <Sparkles size={17} />
+                      帮我想想
+                    </button>
                   </div>
                 </div>
                 <OrbitArt />
               </section>
+              {homeHelpOpen && (
+                <section
+                  className="panel home-help"
+                  id="home-help"
+                  aria-label="一点小建议"
+                >
+                  <h2>一点小建议</h2>
+                  <p>
+                    {!connected
+                      ? "暂时还读不到档案，连接后再来看看。也可以先留下一个念头。"
+                      : !hasStars
+                        ? "还没有正式保存的星星。先记下一点好奇就好，不必想好要做什么。"
+                        : suggestedStar
+                          ? `要不要重新看看「${suggestedStar.title}」？它是你最近保存的未归档星星，读一读，再决定是否展开。`
+                          : "以前的星星都在休息，归档星星不参与推荐。可以继续收集，或去档案看看；想重新拾起时，再由你编辑状态。"}
+                  </p>
+                  <div className="button-row">
+                    {connected && suggestedStar ? (
+                      <button
+                        className="secondary"
+                        onClick={() => setSelectedStar(suggestedStar)}
+                      >
+                        看看这颗星星
+                      </button>
+                    ) : (
+                      <button
+                        className="secondary"
+                        onClick={() => setPage("collect")}
+                      >
+                        记下一点好奇
+                      </button>
+                    )}
+                    {connected && hasStars && (
+                      <button
+                        className="secondary"
+                        onClick={() => setPage("archive")}
+                      >
+                        去档案看看
+                      </button>
+                    )}
+                  </div>
+                  <p className="field-hint">只是一个小提议，放着也没关系。</p>
+                  <button
+                    className="text-button"
+                    onClick={() => {
+                      setHomeHelpOpen(false);
+                      document
+                        .querySelector<HTMLButtonElement>(
+                          '[aria-controls="home-help"]',
+                        )
+                        ?.focus();
+                    }}
+                  >
+                    先放一放
+                  </button>
+                </section>
+              )}
               <section className="stat-row">
                 <div>
                   <StarIcon />
@@ -733,8 +767,8 @@ export default function App() {
                   </div>
                 ) : (
                   <Empty
-                    title="从收藏第一颗星星开始"
-                    text="先在上方收集一份好奇，检查并确认草稿；保存后，再从已有兴趣里寻找小体验。"
+                    title="这里可以安放你的好奇"
+                    text="一闪而过的念头也值得留下；以后想起来，再回来看看。"
                   />
                 ))}
               <div className="home-footer">
