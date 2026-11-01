@@ -18,7 +18,7 @@ from check_results import Capture, Results, load_suite, normalize_capture, prepa
 from app.schemas import AgentRequest, Preferences
 
 CASE_IDS = ("explicit-motivation", "unknown-motivation", "grounded-explore")
-SUITE_HASH = "e08d9c85346d4678a8ed60eeb2f5718033691c52ea86996eade7a637732df79f"
+SUITE_HASH = "f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4"
 RAW = ROOT / ".cache/quality-baseline-v1/raw.json"
 PUBLIC = ROOT / "evals/reviewed_quality_captures.json"
 SYNTHETIC_ID = "00000000-0000-4000-8000-000000000001"
@@ -26,6 +26,11 @@ SYNTHETIC_ID = "00000000-0000-4000-8000-000000000001"
 
 def file_hash(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def suite_hash(path):
+    """Fixed public JSON only: CRLF -> LF; preserve every other byte."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def versions():
@@ -37,7 +42,7 @@ def versions():
 
 
 def plan():
-    if file_hash(ROOT / "evals/quality_cases.json") != SUITE_HASH:
+    if suite_hash(ROOT / "evals/quality_cases.json") != SUITE_HASH:
         raise ValueError("fixed_suite_changed")
     suite = load_suite()
     cases = {c["id"]: c for c in suite["cases"]}
@@ -110,7 +115,7 @@ def sample(config, records, output, *, allow_live=False):
     # An existing directory blocks reruns, including after a crash. No resume/overwrite switch.
     output.parent.mkdir(parents=True, exist_ok=False)
     hashes = {
-        p: file_hash(ROOT / p)
+        p: suite_hash(ROOT / p) if p == "evals/quality_cases.json" else file_hash(ROOT / p)
         for p in (
             "backend/app/model_adapter.py",
             "backend/app/schemas.py",
@@ -136,6 +141,7 @@ def sample(config, records, output, *, allow_live=False):
         "git_sha": git_sha,
         "working_tree_dirty": dirty,
         "source_hashes": hashes,
+        "suite_hash_normalization": "crlf-to-lf",
         "started_at": datetime.now(timezone.utc).isoformat(),
         "workflow_executed": False,
         "approval_observation": "not_observed:adapter_only",
@@ -253,6 +259,7 @@ def export_reviewed(raw, destination):
         or data.get("retrieval_version") != versions()["retrieval_version"]
         or data.get("workflow_version") != "not_executed:adapter_dto"
         or hashes.get("evals/quality_cases.json") != SUITE_HASH
+        or suite_hash(ROOT / "evals/quality_cases.json") != SUITE_HASH
         or len(data.get("git_sha", "")) != 40
         or data.get("attempted_requests") != len(rows)
     ):

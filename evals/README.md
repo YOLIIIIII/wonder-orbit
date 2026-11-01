@@ -206,7 +206,7 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 .venv/Scripts/python.exe -X utf8 evals/collect_quality.py
 ```
 
-固定顺序 explicit-motivation（Collect）、unknown-motivation（Collect）、grounded-explore（Explore）。案例 wonderorbit-cases-v1、规范 wonderorbit-quality-v1；脚本固定校验整个 quality_cases.json 的 SHA256（同时作为公开检索快照版本），改动即拒绝。Explore 原样提供 original_text/category/tags 等完整字段，不冒充 workflow 的 text/score/match_basis。公开 public-star-ocean 映射至测试合成 UUID `00000000-0000-4000-8000-000000000001`，严格一一对应，绝非数据库记录。偏好 `{}` 展开为现有 Preferences 默认值，约束为空；请求默认字段和完整 adapter_inputs/model_payload 均保存供复核。
+固定顺序 explicit-motivation（Collect）、unknown-motivation（Collect）、grounded-explore（Explore）。案例 wonderorbit-cases-v1、规范 wonderorbit-quality-v1；脚本对整个 quality_cases.json 仅将 CRLF 转为 LF，再计算固定 SHA256（同时作为公开检索快照版本）；LF/CRLF 等价，其他字节改动仍拒绝。Explore 原样提供 original_text/category/tags 等完整字段，不冒充 workflow 的 text/score/match_basis。公开 public-star-ocean 映射至测试合成 UUID `00000000-0000-4000-8000-000000000001`，严格一一对应，绝非数据库记录。偏好 `{}` 展开为现有 Preferences 默认值，约束为空；请求默认字段和完整 adapter_inputs/model_payload 均保存供复核。
 
 以下为**阶段 B 单独确认后的固定命令，本轮禁止执行**：
 
@@ -216,7 +216,7 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 
 预检只接受百炼北京 qwen3.8-flash、非 Mock、非空 Key、合法业务空间地址、SDK retries=0；预检不验证 Key/余额。适配器 request 双保护：全批最多 3 次且每例一次；请求前持久化 attempted_unknown 与计数，超时/断网/非法结构均已消耗一次尝试，失败立即停止。禁用本调用 tracing，不保存响应正文/headers/隐藏推理。没有补跑、重试、换模型、探针或可扩充案例参数。
 
-结果固定为被忽略的 `.cache/quality-baseline-v1/raw.json`，`public_data=false`。首次创建批次目录，已存在即拒绝（包括中断或失败留下的目录）；不提供覆盖/恢复开关，也不要删除目录后用剩余额度重跑。本轮尚未创建真实批次。保存实际 Git SHA + dirty 标记、适配器/DTO/规则/采集脚本/预检/案例/规范/检查器 SHA256；prompt_version 是适配器源码哈希，workflow_version=not_executed:adapter_dto，retrieval_version 是固定公开快照哈希。后处理 DTO 保留原值，这是现有适配器/Pydantic/动机防护后的观察层，不能反推未经防护的原始模型内容。
+结果固定为被忽略的 `.cache/quality-baseline-v1/raw.json`，`public_data=false`。首次创建批次目录，已存在即拒绝（包括中断或失败留下的目录）；不提供覆盖/恢复开关，也不要删除目录后用剩余额度重跑。本轮尚未创建真实批次。保存实际 Git SHA + dirty 标记、适配器/DTO/规则/采集脚本/预检/案例/规范/检查器 SHA256；仅 source_hashes 中的 evals/quality_cases.json 使用上述规范化哈希，suite_hash_normalization=crlf-to-lf，其余文件仍为真实字节 SHA256；prompt_version 是适配器源码哈希，workflow_version=not_executed:adapter_dto，retrieval_version 是固定公开快照哈希。后处理 DTO 保留原值，这是现有适配器/Pydantic/动机防护后的观察层，不能反推未经防护的原始模型内容。
 
 每次记录 schema_valid/failed/attempted_unknown、脱敏 failure_type、实际 SDK usage 或字符串 unknown、elapsed_ms；中断未完成耗时为 null。不能将 schema_valid 当成人工质量合格。raw_output 是实际合法 DTO；非法结构没有合法 DTO 时保留 null 与错误类别，不重构/修复成预期结果。合法 DTO 的错误来源会保留原始记录且停止，准备工具仍拒绝映射，不能放宽检查器。
 
@@ -228,3 +228,5 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 4. 按 QUALITY_RUBRIC 共同填人工 0/1/2 和依据；缺评分继续 not_rated。审批未执行，保留空审批观察/检查 not_rated，不编造计数。失败类别随 Result.failure_type 留在报告，未采案例为 not_run；usage/耗时/实际 payload 随 sampling 旁证保留。live 仍标 supplied_live_output_unverified，离线工具不能证明供应商来源；Fake 自测不是质量基线。
 
 阶段 A 实证见 [VERIFICATION](../docs/VERIFICATION.md#eval-001-phase3-a-20261101)。真实请求 0；完整正式基线与内容评分未执行，EVAL-001 状态仅见 Backlog。
+
+2026-11-01 跨平台修复：固定案例哈希为 `f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4`，plan、采样记录及 export_reviewed 共用 CRLF→LF 规则；导出也校验当前案例文件，实质修改继续拒绝。未对全项目规范化、未关闭版本保护。旧版若留下基于 CRLF 字节哈希的记录，本修复不改写/迁移，也不删除或重置既有采样目录；其旧哈希不会被冒充为新规范化版本。历史失败与本地验证见 [修复记录](../docs/VERIFICATION.md#eval-001-hash-fix-20261101)。

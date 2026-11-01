@@ -338,6 +338,53 @@ def test_interrupted_attempt_remains_unknown(tmp_path, wire):
 
 
 def test_suite_hash_drift_rejected(monkeypatch):
-    monkeypatch.setattr(runner, "file_hash", lambda _: "wrong-version")
+    monkeypatch.setattr(runner, "suite_hash", lambda _: "wrong-version")
     with pytest.raises(ValueError, match="fixed_suite_changed"):
         runner.plan()
+
+
+def test_suite_hash_normalizes_only_crlf(tmp_path):
+    content = (ROOT / "evals/quality_cases.json").read_bytes().replace(b"\r\n", b"\n")
+    lf, crlf = tmp_path / "lf.json", tmp_path / "crlf.json"
+    lf.write_bytes(content)
+    crlf.write_bytes(content.replace(b"\n", b"\r\n"))
+    assert runner.suite_hash(lf) == runner.suite_hash(crlf) == runner.SUITE_HASH
+    # Generic source provenance still hashes exact bytes.
+    assert runner.file_hash(lf) != runner.file_hash(crlf)
+    crlf.write_bytes(content + b"\r")
+    assert runner.suite_hash(crlf) != runner.SUITE_HASH
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"])
+def test_suite_newlines_plan_sampling_export_consistent(tmp_path, wire, monkeypatch, newline):
+    suite = ROOT / "evals/quality_cases.json"
+    content = suite.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", newline)
+    original = Path.read_bytes
+
+    def read_bytes(path):
+        return content if path == suite else original(path)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    raw = tmp_path / "batch/raw.json"
+    report = runner.sample(config(), runner.plan(), raw, allow_live=True)
+    assert report["source_hashes"]["evals/quality_cases.json"] == runner.SUITE_HASH
+    assert report["suite_hash_normalization"] == "crlf-to-lf"
+    assert report["source_hashes"]["backend/app/model_adapter.py"] == runner.file_hash(
+        ROOT / "backend/app/model_adapter.py"
+    )
+    public = tmp_path / "reviewed.json"
+    runner.export_reviewed(raw, public)
+    assert prepare_captures(json.loads(public.read_text(encoding="utf-8")))["mode"] == "live"
+
+
+def test_real_suite_content_change_rejects_plan_and_export(tmp_path, wire, monkeypatch):
+    raw = tmp_path / "batch/raw.json"
+    runner.sample(config(), runner.plan(), raw, allow_live=True)
+    suite = ROOT / "evals/quality_cases.json"
+    changed = suite.read_bytes().replace(b"explicit-motivation", b"changed-motivation")
+    original = Path.read_bytes
+    monkeypatch.setattr(Path, "read_bytes", lambda p: changed if p == suite else original(p))
+    with pytest.raises(ValueError, match="fixed_suite_changed"):
+        runner.plan()
+    with pytest.raises(ValueError, match="sampling_provenance_mismatch"):
+        runner.export_reviewed(raw, tmp_path / "reviewed.json")

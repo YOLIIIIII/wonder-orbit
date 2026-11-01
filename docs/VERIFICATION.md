@@ -1244,3 +1244,37 @@ Windows PowerShell / 项目 Python 3.12.15 与 Node 22.23.3，PATH 进程内前�
 当前 M3 穿插 M2，M1 已交付，M2/M3 整体未完成。无新增已证实 P0；剩余 P1 为 UX-003、INFRA-001/002、EVAL-001，EVAL-001 尚无完整正式质量基线。下一项推荐为审阅本轮差异后单独确认 B 的固定脚本/额度；本轮按用户明确两阶段要求停止，不自动真实请求或提交推送。
 
 交付前文档/范围实测：360 个本地 Markdown 链接/锚点通过，29 项任务索引/详情状态一致；本轮仅 10 个预期文件（evals/collect_quality.py、backend/tests/test_quality_collector.py、evals/check_results.py、evals/README.md、docs/IDEA_LOG.md、docs/PRODUCT_BACKLOG.md、docs/PROJECT_GUIDE.md、docs/VERIFICATION.md、ROADMAP.md、CHANGELOG.md）。git diff --check 通过，变更文件密钥/Bearer/私钥签名扫描无命中；真实批次目录和公开导出不存在，暂存区为空、HEAD 仍为 bee5596。最后只追加文档记录，不宣称又重跑了应用测试。
+
+<a id="eval-001-hash-fix-20261101"></a>
+
+## 2026-11-01：EVAL-001 固定案例 CRLF/LF 跨平台 CI 修复
+
+开始 HEAD=87e86fc3f17667c4fbad0265bf61e4fbc0ceca12，工作区干净；既有 local Git 身份核对为 YOLIIIIII <143058454+YOLIIIIII@users.noreply.github.com>。读取约定、路线图、Backlog 和相关 IDEA/实证后，沿用 IDEA-005/EVAL-001，仅修复采集器版本校验，不改变产品/模型/审批/数据库/前端。当前 M3、M2 体验阶段边界不变，未完成项复评见 Backlog；无新 P0，P1 仍为 UX-003、INFRA-001/002、EVAL-001。
+
+失败历史：[Actions 41303909059](https://github.com/YOLIIIIII/wonder-orbit/actions/runs/41303909059) 属于上述提交。经 GitHub 连接器实际核对 backend job 124840302418 failure、frontend job 124840302560 success；后端 Ruff/迁移/schema 步骤成功、pytest 失败、后续独立 PG 步骤 skipped。读取 backend job 日志并提取最终 23 个失败测试 ID：均来自 test_quality_collector.py，23 failed / 245 passed / 1 skipped，根因 fixed_suite_changed。没有将此前 Windows 本地 268 passed 当作该次远程通过。
+
+根因实测：本地公开 quality_cases.json 有 286 个 CRLF，原始字节 SHA256=e08d9c85346d4678a8ed60eeb2f5718033691c52ea86996eade7a637732df79f；仅 CRLF→LF 后 SHA256=f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4。旧常量绑定 Windows 换行字节，Linux LF 因而误报案例变化。没有修改真实案例文件或语义。
+
+修复：仅新增 suite_hash(path)，read_bytes().replace(CRLF, LF) 后 SHA256；SUITE_HASH 更新为上述 LF 值。plan、采样 source_hashes 的固定案例项及 export_reviewed 的当前文件校验共用它；retrieval_version 对应该规范化值，记录 suite_hash_normalization=crlf-to-lf。file_hash 不变，其他源码保留实际字节哈希；不做 JSON 重排、空白折叠、孤立 CR 转换或全项目静默规范化，不关闭版本保护。调整旧漂移测试至 suite_hash，原失败断言保留；新增四项换行等价、LF/CRLF 采样到导出一致性、实质内容修改拒绝测试。内部实现变化，不改变模块职责/调用链/启动方式，无需重写 PROJECT_GUIDE。
+
+### 本轮实际验证（Windows / 现有 Python 3.12 .venv）
+
+| 实际命令/检查 | 结果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest backend/tests/test_quality_collector.py -q --junitxml=.cache/hash-fix-targeted.xml` | 33 passed，8.04s |
+| `.venv/Scripts/python.exe -m pytest -q -rs` | 272 passed / 1 skipped，30.74s；唯一 skipped 因未配置独立 TEST_POSTGRES_URL，不宣称本轮 PG 通过 |
+| `.venv/Scripts/ruff.exe check backend evals` | passed，All checks passed |
+| `.venv/Scripts/ruff.exe format --check backend evals` | passed，30 files already formatted |
+| `.venv/Scripts/python.exe -X utf8 evals/collect_quality.py`，subprocess 解析 stdout | exit 0，mode=offline、requests=0，固定三例；没有执行真实开关 |
+| 隔离公开源码副本：仅将副本 quality_cases.json 明确写为 LF，使用原 .venv 运行同一专项命令，JUnit `.cache/hash-fix-lf.xml` | 33 passed，14.97s；这是 Windows 上的 LF 文件验证，不能称 Linux CI 重跑成功 |
+| 远程原失败 ID 与上述两份 JUnit 逐项比对 | 主工作区与 LF 副本均为原 23/23 标识 passed，无删除/跳过断言 |
+
+辅助 LF 副本最初从归档获取时仍带 CRLF，因此只在副本显式转换案例文件；放在 .cache 下时，默认 CLI 的原审计 hook 正确拒读缓存路径（32 passed / 1 failed），随后把验证副本放到项目内独立临时位置完成 33 passed，没有放宽审计保护。完成后将该公开副本移至忽略目录 .cache/hash-fix-lf-verified 保留证据。真实项目案例、既有 .cache/quality-baseline-v1 均未删除、重置或改写。
+
+未执行：真实 Qwen/API、真实采样或公开导出；实际真实请求 **0**，没有本批真实 Token 数据。所有采样分支测试使用 Fake/显式测试配置与隔离临时目录，未读取私人 .env/Key/Host 或个人库。前端未改，本轮不重跑前端/视觉/E2E；未跑完整容器或新远程 CI。既有旧 CRLF 哈希记录不自动迁移、不改写成新版本；如果存在，保留原件，本次不为它们删除批次目录或重采样。
+
+为什么用户需要：相同公开案例应能在 Windows 开发与 Linux CI 使用同一版本标识，恢复离线验收可信度。Agent 系统解决的问题：修复评测来源校验的跨平台稳定性，保证采样与导出一致且实质修改仍被阻止；属于评测基础设施可靠性，不是模型探索能力提升。学到什么：内容版本与文件换行字节需明确区分，固定案例可以使用限定的规范化，其他源码证据仍应保留真实字节；跨平台假设要用 LF/CRLF 输入和完整链路验证。
+
+本轮只授权一次本地修复提交（fix(evals): normalize fixed suite hash across platforms），不推送、不改历史。下一项由用户在 PowerShell 推送后查看新 CI；在新运行实际成功前不能宣称远程修复已验收，EVAL-001 保持 in_progress，阶段 B 仍需独立确认。
+
+交付前实测：363 个本地 Markdown 链接/锚点通过，修改范围仅七个预期文件；无新增未跟踪交付文件，git diff --check 通过，变更文件密钥/Bearer/私钥签名扫描无命中。上述最后检查为文档/范围检查，不冒称又重跑应用测试。
