@@ -1,12 +1,14 @@
 # WonderOrbit 路线图
 
-更新日期：2026-10-25（Asia/Shanghai）。阶段与顺序以本文件说明；正式任务的当前状态、依赖和验收只在 [PRODUCT_BACKLOG](docs/PRODUCT_BACKLOG.md) 维护，来源见 [IDEA_LOG](docs/IDEA_LOG.md)，交付见 [CHANGELOG](CHANGELOG.md)，实证见 [VERIFICATION](docs/VERIFICATION.md)。里程碑名称不代表已发布版本或 Git tag。
+更新日期：2026-11-01（Asia/Shanghai）。阶段与顺序以本文件说明；正式任务的当前状态、依赖和验收只在 [PRODUCT_BACKLOG](docs/PRODUCT_BACKLOG.md) 维护，来源见 [IDEA_LOG](docs/IDEA_LOG.md)，交付见 [CHANGELOG](CHANGELOG.md)，实证见 [VERIFICATION](docs/VERIFICATION.md)。里程碑名称不代表已发布版本或 Git tag。
 
 ## 当前阶段
 
 **M1 本地 MVP 已交付；M2 的 UX-001/002 当前范围已获认可，现按明确授权推进 M3 的 AGENT-001 第二阶段真实工作流采证。** 2026-10-25 用户实际认可星星只读详情→明确编辑，结合既有证据完成 UX-002 当前范围验收。UX-003 具体人工按示例记录缺口、UI-001 保留，M2 不宣称全部完成。M3 第一阶段已交付安全配置/离线兼容；第二阶段新增隔离 API/图验证入口，本轮只请求一次 collect，工具/结构成功、未知动机语义失败，在批准前停止。真实 explore/正式审批未执行，完整闭环未通过；尚未生产或多用户验收。
 
 本轮与历史证据分别记录于 VERIFICATION：UX-001 本地/远程与隔离浏览器已有证据，用户未报告亲测的键盘/全部空状态不冒称人工通过；UX-002 自动化/浏览器与本次实际用户认可分开留证；AGENT-001 只记实际离线检查。本机 PostgreSQL 未配置，完整容器、PG 回滚/并发和真实模型仍待验证。
+
+2026-11-01 当前阶段补充：M3 的单一模型服务协议/图/模拟审批闭环已取得实际 collect/explore 证据，AGENT-001 验收收尾；前文 2026-10-25 失败描述为历史快照。M3 整体未完成，PG 回滚/完整容器与 EVAL-001 基线保留，M2 的 UX-003 人工缺口保留；下一项仅建议 EVAL-001 人工复核设计或独立环境验证，未经新任务不开始。全部未完成项复评与正式状态只在 Backlog。
 
 ## M1 / v0.1：本地 MVP（已交付，验证范围有限）
 

@@ -1,13 +1,13 @@
 # 产品待办与迭代队列
 
-更新日期：2026-10-25（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
+更新日期：2026-11-01（Asia/Shanghai）。正式任务的状态、优先级和验收标准以本文件为唯一维护入口；[IDEA_LOG](IDEA_LOG.md) 保存来源和决策，[ROADMAP](../ROADMAP.md) 只管理阶段，[CHANGELOG](../CHANGELOG.md) 只记录交付，[VERIFICATION](VERIFICATION.md) 保存实证。旧 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) 是历史实施记录，不继续充当待办表。
 
 ## 已交付基线与当前范围
 
 - Star CRUD、单草稿确认、关键词/标签检索、真实关联、LangGraph/受控工具、审批、反馈、候选偏好确认、Mock、运行审计与基础 Web UI 已实现，详见 README 和既有验收。不会重新列为待实现。
 - PostgreSQL、容器、真实模型和 CI 已有实现/配置；CI 修复后的远程 backend/frontend 均通过，独立 PG 集成实际 1 passed。PG 回滚/并发、完整容器与真实模型仍缺验收；语义检索、多草稿是待评估/待实现。
 - 2026-10-18 UX-001 本轮回归后端 52 passed / 1 skipped、前端 30 passed；独立 SQLite 首次闭环（含浏览器拦截模拟失败、真实拒绝/批准）与 1440/390px 指南验证通过。本机 PostgreSQL 仍缺服务，历史证据与本轮实证在 VERIFICATION 分开记录。
-- 2026-10-25 动机语义轮：在上一轮真实 collect 失败证据上，仅修正 interest_reason 提取与缺失字段一致性，30 项公开离线对照、Mock/SDK 内存/API/图回归完成；本轮真实请求 0，不改正式 API/Schema/审批或 Live 保护。AGENT-001 保持 in_progress，真实审批/explore 未验收；UX-001/002 既有验收及 UX-003 人工记录缺口保留，EVAL-001 未开展。
+- 2026-10-25 历史动机语义轮：在上一轮真实 collect 失败证据上，仅修正 interest_reason 提取与缺失字段一致性，30 项公开离线对照、Mock/SDK 内存/API/图回归完成；本轮真实请求 0，不改正式 API/Schema/审批或 Live 保护。AGENT-001 保持 in_progress，真实审批/explore 未验收；UX-001/002 既有验收及 UX-003 人工记录缺口保留，EVAL-001 未开展。
 
 ## 状态与完成规则
 
@@ -61,6 +61,10 @@
 
 2026-10-25（动机语义修正复评）：复查全部未完成项及四项 deferred。已有真实字段语义失败直接影响 AGENT-001 可信度，本轮仍 P1/in_progress；顺序从“先明确离线规则”推进“最小 Prompt/保守原因证据/一致性修正与离线验收”，之后等待新 Live 授权，不用剩余次数。其余 UX-003、INFRA-001/002、EVAL-001 的依赖/缺口，以及全部 P2 的证据、价值、风险、成本和简单替代、deferred 的素材/路由/checkpoint/对外部署触发条件未变，不提高优先级，无新增已证实 P0。未完成 P1 仍五项；EVAL-001 只记录质量观察，不正式开展。
 
+2026-11-01（真实复验前复评）：复核全部未完成 P1/P2 与 deferred；最新动机修正已有离线证据，按用户新授权推进 AGENT-001 单次受控真实 collect→explore 采证，仍 P1/in_progress，未完成前不关任务。UX-003 人工记录、INFRA-001/002 环境验收、EVAL-001 正式基线仍独立缺证；其他任务价值/风险/依赖和简单替代不变，四项 deferred 触发条件未出现，无新 P0，不扩展范围。失败停跑，禁止为通过临时改 Prompt/约束/固定案例。
+
+2026-11-01（实证后复评）：AGENT-001 单一兼容服务正式验收条件已有真实正向及离线异常证据，收尾后剩余未完成 P1 四项：UX-003、INFRA-001、INFRA-002、EVAL-001；无新 P0。质量观察不阻断既定协议/审批验收，EVAL-001 仍 planned，其他未完成/deferred 的优先级/依赖/替代不变。本轮到此停止，不自动进入评测或额外调用。
+
 ## 任务索引
 
 2026-10-18（UX-002 查看/编辑分离复评）：审视全部未完成项含 deferred 的素材、重构、checkpoint 与部署触发条件；用户真实阅读预期属于现有 UX-002，维持 P1 和 in_progress，不新建重复任务。其余数据库/容器/模型/评测与 P2/P3 的价值、风险、成本、依赖和简单替代方案不变，无新 P0 证据，未完成 P1 仍 6 项。M2 阶段及实施顺序不变，不自动开始 AGENT-001。
@@ -78,7 +82,7 @@
 | [INFRA-001](#infra-001) | 验证 PostgreSQL 迁移与现有集成测试 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [INFRA-002](#infra-002) | 验证完整 Compose 与 Nginx 应用启动 | P1 | planned | [IDEA-004](IDEA_LOG.md#idea-004) |
 | [INFRA-003](#infra-003) | 取得首次真实 GitHub Actions 运行证据 | P1 | done | [IDEA-004](IDEA_LOG.md#idea-004) |
-| [AGENT-001](#agent-001) | 验证一个真实模型服务的工具调用兼容性 | P1 | in_progress | [IDEA-005](IDEA_LOG.md#idea-005) |
+| [AGENT-001](#agent-001) | 验证一个真实模型服务的工具调用兼容性 | P1 | done | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [EVAL-001](#eval-001) | 建立版本化案例与人工复核 Agent 基线 | P1 | planned | [IDEA-005](IDEA_LOG.md#idea-005) |
 | [AGENT-002](#agent-002) | 评估并实现可分别审批的多兴趣草稿 | P2 | proposed | [IDEA-006](IDEA_LOG.md#idea-006) |
 | [AGENT-003](#agent-003) | 可恢复的澄清问题延续 | P2 | proposed | [IDEA-006](IDEA_LOG.md#idea-006) |
@@ -311,9 +315,9 @@
 
 **验证一个真实模型服务的工具调用兼容性**
 
-- 描述与问题背景：用户已报告 collect-only 真实成功；本轮真实 API/图 collect 的指定工具与结构通过，但动机空值语义不满足而停止，尚未取得真实审批/explore/约束闭环证据。
+- 描述与问题背景：此前只有适配器 collect 结构成功及图内动机语义失败；最新语义修正后于 2026-11-01 取得单一服务真实 collect/explore、引用/约束/模拟审批幂等的完整证据。质量基线仍独立待评测。
 - 优先级：P1。
-- 状态：in_progress。
+- 状态：done。
 - 预期用户价值：知道真实模式能否整理兴趣和提出可靠候选。
 - 技术价值（AI Agent 求职）：真实 LLM tool calling、结构验证、错误分类与审批隔离。
 - 预计实现成本：M。
@@ -322,7 +326,7 @@
 - 验收标准：真实 collect/explore 返回指定工具和可校验结构；引用仅取真实 Star、未知信息保留空值、生成不写正式记录；批准后才写；核对超时/不可用/限流处理（模拟与真实异常分开记录）；记录 model/mode/参数及脱敏结果，不记录 Key、隐藏推理或未测效果。
 - 原始想法：[IDEA-005](IDEA_LOG.md#idea-005)。
 - 相关文档或代码位置：backend/app/model_adapter.py；backend/app/workflow.py；backend/tests/test_acceptance.py；evals/run_live.py；.env.example。
-- 证据/交付记录：保留 [第一阶段](VERIFICATION.md#agent-001-phase1-20261025)；[第二阶段真实证据](VERIFICATION.md#agent-001-workflow-20261025) 实际一次 Qwen collect（1245 Token），create_star_draft/Pydantic/图生成通过，interest_reason 主题复述导致 collect_unknown_fields；批准/幂等、explore/关联均 not run，无正式记录。安全入口/离线测试已交付，整个任务仍未验收，继续 in_progress。
+- 证据/交付记录：[2026-11-01 完整复验](VERIFICATION.md#agent-001-live-recheck-20261101) 与 CHANGELOG：两个真实请求、2869 Token，collect 动机 null、explore 真实引用/约束通过，模拟批准/幂等后仅 Star/Quest 各一，无 Reflection；165 项离线回归含异常路径。既定单服务范围 done，不证明模型准确率/质量或 PG/容器。此前失败/修正证据保留于历史记录。
 
 2026-10-18 反馈关联：用户反馈 4 的 AI 价值感受关联 IDEA-005；仍需真实服务与明确额度，未在本轮接入或调用。
 
@@ -335,6 +339,8 @@
 2026-10-25 本轮实际实施仅为 interest_reason 主题/动机语义防护：保留严格工具/Pydantic/来源/其他字段/审批，补原因 Prompt、保守文本证据和 missing_fields 一致性，使用 Fake/内存传输及隔离 API 回归；所有真实模型、真实审批、真实 explore 均 not run，AGENT-001 继续 in_progress。未明确动机时必须 null，不改变公开失败案例的期望值。
 
 本轮离线交付：collect 专用字段提示、explicit_interest_reason 三类明确个人因果句式/来源与保守排除、仅 interest_reason 的 missing_fields 一致性；30 项公开对照（含历史原文和错误输出不变），实际 SDK 内存传输与批准前零 Star 的模拟 API/图回归通过。后端 165 passed / 1 skipped，前端 82 passed 及工程检查通过；[本轮证据](VERIFICATION.md#agent-001-reason-20261025)。真实请求 **0**，未改 Live 上限/隔离/公开场景 null 期望，真实审批/explore 仍待授权；AGENT-001 不关闭。
+
+2026-11-01 验收收尾：最新正式代码一次受控 runner、真实 collect/explore 各一次全通过，共 2869 Token；原始原因 null、真实检索/约束/生成不写正式记录、模拟测试 decision/批准后 Star/Quest 各一、重复决定幂等、关联与无 Reflection 均有实证。离线 165 passed / 1 skipped 覆盖异常分类/审批/保护；真实故障未制造，与质量评测分开。见 [本轮实证](VERIFICATION.md#agent-001-live-recheck-20261101) 及 CHANGELOG。按现有单一服务验收收尾 done，不表示质量基线/广泛场景/PG/容器通过；后续真实请求需新授权。
 
 ### EVAL-001
 

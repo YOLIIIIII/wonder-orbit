@@ -1,6 +1,6 @@
 # 想法与决策记录
 
-更新日期：2026-10-25（Asia/Shanghai）。
+更新日期：2026-11-01（Asia/Shanghai）。
 
 本文件保留原始问题、来源和评估结论；正式任务的优先级、状态、验收标准以 [PRODUCT_BACKLOG](PRODUCT_BACKLOG.md) 为准。里程碑见 [ROADMAP](../ROADMAP.md)，交付见 [CHANGELOG](../CHANGELOG.md)，证据见 [VERIFICATION](VERIFICATION.md)。
 
@@ -128,6 +128,10 @@
 2026-10-25（兴趣主题/明确动机修正），来源：用户本轮 AGENT-001 语义边界任务书。沿用 IDEA-005，不新增重复项：interest_reason 仅指用户明确表达的个人兴趣动机，不是主题、问题、活动/时间安排、模型价值猜测或科学因果。本轮禁止任何真实请求和使用此前剩余次数，仅授权最小 Prompt/保守确定性证据规则、该字段 missing_fields 一致性和离线对照；不改正式 Schema/审批/其他提取能力。原 1245 Token 运行是历史证据，不重跑。
 
 实施权衡（助手）：仅接受模型原因与原文中明确个人因果句的原因片段直接对应；保留原文子串要求作为来源条件，加上因果指向/否定/引述/目标边界，未知优先 null，不用额外 LLM。规则只覆盖列明的小型中文句式，不宣称通用语义理解，可能漏掉隐含、复杂或改写过的真实动机。category/tags/description/missing_fields 其他名称质量关联既有 EVAL-001，区分结构/语义/整理质量/可用性，本轮不扩展系统。
+
+2026-11-01，来源：用户《AGENT-001 真实工作流复验：Collect → Explore》任务书。沿用 IDEA-005：授权最新语义修正基线的单次 runner、最多 collect/explore 各一次，保持原公开输入/null/约束/审批验收；非思考、零重试、新隔离库，失败即停不补跑/探针/换模型。优先采证，不主动改源码/Prompt，结束后新请求需新授权；不开展完整 EVAL。真实凭据仅 Settings 运行时使用，不浏览 .env，结果公开脱敏。
+
+2026-11-01 实证追加：按新授权只执行一次 runner，两次请求全通过（collect 1338、explore 1531，共 2869 Token）；原始模型动机已 null，模拟批准/重复批准后 Star/Quest 各一、Reflection 零，真实 ID/约束关联通过。保留未分类、缺失字段不完整、固定问题记录模板与无真实体验效果等质量限制，关联 EVAL-001 而不开展。单样本不能证明总体准确率或 Prompt/规则各自贡献；本轮不再调用模型，正式任务验收及证据见 Backlog/VERIFICATION。
 
 ### IDEA-006
 

@@ -185,3 +185,5 @@ scripts/        当前 Windows 环境启动脚本
 - 没有网页爬取、日历、语音、社交、多 Agent 或 MCP Server。没有宣称模型准确率、性能提升或任务成功率。
 
 2026-10-17 已核对远程 main 的 CI 修复基线 172103d，Author/Committer 为 GitHub noreply 身份。历史身份修正、旧失败和后续成功证据分别保留在 [验证记录](docs/VERIFICATION.md)；本轮仅按用户授权普通推送，不改写远程历史，未连接 Codex Cloud。
+
+2026-11-01 真实复验追加：最新语义代码下仅执行一次现有工作流 runner，collect/explore 各一次全通过（共 2869 Token），原始动机 null、隔离库模拟批准/幂等/真实来源/约束/关联通过，最终 Star/Quest/Reflection=1/1/0。单一服务验收已具证，不代表模型质量基线或真实体验效果；历史失败保留。两次额度用完，本轮停止，任何新调用需新授权。详见 [最新实证](docs/VERIFICATION.md#agent-001-live-recheck-20261101)。

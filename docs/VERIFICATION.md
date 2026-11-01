@@ -927,3 +927,125 @@ AGENT-001 继续 in_progress，M3 真实工作流验收未完成；UX-001/002 �
 交付前最终核对：`.cache/agent001_reason_doccheck.py` 实际检查 **319 处本地 Markdown 链接/锚点、28 项任务索引/详情、30 个唯一对照 ID 与历史输入/错误 reason/null 期望**，全部通过；相对基线仅 **11 个预期文件**。git diff --check 和已暂存 diff 检查通过；schemas/workflow/tools/main/config、两个 Live runner、原 cases.json、前端、依赖/锁、忽略规则、迁移和 ROADMAP 均未改，未覆盖未知工作区修改。
 
 个人 wonder.db 开始及结束 SHA-256 均为 **168DBA7DA4099D3818191ED62A748EDC71189355F2EBFDEF8A64AE52CAAA8D62**，未读取业务内容。提交前再次实际核验 .env 被 Git 忽略、未被跟踪且无私人 .env 变体被跟踪；仅扫描暂存区 11 个源码/测试/公开夹具/文档文件，Key 签名、Authorization 值、私人北京 Host、非空配置/私人文件检查均未发现疑似命中。没有读取/打印 .env；扫描汇总在被忽略的 .cache/agent001_reason_staged_safety.json。远程 main 提交前仍为预期 a9bfe7885b4b9c24e016700345fd7099ad25654e；文档补记再次暂存/扫描通过后，才按授权执行普通提交/推送。提交与实际 CI 终态在最终报告提供，不预写 CI 成功。
+
+
+<a id="agent-001-live-recheck-20261101"></a>
+
+## 2026-11-01：AGENT-001 最新语义代码真实 Collect → Explore 复验
+
+### 基线、授权与执行前保护
+
+用户本轮明确授权最多两次 Qwen3.8-Flash 请求（collect/explore 各一次），失败/超时也计数，禁止重试、探针、旧 runner、批量、换模型或其他云服务。本轮只执行一次现有 `./.venv/Scripts/python.exe evals/run_workflow_live.py --allow-live`，不修改源码、Prompt、固定输入、验收条件或保护规则。
+
+开始工作区/暂存区干净，main、本地和通过 Git 临时代理 `-c http.proxy=http://127.0.0.1:12450 ls-remote origin refs/heads/main` 得到的远程均为预期 **8f940efe9158c1e406c558e519b4eb293491fc54**。读取 AGENTS、ROADMAP、Backlog、IDEA-005、最新 VERIFICATION 与相关源码；确认 draft 使用 explicit_interest_reason，unknown_fields 仍要求动机/时间/预算/精力全 null，collect 原文未改，双层 request/invoke 上限、零重试、失败停跑、路径/engine/SessionLocal/Alembic/零记录检查仍有效。.env 实际 check-ignore 成功且 ls-files 无跟踪，未浏览或输出明文。Key 仅该 runner 的 Settings 在运行时使用。
+
+实际离线预检：`./.venv/Scripts/python.exe -m ruff check backend evals`、`./.venv/Scripts/python.exe -m ruff format --check backend evals` **passed / 25 files already formatted**；`./.venv/Scripts/python.exe -m pytest -q -rs` **165 passed / 1 skipped in 15.45s**，包含 30 项动机公开对照、历史错误清空、明确原因保留、missing_fields、真实 SDK 内存/Fake API/图、调用上限/失败占次数/停跑/无重试及库隔离回归。PG 因本机无 TEST_POSTGRES_URL skipped，不冒称通过。
+
+本轮无源码/依赖变更，按用户范围不机械重跑前端 format/lint/typecheck/Vitest/build、浏览器 E2E 或完整应用全套环境；这些本机检查本轮 **not run**。上一轮 82 前端等记录仍是历史，推送触发的新 CI 另在最终报告核对，不用配置存在证明通过。
+
+### 唯一一次 Live 执行与数据库核验
+
+实际退出码 **0**、status=passed、adapter_requests=2、invoke=2。provider=bailian、model=qwen3.8-flash、北京地域（完整私人 Host 不记录）、Chat Completions、enable_thinking=false、max_retries=0、max_completion_tokens=2048、timeout=30s。没有额外请求、重试、余额查询、请求代理改道或其他云服务，免费额度扣减未查询/估算。
+
+新库 `.cache/qwen-workflow-ck3r1ink/workflow.db`：请求前实际核验不存在/路径在项目 .cache、app.db.engine 与 SessionLocal 绑定同一文件，既有 Alembic upgrade head 版本 **0001**，Star/Quest/Reflection 初始全零。报告 `.cache/qwen-workflow-ck3r1ink/report.json` 保留公开 DTO/节点/工具/计数和 SDK usage，无 Key/Authorization/私人 Host/隐藏推理，均被忽略不提交。报告 SHA-256：**107b1e8ce5732b406831d43b1d875890438adf60ef201c8b00a6584f19e3d4c8**。
+
+| 场景 | input/output/total Token（SDK 实际） | invoke / API / AgentRun 耗时 ms | 结果 |
+| --- | --- | --- | --- |
+| collect | 1178 / 160 / 1338 | 4136 / 4429 / 4408 | passed |
+| explore | 1219 / 312 / 1531 | 4569 / 4688 / 4670 | passed |
+| 合计 | **2397 / 472 / 2869** | 各测量边界不同，不作为性能基准 | 两次上限内，无失败 |
+
+collect run_id=**41e24644-27ec-4097-b83d-bc7981ce869d**。真实模型原始工具参数中 interest_reason 就是 null，adapter 后仍 null；missing_fields=[interest_reason] 一致。历史公开原文与 paste/null 来源保留，estimated_minutes/estimated_budget/energy_level 均 null；唯一 create_star_draft、无 invalid_tool_calls、DraftResult/Pydantic 通过，API 201、mode=live、awaiting_decision。节点 understand_request→extract_star_draft→await_user_decision 与 create_star_draft 工具全部 succeeded，批准后 persist_approved_result succeeded。
+
+explore run_id=**83200791-e774-47a3-8dc7-8d15f17dc7f4**。先只读检索确认命中刚创建的真实测试 Star，再实际图内检索/详情/偏好、唯一 generate_quest_proposal、ProposalResult/Pydantic、validate_quest_proposal 全部通过。节点 understand_request→retrieve_related_stars→load_preferences→generate_suggestions→validate_suggestions→await_user_decision；工具 search_stars、get_star_details、get_user_preferences、generate_quest_proposal、validate_quest_proposal 全部 succeeded。批准时再次读取偏好/校验约束，persist_approved_quest 与 persist_approved_result succeeded。
+
+| 实际计数检查点 | Star | Quest | Reflection |
+| --- | --- | --- | --- |
+| 初始 / collect 批准前 | 0 | 0 | 0 |
+| collect 批准 / 重复同一批准 | 1 | 0 | 0 |
+| explore 批准前 | 1 | 0 | 0 |
+| explore 批准 / 重复同一批准 / 退出 | 1 | 1 | 0 |
+
+模拟测试决定 actor=isolated_test_simulation，均通过原 decision API，**不是用户本人审批**。Star ID=**d5c5fdad-e16d-4f3b-8e00-0019e5208c6c**；Quest ID=**afe9fdfe-756b-47f1-9c0b-f38cb962b68c**。两个场景重复相同决定返回相同结果/ID且计数不变，Quest 只关联该 Star，未写 Reflection、未声称用户已完成体验。
+
+运行后仅以 sqlite mode=ro 打开这个明确隔离库，PRAGMA database_list 再核对实际路径，确认三类计数 1/1/0、QuestStar 一对正确 ID、两个 AgentRun 最终 decided 且各只有一个决定。独立只读审计保存在 `.cache/qwen-workflow-ck3r1ink/read-only-audit.json`，没有新增模型调用或修改业务数据。
+
+### 实际公开结构化输出（仅测试数据）
+
+以下为报告中模型通过 Pydantic 的公开输出，不含隐藏推理或 headers。collect 最终状态另由 adapter 再校验，此次原因本来就是 null：
+
+```json
+{
+  "collect": {
+    "draft": {
+      "title": "深海生物发光",
+      "original_text": "我一直想了解深海生物为什么会发光，想找时间记录三个感兴趣的问题。",
+      "description": "用户希望了解深海生物发光的原因，并计划记录三个感兴趣的问题。",
+      "category": "未分类",
+      "tags": [
+        "深海生物",
+        "发光",
+        "海洋"
+      ],
+      "interest_reason": null,
+      "source_type": "paste",
+      "source_reference": null,
+      "estimated_minutes": null,
+      "estimated_budget": null,
+      "energy_level": null,
+      "status": "collected"
+    },
+    "missing_fields": [
+      "interest_reason"
+    ],
+    "questions": [
+      "你为什么会想了解深海生物发光？是某个经历或内容触发了你的兴趣吗？",
+      "你有大概可用的时间和预算来探索这个主题吗？"
+    ]
+  },
+  "explore": {
+    "proposals": [
+      {
+        "title": "深海生物发光：三问记录小体验",
+        "description": "利用10分钟，围绕已有星星“深海生物发光”做一次室内文字思考：先读原始内容，再写下三个想进一步了解的问题，最后选出最想追问的一个并记录这次感受。全程免费、不外出、不购买。",
+        "estimated_minutes": 10,
+        "estimated_budget": 0.0,
+        "energy_level": "low",
+        "steps": [
+          "读一遍这条星星的原始内容。",
+          "写下三个你想进一步了解的问题。",
+          "选出最想追问的一个，记录这次感受。"
+        ],
+        "based_on_star_ids": [
+          "d5c5fdad-e16d-4f3b-8e00-0019e5208c6c"
+        ],
+        "rationale": "用户请求与星星均指向“深海生物发光的原因”，且星星原文写明计划记录三个感兴趣的问题；在低能量、10分钟、预算为0且仅室内的约束下，逐字采用给定模板步骤进行纯文字记录最合适。",
+        "uncertainties": [
+          "星星文本未提供具体的发光机制信息，只能基于问题记录展开，无法回答科学原因本身。",
+          "用户希望记录的三个具体问题尚未写出，需由用户自行填写。",
+          "10分钟是否足够完成三步取决于用户的书写速度。"
+        ]
+      }
+    ],
+    "questions": []
+  }
+}
+```
+
+### 质量、验收边界与复盘
+
+本样本区分五层：两个指定唯一 Tool Calling 正确；Pydantic 结构正确；历史动机误填在本次真实返回中没有复现且原文/未知值符合契约；真实引用/时间≤10分钟/0预算/low/三个逐字模板步骤及批准时二次校验正确；**用户体验质量仍未由本次测试评定**。只有 1 collect + 1 explore，不构成高准确率、广泛兴趣覆盖或体验成功率。
+
+仍有质量观察：category 仍未分类；本次 tags 有深海生物/发光/海洋，description 不再为空，但不能据两轮单样本宣称稳定提升。missing_fields 只列原因，未穷举其他未知数值；本轮只要求原因一致，不扩展契约。collect 追问时间/预算但仍成功留草稿；Explore 使用既有免费文字模板，能记录问题，未回答科学机制也未验证真实体验效果；不确定性已说明信息不足、问题待写与书写时长差异。上述关联既有 EVAL-001 候选，不改 Prompt、不硬造质量结论、不开展完整评测。
+
+正式验收对照：真实 collect/explore 的指定工具/结构、真实 ID 引用、未知空值、生成前后批准边界、批准后二次约束和重复决定幂等均有本次实证；超时/限流/不可用/非法工具的分类与失败审计仍由本轮离线 Fake/内存测试证明，**真实故障未人为制造（not run）**。完成此单一服务的既定兼容/审批验收可收尾 AGENT-001，质量基线/更多样本归 EVAL-001，PG 回滚/容器仍归各自任务，不联动关闭。未改变源码/依赖/Schema/正式 API/Prompt/工具权限/runner 保护。
+
+个人 wonder.db 仅前后文件哈希，均 **168DBA7DA4099D3818191ED62A748EDC71189355F2EBFDEF8A64AE52CAAA8D62**；没有读取、导入或写入其业务数据。environment_restored=true。未修改 .env、输出密钥/私人 Host、启动公网服务、连接 Codex Cloud 或部署；临时测试数据和报告仅留在 .cache，不发布。两次额度已用完，本轮不再发请求。
+
+- 为什么用户需要它？验证刚修正的动机边界能进入真实应用闭环，且模型候选只有明确测试批准后才成为正式记录。
+- 它在 AI Agent 系统中解决了什么问题？首次取得真实 FastAPI→LangGraph→指定工具/Pydantic→来源/约束→模拟 decision→Star/Quest 持久化与幂等的完整证据；不是仅适配器结构通过。
+- 我们学到了什么？模型返回合法结果与后端可信执行是不同层；保守字段规则、确定性验证和审批事务需要一起验证。此次真实原始原因已为空，但单样本不足以区分 Prompt 与规则的总体贡献或宣称模型准确率。
+
+本轮停止，下一项只建议另行规划 EVAL-001 的人工复核基线，不自动实施或追加真实调用。文档/暂存安全/提交/CI 的实际结果交付前核对，CI 终态在最终报告提供。
+
+交付前检查：`.cache/agent001_recheck_doccheck.py` 检查 323 个本地 Markdown 链接/锚点、28 项任务索引/详情及历史 30 个对照/原文/null 期望，全部通过；仅 7 个预期文档变化，git diff --check/暂存 diff 通过。当前所有源码、Prompt、依赖和 runner 与执行基线一致。个人库结束哈希再次相同；.env check-ignore 成功且未跟踪，暂存区 Key 签名/Authorization 值/私人 Host/数据库/私人配置扫描疑似命中 0，无 .cache 产物混入，不读取 .env 内容。普通提交/推送前再次核对远程，作者/提交者使用指定 GitHub 身份；CI 实际终态在最终报告给出，不提前写通过。

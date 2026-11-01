@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+### 2026-11-01：AGENT-001 真实 Collect → Explore 闭环验收
+
+- 复用最新语义修正代码与现有 runner，仅执行一次、真实两次 Qwen3.8-Flash 请求；collect 原始动机 null，explore 正确引用新建测试 Star，结构/确定性约束通过，全部模拟测试批准及重复决定幂等通过，最终 Star/Quest/Reflection=1/1/0。
+- 真实 usage 共 2869 Token，新隔离库/Alembic/实际 engine/零记录/个人库哈希及环境恢复核验通过；只读审计和公开输出留证，未改源码/Prompt/依赖/Schema，没有额外请求或部署。
+- 离线后端 165 passed / 1 skipped、Ruff 通过；本轮纯采证文档交付，前端本机检查未机械重跑。AGENT-001 既定单服务验收收尾，质量局限和真实故障未测分开记录；EVAL-001/PG/容器未联动关闭。实证与三问见 [VERIFICATION](docs/VERIFICATION.md#agent-001-live-recheck-20261101)。
+
 ### 2026-10-25：AGENT-001 兴趣主题与明确动机的离线修正
 
 - collect 专用提示区分个人原因、主题/问题/目标、科学因果与否定，补正反例/null 要求；探索提示及室内文字活动/工具协议保留。
