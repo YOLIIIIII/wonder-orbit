@@ -1,16 +1,16 @@
 # WonderOrbit 路线图
 
-更新日期：2026-11-01（Asia/Shanghai）。阶段与顺序以本文件说明；正式任务的当前状态、依赖和验收只在 [PRODUCT_BACKLOG](docs/PRODUCT_BACKLOG.md) 维护，来源见 [IDEA_LOG](docs/IDEA_LOG.md)，交付见 [CHANGELOG](CHANGELOG.md)，实证见 [VERIFICATION](docs/VERIFICATION.md)。里程碑名称不代表已发布版本或 Git tag。
+更新日期：2026-11-06（Asia/Shanghai）。阶段与顺序以本文件说明；正式任务的当前状态、依赖和验收只在 [PRODUCT_BACKLOG](docs/PRODUCT_BACKLOG.md) 维护，来源见 [IDEA_LOG](docs/IDEA_LOG.md)，交付见 [CHANGELOG](CHANGELOG.md)，实证见 [VERIFICATION](docs/VERIFICATION.md)。里程碑名称不代表已发布版本或 Git tag。
 
 ## 当前阶段
 
-**当前处于 M3，同时穿插 M2 的体验打磨；M1 本地 MVP 已交付，M2/M3 均不宣称全部完成。** AGENT-001 的单一 Qwen 服务既定真实 collect/explore、来源/约束和隔离模拟审批闭环已完成；EVAL-001 仍在进行，离线工具、第二阶段公开结果准备与第三阶段 A 固定采集入口已本地实现，尚无正式固定真实质量基线。
+**当前处于 M3，同时穿插 M2 的体验打磨；M1 本地 MVP 已交付，M2/M3 均不宣称全部完成。** AGENT-001 的单一 Qwen 服务既定真实 collect/explore、来源/约束和隔离模拟审批闭环已完成；EVAL-001 仍在进行，离线工具、第二阶段公开结果准备与第三阶段 A 固定采集入口已本地实现，已有三例 adapter_dto 的首批部分质量证据，尚无完整正式 Workflow 质量基线；最新范围和缺口见 Backlog。
 
 UX-006 邀请卡与淡底色已随 bee5596 推送，Actions 41301902392 backend/frontend 均成功；用户已接受当前 MVP，验收记录与状态见 Backlog。UX-003 人工按示例记录缺口保留；INFRA-001/002 尚缺完整目标环境验收，既有 CI/PG 集成不能替代 PG 回滚/完整容器。
 
 产品方向：星屿不是 To-do List，而是收藏可搁置、可重新拾起的生活念头，在需要时帮助用户找到有价值的下一小步。自主选择优先、建议按需且可忽略，AI 不替用户决定。同一 Star 的渐进探索、历史引导/个性化接续及小绿藻正式形象仍是长期候选（IDEA-016/UI-002），不是当前已实现能力。
 
-当前 EVAL-001 第三阶段 A 已准备固定三案例 adapter_dto 采集入口与公开快照；本轮真实请求 0，交付后停止，等待用户单独确认阶段 B。仍不提交/推送或启动 AGENT-004。本文件后续带日期的阶段与顺序记录保留历史语境，当前任务状态仅看 Backlog。
+当前 EVAL-001 的三例 adapter_dto 采样已由用户执行；2026-11-06 完成本地公开审核和离线评价，新增调用 0，预算空值失败与未评分项保留。下一步先复核候选评分和探索收获方向，不在本轮新增模型调用、提交推送或实施 AGENT-004。本文件后续带日期的阶段与顺序记录保留历史语境，当前任务状态仅看 Backlog。
 
 ### 历史阶段快照（2026-10-25 至 2026-11-01 收尾前）
 

@@ -1,0 +1,817 @@
+{
+  "report_version": "offline-report-v1",
+  "metadata": {
+    "format_version": "offline-results-v1",
+    "public_data": true,
+    "case_version": "wonderorbit-cases-v1",
+    "rubric_version": "wonderorbit-quality-v1",
+    "prompt_version": "sha256:78b3474336ab7c9a46b8106c97ff213c5d2a2ac1a457dfad0be5397959efe7e9",
+    "workflow_version": "not_executed:adapter_dto",
+    "retrieval_version": "fixed-public-snapshot:sha256:f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4",
+    "model": "qwen3.8-flash",
+    "mode": "live",
+    "sampling": {
+      "format_version": "private-quality-sampling-v1",
+      "mode": "live",
+      "model": "qwen3.8-flash",
+      "provider": "bailian",
+      "case_version": "wonderorbit-cases-v1",
+      "rubric_version": "wonderorbit-quality-v1",
+      "prompt_version": "sha256:78b3474336ab7c9a46b8106c97ff213c5d2a2ac1a457dfad0be5397959efe7e9",
+      "workflow_version": "not_executed:adapter_dto",
+      "retrieval_version": "fixed-public-snapshot:sha256:f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4",
+      "git_sha": "e0afb6277ac0160683e17915408bf6176218c2f0",
+      "working_tree_dirty": false,
+      "source_hashes": {
+        "backend/app/model_adapter.py": "78b3474336ab7c9a46b8106c97ff213c5d2a2ac1a457dfad0be5397959efe7e9",
+        "backend/app/schemas.py": "4b8e5e0d59be0123c5270be2e9ca5ae9ca0b8a9c61ecfefbf96e1a99cdef71b1",
+        "backend/app/rules.py": "af4e580b937899832089fe97084a7011fd2c1e70a03ba105a0cdedf13c7d25f2",
+        "evals/collect_quality.py": "58620aef995be128bdb6d89c9080b9bdc9c09b712277d8b40f65ff217d829f50",
+        "evals/run_live.py": "42f963c9e777066c0f01127aa6bfbc2784f1aab6ddda728a510f33d3f76a0440",
+        "evals/quality_cases.json": "f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4",
+        "evals/QUALITY_RUBRIC.md": "d56b35880f2c4da2259dbdbf30de817ea0c8130e72fed3e95fa0a18b0f65c599",
+        "evals/check_results.py": "e12c39781067041e172d01af0b32e7183f1bb94afdcfcbe008138dbc234038ff"
+      },
+      "suite_hash_normalization": "crlf-to-lf",
+      "started_at": "2026-11-01T12:09:43.462147+00:00",
+      "workflow_executed": false,
+      "approval_observation": "not_observed:adapter_only",
+      "synthetic_ids": true,
+      "max_requests": 3,
+      "sdk_retries": 0,
+      "max_output_tokens": 2048,
+      "timeout_seconds": 30.0,
+      "enable_thinking": false,
+      "attempted_requests": 3,
+      "attempts": [
+        {
+          "case_id": "explicit-motivation",
+          "status": "schema_valid",
+          "usage": {
+            "input_tokens": 1173,
+            "output_tokens": 159,
+            "total_tokens": 1332
+          },
+          "elapsed_ms": 3601,
+          "adapter_inputs": {
+            "request": {
+              "request_type": "collect",
+              "text": "我喜欢天文，因为小时候看过星空纪录片。",
+              "available_minutes": null,
+              "budget": null,
+              "energy_level": null,
+              "source_type": "paste",
+              "source_reference": null
+            },
+            "stars": [],
+            "preferences": {
+              "categories": [],
+              "min_minutes": 1,
+              "max_minutes": 30,
+              "max_budget": null,
+              "energy_level": null,
+              "constraints": []
+            }
+          },
+          "model_payload": {
+            "request_type": "collect",
+            "text": "我喜欢天文，因为小时候看过星空纪录片。",
+            "available_minutes": null,
+            "budget": null,
+            "energy_level": null,
+            "source_type": "paste",
+            "source_reference": null
+          }
+        },
+        {
+          "case_id": "unknown-motivation",
+          "status": "schema_valid",
+          "usage": {
+            "input_tokens": 1171,
+            "output_tokens": 196,
+            "total_tokens": 1367
+          },
+          "elapsed_ms": 2926,
+          "adapter_inputs": {
+            "request": {
+              "request_type": "collect",
+              "text": "我想了解深海生物为什么会发光。",
+              "available_minutes": null,
+              "budget": null,
+              "energy_level": null,
+              "source_type": "paste",
+              "source_reference": null
+            },
+            "stars": [],
+            "preferences": {
+              "categories": [],
+              "min_minutes": 1,
+              "max_minutes": 30,
+              "max_budget": null,
+              "energy_level": null,
+              "constraints": []
+            }
+          },
+          "model_payload": {
+            "request_type": "collect",
+            "text": "我想了解深海生物为什么会发光。",
+            "available_minutes": null,
+            "budget": null,
+            "energy_level": null,
+            "source_type": "paste",
+            "source_reference": null
+          }
+        },
+        {
+          "case_id": "grounded-explore",
+          "status": "schema_valid",
+          "usage": {
+            "input_tokens": 1082,
+            "output_tokens": 423,
+            "total_tokens": 1505
+          },
+          "elapsed_ms": 8904,
+          "adapter_inputs": {
+            "request": {
+              "request_type": "explore",
+              "text": "深海发光",
+              "available_minutes": 10,
+              "budget": 0.0,
+              "energy_level": "low",
+              "source_type": "paste",
+              "source_reference": null
+            },
+            "stars": [
+              {
+                "star_id": "00000000-0000-4000-8000-000000000001",
+                "title": "深海发光",
+                "original_text": "我对深海生物发光很好奇。",
+                "category": "自然",
+                "tags": [
+                  "深海",
+                  "发光"
+                ]
+              }
+            ],
+            "preferences": {
+              "categories": [],
+              "min_minutes": 1,
+              "max_minutes": 30,
+              "max_budget": null,
+              "energy_level": null,
+              "constraints": []
+            }
+          },
+          "model_payload": {
+            "request": {
+              "request_type": "explore",
+              "text": "深海发光",
+              "available_minutes": 10,
+              "budget": 0.0,
+              "energy_level": "low",
+              "source_type": "paste",
+              "source_reference": null
+            },
+            "stars": [
+              {
+                "star_id": "00000000-0000-4000-8000-000000000001",
+                "title": "深海发光",
+                "original_text": "我对深海生物发光很好奇。",
+                "category": "自然",
+                "tags": [
+                  "深海",
+                  "发光"
+                ]
+              }
+            ],
+            "preferences": {
+              "categories": [],
+              "min_minutes": 1,
+              "max_minutes": 30,
+              "max_budget": null,
+              "energy_level": null,
+              "constraints": []
+            },
+            "effective_limits": {
+              "minutes": 10,
+              "budget": 0.0,
+              "energy": "low"
+            },
+            "constraint_template": null
+          }
+        }
+      ]
+    }
+  },
+  "evidence_type": "supplied_live_output_unverified",
+  "provenance": "caller_supplied; no provider or database verification",
+  "deterministic": {
+    "passed": 20,
+    "failed": 1,
+    "not_run": 7,
+    "not_rated": 3
+  },
+  "manual": {
+    "rated": 1,
+    "not_rated": 59
+  },
+  "cases": [
+    {
+      "case_id": "explicit-motivation",
+      "checks": [
+        {
+          "name": "output_schema",
+          "status": "passed"
+        },
+        {
+          "name": "original_and_source",
+          "status": "passed"
+        },
+        {
+          "name": "interest_reason",
+          "status": "passed"
+        },
+        {
+          "name": "estimated_minutes",
+          "status": "passed"
+        },
+        {
+          "name": "estimated_budget",
+          "status": "failed"
+        },
+        {
+          "name": "energy_level",
+          "status": "passed"
+        },
+        {
+          "name": "reason_missing_consistency",
+          "status": "passed"
+        },
+        {
+          "name": "approval_boundary",
+          "status": "not_rated"
+        }
+      ],
+      "manual": {
+        "topic": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "title": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "category": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "tags": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "description": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "motivation": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "clarification": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        }
+      },
+      "failure_type": null,
+      "capture": {
+        "observation_layer": "adapter_dto",
+        "generation_versions": {
+          "prompt_version": "sha256:78b3474336ab7c9a46b8106c97ff213c5d2a2ac1a457dfad0be5397959efe7e9",
+          "workflow_version": "not_executed:adapter_dto",
+          "retrieval_version": "fixed-public-snapshot:sha256:f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4"
+        },
+        "input": {
+          "request_type": "collect",
+          "text": "我喜欢天文，因为小时候看过星空纪录片。",
+          "source_type": "paste",
+          "source_reference": null
+        },
+        "preferences": {},
+        "retrieved_stars": [],
+        "id_map": {},
+        "raw_output": {
+          "draft": {
+            "title": "天文",
+            "original_text": "我喜欢天文，因为小时候看过星空纪录片。",
+            "description": "",
+            "category": "未分类",
+            "tags": [
+              "天文"
+            ],
+            "interest_reason": "小时候看过星空纪录片",
+            "source_type": "paste",
+            "source_reference": null,
+            "estimated_minutes": null,
+            "estimated_budget": 0.0,
+            "energy_level": null,
+            "status": "collected"
+          },
+          "missing_fields": [
+            "estimated_minutes",
+            "energy_level"
+          ],
+          "questions": [
+            "您愿意为这次天文兴趣投入多少时间（分钟）？",
+            "当前精力水平如何（低/中/高）？"
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unknown-motivation",
+      "checks": [
+        {
+          "name": "output_schema",
+          "status": "passed"
+        },
+        {
+          "name": "original_and_source",
+          "status": "passed"
+        },
+        {
+          "name": "interest_reason",
+          "status": "passed"
+        },
+        {
+          "name": "estimated_minutes",
+          "status": "passed"
+        },
+        {
+          "name": "estimated_budget",
+          "status": "passed"
+        },
+        {
+          "name": "energy_level",
+          "status": "passed"
+        },
+        {
+          "name": "reason_missing_consistency",
+          "status": "passed"
+        },
+        {
+          "name": "approval_boundary",
+          "status": "not_rated"
+        }
+      ],
+      "manual": {
+        "topic": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "title": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "category": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "tags": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "description": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "motivation": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "clarification": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        }
+      },
+      "failure_type": null,
+      "capture": {
+        "observation_layer": "adapter_dto",
+        "generation_versions": {
+          "prompt_version": "sha256:78b3474336ab7c9a46b8106c97ff213c5d2a2ac1a457dfad0be5397959efe7e9",
+          "workflow_version": "not_executed:adapter_dto",
+          "retrieval_version": "fixed-public-snapshot:sha256:f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4"
+        },
+        "input": {
+          "request_type": "collect",
+          "text": "我想了解深海生物为什么会发光。",
+          "source_type": "paste",
+          "source_reference": null
+        },
+        "preferences": {},
+        "retrieved_stars": [],
+        "id_map": {},
+        "raw_output": {
+          "draft": {
+            "title": "深海生物发光原因",
+            "original_text": "我想了解深海生物为什么会发光。",
+            "description": "",
+            "category": "未分类",
+            "tags": [
+              "深海生物",
+              "发光",
+              "海洋生物学"
+            ],
+            "interest_reason": null,
+            "source_type": "paste",
+            "source_reference": null,
+            "estimated_minutes": null,
+            "estimated_budget": null,
+            "energy_level": null,
+            "status": "collected"
+          },
+          "missing_fields": [
+            "interest_reason"
+          ],
+          "questions": [
+            "您为什么对深海生物发光产生兴趣？例如是否有某次阅读、纪录片或经历触发了这个好奇心？",
+            "您希望为这个主题投入多少时间（分钟）？",
+            "您的精力水平如何（低/中/高）？这有助于后续安排探索节奏。"
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "multiple-topics",
+      "checks": [
+        {
+          "name": "output",
+          "status": "not_run"
+        }
+      ],
+      "manual": {
+        "topic": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "title": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "category": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "tags": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "description": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "motivation": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "clarification": {
+          "score": "not_rated",
+          "note": ""
+        }
+      },
+      "failure_type": null,
+      "capture": null
+    },
+    {
+      "case_id": "source-organization",
+      "checks": [
+        {
+          "name": "output",
+          "status": "not_run"
+        }
+      ],
+      "manual": {
+        "topic": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "title": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "category": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "tags": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "description": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "motivation": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "clarification": {
+          "score": "not_rated",
+          "note": ""
+        }
+      },
+      "failure_type": null,
+      "capture": null
+    },
+    {
+      "case_id": "unknown-resources",
+      "checks": [
+        {
+          "name": "output",
+          "status": "not_run"
+        }
+      ],
+      "manual": {
+        "topic": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "title": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "category": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "tags": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "description": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "motivation": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "clarification": {
+          "score": "not_rated",
+          "note": ""
+        }
+      },
+      "failure_type": null,
+      "capture": null
+    },
+    {
+      "case_id": "grounded-explore",
+      "checks": [
+        {
+          "name": "output_schema",
+          "status": "passed"
+        },
+        {
+          "name": "proposal_policy",
+          "status": "passed"
+        },
+        {
+          "name": "proposal_0:retrieved_star_ids",
+          "status": "passed"
+        },
+        {
+          "name": "proposal_0:time",
+          "status": "passed"
+        },
+        {
+          "name": "proposal_0:budget",
+          "status": "passed"
+        },
+        {
+          "name": "proposal_0:energy",
+          "status": "passed"
+        },
+        {
+          "name": "proposal_0:constraints",
+          "status": "passed"
+        },
+        {
+          "name": "approval_boundary",
+          "status": "not_rated"
+        }
+      ],
+      "manual": {
+        "relevance": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "feasibility": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "steps": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "uncertainty": {
+          "score": "not_rated",
+          "note": "用户未逐项确认；助手候选评分见 docs/VERIFICATION.md 2026-11-06 记录。"
+        },
+        "exploration_value": {
+          "score": 1,
+          "note": "来源：用户 2026-11-06 任务书转述其亲自选择的评价选项，映射既有 rubric 为 1。用户反馈：有一点趣味，但没有真正帮我理解深海发光；第三步比喻命名被认为没有必要。未宣称用户逐项评价其他维度。"
+        }
+      },
+      "failure_type": null,
+      "capture": {
+        "observation_layer": "adapter_dto",
+        "generation_versions": {
+          "prompt_version": "sha256:78b3474336ab7c9a46b8106c97ff213c5d2a2ac1a457dfad0be5397959efe7e9",
+          "workflow_version": "not_executed:adapter_dto",
+          "retrieval_version": "fixed-public-snapshot:sha256:f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4"
+        },
+        "input": {
+          "request_type": "explore",
+          "text": "深海发光",
+          "available_minutes": 10,
+          "budget": 0,
+          "energy_level": "low"
+        },
+        "preferences": {},
+        "retrieved_stars": [
+          {
+            "star_id": "00000000-0000-4000-8000-000000000001",
+            "title": "深海发光",
+            "original_text": "我对深海生物发光很好奇。",
+            "category": "自然",
+            "tags": [
+              "深海",
+              "发光"
+            ]
+          }
+        ],
+        "id_map": {
+          "00000000-0000-4000-8000-000000000001": "public-star-ocean"
+        },
+        "raw_output": {
+          "proposals": [
+            {
+              "title": "三分钟深海微光速记",
+              "description": "围绕星星「深海发光」中记录的原始好奇——对深海生物发光的兴趣——进行一次低能量的室内文字小体验：静下心写下你对\"深海生物为何发光\"的直觉猜测与好奇点，再为它起一个只属于你的比喻名字。全程只需已有的文字记录，无需外部资料或设备。",
+              "estimated_minutes": 8,
+              "estimated_budget": 0.0,
+              "energy_level": "low",
+              "steps": [
+                "用 1 分钟重读星星原文：\"我对深海生物发光很好奇\"",
+                "用 3 分钟写下 2-3 条你猜想的\"深海生物为什么会发光\"的私人理由（允许天马行空）",
+                "用 2 分钟挑一个最打动你的猜想，给它起一个比喻性的名字",
+                "用 2 分钟记录 1 个你想继续追问的问题，留作日后扩展"
+              ],
+              "based_on_star_ids": [
+                "00000000-0000-4000-8000-000000000001"
+              ],
+              "rationale": "原星星仅表达了好奇情绪（\"我对深海生物发光很好奇\"），未提供任何事实性内容，因此建议严格限定在基于已有文字的想象与记录类活动，不引入外部知识、不购买物品、不联网。时长贴合请求中的 10 分钟上限与低能量状态，预算为免费文字记录。",
+              "uncertainties": [
+                "原始文本只表明好奇，未说明想了解科学机制还是纯审美感受，建议偏向开放式想象",
+                "无法确认用户是否愿意书写输出，若只想静观可缩减为第 1、4 步",
+                "偏好设置中 categories/energy_level 均为空，本建议完全依据本次请求内明确字段推导"
+              ]
+            }
+          ],
+          "questions": []
+        }
+      }
+    },
+    {
+      "case_id": "empty-history",
+      "checks": [
+        {
+          "name": "output",
+          "status": "not_run"
+        }
+      ],
+      "manual": {
+        "relevance": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "feasibility": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "steps": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "uncertainty": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "exploration_value": {
+          "score": "not_rated",
+          "note": ""
+        }
+      },
+      "failure_type": null,
+      "capture": null
+    },
+    {
+      "case_id": "unsupported-constraint",
+      "checks": [
+        {
+          "name": "output",
+          "status": "not_run"
+        }
+      ],
+      "manual": {
+        "relevance": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "feasibility": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "steps": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "uncertainty": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "exploration_value": {
+          "score": "not_rated",
+          "note": ""
+        }
+      },
+      "failure_type": null,
+      "capture": null
+    },
+    {
+      "case_id": "vague-but-legal",
+      "checks": [
+        {
+          "name": "output",
+          "status": "not_run"
+        }
+      ],
+      "manual": {
+        "relevance": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "feasibility": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "steps": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "uncertainty": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "exploration_value": {
+          "score": "not_rated",
+          "note": ""
+        }
+      },
+      "failure_type": null,
+      "capture": null
+    },
+    {
+      "case_id": "approval-lifecycle",
+      "checks": [
+        {
+          "name": "output",
+          "status": "not_run"
+        }
+      ],
+      "manual": {
+        "relevance": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "feasibility": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "steps": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "uncertainty": {
+          "score": "not_rated",
+          "note": ""
+        },
+        "exploration_value": {
+          "score": "not_rated",
+          "note": ""
+        }
+      },
+      "failure_type": null,
+      "capture": null
+    }
+  ]
+}

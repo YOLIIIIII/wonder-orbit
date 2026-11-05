@@ -1278,3 +1278,91 @@ Windows PowerShell / 项目 Python 3.12.15 与 Node 22.23.3，PATH 进程内前�
 本轮只授权一次本地修复提交（fix(evals): normalize fixed suite hash across platforms），不推送、不改历史。下一项由用户在 PowerShell 推送后查看新 CI；在新运行实际成功前不能宣称远程修复已验收，EVAL-001 保持 in_progress，阶段 B 仍需独立确认。
 
 交付前实测：363 个本地 Markdown 链接/锚点通过，修改范围仅七个预期文件；无新增未跟踪交付文件，git diff --check 通过，变更文件密钥/Bearer/私钥签名扫描无命中。上述最后检查为文档/范围检查，不冒称又重跑应用测试。
+
+<a id="eval-001-first-baseline-20261106"></a>
+
+## 2026-11-06：EVAL-001 第一批真实质量基线整理与反馈归档（本地、部分证据）
+
+本轮开始 git status --short 为空，HEAD=e0afb6277ac0160683e17915408bf6176218c2f0，与用户给出的基线一致；按约定核对 ROADMAP/Backlog、IDEA-005/006/近期验证。全程离线，无 GitHub/模型/其他网络查询。用户此前已亲自执行阶段 B，本轮只读取指定 .cache/quality-baseline-v1/raw.json，不读取其他历史缓存、.env、私人配置或个人库；未删除/覆盖/重建采样目录。本轮不 commit/push，不改生产代码/Prompt/规则/审批/数据库/前端/固定案例。
+
+### 原始审核与可公开条件
+
+原始文件 SHA256（开始与结束核对）：89eeb9c71de5458a00fab39b39a788a6b8913482bcfd68827b2a4c6755815bdb。format_version=private-quality-sampling-v1，public_data=false；采集 SHA=e0afb6277ac0160683e17915408bf6176218c2f0，working_tree_dirty=false；started_at=2026-11-01T12:09:43.462147+00:00（北京时间2026-11-01 20:09:43.462147）。审核/归档日期为2026-11-06，不把它当作采样日期。用户报告采集程序 exit 0；raw 本身没有进程退出码字段，未补造该元数据。
+
+- 模型/模式：bailian / qwen3.8-flash / live；三条 observation_layer=adapter_dto。workflow_version=not_executed:adapter_dto，workflow_executed=false，approval_observation=not_observed:adapter_only；不能称完整 Workflow 或审批基线。
+- 案例 wonderorbit-cases-v1；rubric wonderorbit-quality-v1。Prompt/adapter SHA256=78b3474336ab7c9a46b8106c97ff213c5d2a2ac1a457dfad0be5397959efe7e9；固定公开快照 SHA256=f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4，suite_hash_normalization=crlf-to-lf。raw.source_hashes 的适配器/DTO/规则/采集器/预检/案例/规范/检查器 **8/8** 与当前文件按规定算法一致，所有实际哈希保留在公开 capture 文件顶层 sampling.source_hashes 旁证中，不倒推或编造生成版本。
+- attempted_requests=3、max_requests=3、sdk_retries=0、max_output_tokens=2048、timeout_seconds=30、enable_thinking=false；顺序与三例固定计划一致，均 schema_valid，无失败或中断条目。
+- 逐字段核对 capture.input/preferences/retrieved_stars/id_map 与固定计划一致；adapter_inputs 为实际展开默认值后的参数，model_payload 与其完全对应。Explore 的 request.text=“深海发光”，Star 原文“我对深海生物发光很好奇”，保留 title/original_text/category/tags 全字段；偏好输入{}，展开默认约束为空，effective_limits={minutes:10,budget:0,energy:low}，constraint_template=null。未将 workflow 的另一种检索格式改名混用。
+- 合成UUID 00000000-0000-4000-8000-000000000001 → public-star-ocean，一一对应且内容完整；属于测试公开快照映射，绝非实际数据库记录。
+
+| 案例 | 原始状态 | input_tokens | output_tokens | total_tokens | elapsed_ms |
+| --- | --- | ---: | ---: | ---: | ---: |
+| explicit-motivation | schema_valid | 1173 | 159 | 1332 | 3601 |
+| unknown-motivation | schema_valid | 1171 | 196 | 1367 | 2926 |
+| grounded-explore | schema_valid | 1082 | 423 | 1505 | 8904 |
+
+累计输入3426、输出778、总4204 Token，均来自 raw 的 SDK usage，逐项与用户任务书一致；本批已有三次真实请求，**本轮整理新增0次**。不据此推算服务账单或总体性能。
+
+公开审核先检查字段集合和潜在密钥/Authorization/Bearer/私人Host/数据库连接/隐藏推理/URL/邮箱/手机号签名，再人工阅读三个DTO、全部实际输入/模型payload及元数据。仅发现固定公开兴趣文字、合成ID及其生成建议，无个人档案/配置/原始服务错误或不应公开的文本。三条DTO与用户任务书所列字段、标题、步骤、动机/预算/缺失字段和问题描述一致。任务书未附此前完整DTO的逐字副本，因此不声称独立证明与未附历史消息逐字节相同；本次以只读原报告的完整合法DTO为证据，未发现无法解释的不一致，符合本次公开导出条件。扫描本身不等于隐私保证，本次已补充实际内容审核；数据仅本地导出，未上传。
+
+### 实际离线流程和结果
+
+使用 Python subprocess 捕获 stdout/检查退出码，以 UTF-8 新文件方式保存；不会覆盖既有文件。三个 CLI 均安装独立子进程 audit hook，禁止 socket/sqlite 访问及导入 app.config/model_adapter/db/main/workflow，未执行真实开关。
+
+| 命令/检查 | 本轮实际结果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -X utf8 evals/collect_quality.py --export-reviewed-public` | exit 0，已审核公开 capture 新建成功 |
+| `.venv/Scripts/python.exe -X utf8 evals/check_results.py --prepare-captures evals/reviewed_quality_captures.json` | exit 0；输出保存 reviewed_quality_results.json；仅 formal manual 填入已确认用户分，其余显式 not_rated |
+| `.venv/Scripts/python.exe -X utf8 evals/check_results.py --results evals/reviewed_quality_results.json` | **exit 1（预期真实发现）**，stdout 保存 reviewed_quality_report.json |
+| `.venv/Scripts/python.exe -m pytest backend/tests/test_offline_evals.py backend/tests/test_quality_collector.py -q -rs` | **107 passed，8.91s**；全部离线/Fake，非模型重采样 |
+
+三个新文件：[公开capture](../evals/reviewed_quality_captures.json)、[正式结果](../evals/reviewed_quality_results.json)、[确定性报告](../evals/reviewed_quality_report.json)。raw_output 原值完整保留，只有规范化 output 的 based_on_star_ids 元素转为公开ID；原文/rationale/步骤不改。原报告public_data=false未变，导出文件public_data=true为本次人工审核声明。离线报告证据类型仍为 supplied_live_output_unverified，工具无法独立认证供应商来源，不把离线核对夸大为重新调用服务。
+
+确定性计数：20 passed / 1 failed / 7 not_run / 3 not_rated（单位为检查项，非成功率）。explicit-motivation 的唯一失败是 estimated_budget：原始0.0，固定期望null；不得改为null以过评测。其余Schema/原文来源/明确动机/时间未知/精力未知/原因缺失一致性通过。unknown-motivation 的既有确定性项全部通过，未知动机保持null；这不能证明整理充分。grounded-explore 的Schema、非空建议、检索ID、时间/预算/精力和现有约束项通过；“标题三分钟而步骤合计/estimated_minutes八分钟”不在现有检查器覆盖范围，记录为人工可核对的文本一致性问题，未虚构程序失败。
+
+其余七例 multiple-topics、source-organization、unknown-resources、empty-history、unsupported-constraint、vague-but-legal、approval-lifecycle 为not_run，未补造输出。三条已执行案例的approval_boundary均not_rated；模型说法不能代替审批观察。
+
+### 用户评分、助手候选与真实反馈
+
+机器可读正式manual中仅 grounded-explore.exploration_value=1：来源为用户亲自选择的评价选项，由本次任务书明确映射既有rubric。note保存来源和依据。用户原话：“有一点趣味，但没有真正帮我理解深海发光。”补充：“就针对当前这个问题来说，我感觉还是有点不太符合我的预期，特别是第三点‘选择一个猜想，给它取一个比喻性的名字’，让我觉得很没有必要。”不改写成满意或全无价值，不伪称用户评价其他维度或已实际完成活动。原反馈时点未给出，2026-11-06是本次归档来源日期。
+
+以下是**助手候选评分，未获用户最终确认，不写入正式manual数值**；仅用来解释草案。三例共19个维度，除上述1项外其余18项正式保留not_rated；全10例报告为1 rated / 59 not_rated。没有整体总分/合格率，not_rated不是0。
+
+| Collect维度 | explicit-motivation 候选分/理由 | unknown-motivation 候选分/理由 |
+| --- | --- | --- |
+| topic | 2：保留天文兴趣与明确来源动机 | 2：保留深海生物发光主题和问题 |
+| title | 1：“天文”可识别但较宽，未突出好奇点 | 2：“深海生物发光原因”概括具体科学问题 |
+| category | 1：未分类，对归档帮助有限 | 1：未分类，对归档帮助有限 |
+| tags | 1：仅“天文”，部分有用但粒度宽 | 2：深海生物/发光/海洋生物学与主题有依据 |
+| description | 0：空字符串未组织或表达兴趣 | 0：空字符串未组织或表达兴趣 |
+| motivation | 2：保留明确原文个人动机 | 2：未知动机保持null，与主题问题区分 |
+| clarification | 1：问题具体但询问时间/精力，预算无依据填0且未提示缺口 | 1：missing_fields仅动机，问题却扩展至时间/精力；收藏场景可能产生任务压力 |
+
+| Explore维度 | 候选分 | 理由与确认情况 |
+| --- | ---: | --- |
+| relevance | 1 | 主题相关，但用户期待知识理解，建议走想象/比喻；助手候选，用户未逐项确认 |
+| feasibility | 1 | 数值满足上限，但标题三分钟与步骤合计/estimated_minutes八分钟不一致；助手候选 |
+| steps | 2 | 动作、对象、记录产出具体；第三步必要性不足计入探索价值，助手候选 |
+| uncertainty | 2 | 指出来源不足、目标未明和活动限制；助手候选 |
+| exploration_value | 1 | 有一定趣味而知识收获不足，比喻命名被认为不必要；已确认用户反馈映射，正式唯一评分 |
+
+### 问题归因与未来方向（本轮不实施）
+
+结构/确定性：Collect未知预算误写0.0是可复核空值问题；Explore三分钟/八分钟的矛盾是真实内容一致性问题，后者现有checker未覆盖。兴趣整理：两条description为空、category均未分类；Schema允许这些值，不能把合法等同充分整理。时间/精力追问可能把“先收藏”变成安排任务的压力，尚无本批强制阻断行为证据，不说已证明阻止保存。
+
+探索体验：具体动作不等于有意义的收获，比喻命名对当前用户理解深海发光的帮助不足。Explore固定请求仅“深海发光”，Star仅说好奇，**未明确指令学习科学机制**；不能把独立Collect科学问题当成这次Explore已经传入的学习目标，也不能断言模型违反明确学习指令。建议在uncertainties承认目标不明，却仍选创意方向且未提澄清问题；反映系统未充分区分期望收获，不能简单归因模型“拒绝科普”。
+
+源码中的安全Prompt限定仅依据已有文字、室内思考/记录、不联网/购买/假定设备；本批Star无科学知识材料，模型理由也明确援引这一限制。这是对当前科学知识型探索的明显能力边界；可以解释选择范围，但单批同Prompt结果不能分离模型本身与Prompt的因果贡献，未做对照，不保证换模型/改Prompt即可改善。adapter_dto又包含既有Pydantic/动机防护，不能从最终未知动机null反推未经防护的原始模型从未猜测。
+
+AGENT-004候选优先方向：先定义“学到知识/动手体验/创意表达”等期望收获，意图不明提供少量清楚标识的方向或可跳过的轻量澄清，避免强制对话；每步应与收获有可解释联系，比喻命名不作默认必选项；在来源和安全边界明确后再设计有依据的知识小探索。先比较手动选方向/查看记录的简单替代，不提前改生产Prompt/规则或引入检索依赖。若需明确科学学习目标的新例，记为未来案例版本候选，不修改 wonderorbit-cases-v1 或本批输入，尚无新调用额度。AGENT-004状态仅在Backlog保持proposed。
+
+为什么用户需要：把实际不符合预期的建议变成可追溯质量证据，避免修掉失败数字后失去改进依据。Agent系统解决的问题：将结构/约束检查、适配器防护、内容价值和用户期望分开观察；这是评测和产品学习，不是本轮模型能力提升。学到了什么：原文和动机保真可以与整理空泛并存，安全可执行也可能学不到知识；后续改进要先区分收获方向并承认上下文歧义，不能由少量结构合法输出推断总体优秀。
+
+必要验证范围为既有离线检查器/相关107项测试和公开JSON/文档一致性；未修改应用源码或依赖，不重跑完整后端/前端/视觉/E2E，不把历史测试说成本轮重跑。未执行新的模型/网络/工作流/审批、完整容器/PG验证或CI查询。原始证据字段完整，已展示的任务书摘要均可核对；历史完整DTO消息与采集进程退出码的独立记录未附，只按上述来源界定，不补造。
+
+当前M3穿插M2，M1已交付、M2/M3仍未全部完成；无新增已证实P0，剩余P1为UX-003、INFRA-001/002、EVAL-001。本轮交付首批部分adapter证据；EVAL-001完整正式基线、其余七例/审批/其余人工评分仍未完成。下一项建议用户复核助手候选评分并讨论AGENT-004收获方向，未授权不新增调用/实施/提交推送。此前失败CI/测试记录均保留，未声称远程已验证。
+
+
+交付前实际检查：原始SHA256仍为89eeb9c71de5458a00fab39b39a788a6b8913482bcfd68827b2a4c6755815bdb；三份公开JSON逐条核对capture与原报告完全相同、正式manual仅一项用户分、report与evaluate(results)完全一致。374个本地Markdown链接/锚点、29项任务索引/详情一致，公开JSON敏感签名/URL扫描无命中，git diff --check通过。范围为新建三个公开JSON，更新VERIFICATION/PRODUCT_BACKLOG/IDEA_LOG/evals README/CHANGELOG/ROADMAP六份文档，共九个文件；应用/检查器/案例源码未改，暂存区为空、HEAD保持e0afb62，无commit/push或上传。
+
+公开产物SHA256：reviewed_quality_captures.json=4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be；reviewed_quality_results.json=dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f；reviewed_quality_report.json=47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db。最后仅追加本段文档记录，未冒称重跑应用测试。

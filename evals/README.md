@@ -230,3 +230,21 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 阶段 A 实证见 [VERIFICATION](../docs/VERIFICATION.md#eval-001-phase3-a-20261101)。真实请求 0；完整正式基线与内容评分未执行，EVAL-001 状态仅见 Backlog。
 
 2026-11-01 跨平台修复：固定案例哈希为 `f4e90c1783d0cf4168f5f833ac2e87d5e2b29aebb990e95fb74392337488dea4`，plan、采样记录及 export_reviewed 共用 CRLF→LF 规则；导出也校验当前案例文件，实质修改继续拒绝。未对全项目规范化、未关闭版本保护。旧版若留下基于 CRLF 字节哈希的记录，本修复不改写/迁移，也不删除或重置既有采样目录；其旧哈希不会被冒充为新规范化版本。历史失败与本地验证见 [修复记录](../docs/VERIFICATION.md#eval-001-hash-fix-20261101)。
+
+## 2026-11-06：首批已审核公开 Qwen 证据
+
+用户于采样记录时间 2026-11-01 执行三次 qwen3.8-flash；本轮整理新增调用 0。生成 SHA=e0afb6277ac0160683e17915408bf6176218c2f0，dirty=false；案例 wonderorbit-cases-v1、规范 wonderorbit-quality-v1；adapter_dto，workflow/审批未执行。8 个源码/规范哈希、完整公开输入/实际 payload 与 ID 映射均已核对，原始文件未修改。工具仍标 supplied_live_output_unverified，离线检查不能独立认证供应商来源。
+
+- [公开 capture](reviewed_quality_captures.json)：审核后通过原导出入口生成，保留实际公开 DTO/运行时合成 ID/参数/usage，不含个人库或密钥。
+- [正式准备结果](reviewed_quality_results.json)：原 --prepare-captures 输出，仅规范化引用 ID；人工仅 grounded-explore.exploration_value=1，note 标记用户选择来源。其余分数均 not_rated，助手候选仅存旁证文档。
+- [确定性报告](reviewed_quality_report.json)：原 --results 生成，20 passed / 1 failed / 7 not_run / 3 not_rated（审批）。人工全案例维度统计 1 rated / 59 not_rated；三条已执行案例共 19 维，仅一维用户确认，其余 18 维未正式评分。不计算总分或合格率。
+
+本批三次 usage 逐项核对为输入3426、输出778、共4204 Token；耗时3601/2926/8904ms。explicit-motivation 的 estimated_budget 原值0.0与期望null不符，**报告退出码1是保留的真实发现**，不得改输出或检查器来消除。另两个案例现有确定性项通过；标题三分钟/实际八分钟属于人工发现，未被现有检查器覆盖。其余七例 not_run，缺审批观察 not_rated；三条 schema_valid 不等于整理充分或体验有价值。保留历史失败，不宣称 EVAL 全部完成。
+
+可完全离线重查（stdout 应以 Python subprocess 按 UTF-8 捕获，exit 1 预期）：
+
+```powershell
+.venv/Scripts/python.exe -X utf8 evals/check_results.py --results evals/reviewed_quality_results.json
+```
+
+已存在的公开文件与原采样目录不得用导出命令覆盖/重建。本轮未修改 Prompt/规则/案例版本；原始输出、唯一正式用户评分、候选评分理由和未来方向见 [本批验证与初评](../docs/VERIFICATION.md#eval-001-first-baseline-20261106)。
