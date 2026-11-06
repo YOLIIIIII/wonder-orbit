@@ -1,5 +1,6 @@
 """AGENT-004-A offline-v1; deterministic contracts, never model quality evidence."""
 
+import importlib.util
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -132,12 +133,15 @@ def test_adapter_payload_without_network(direction):
 
 
 def test_archived_public_baseline_unchanged():
-    from evals.check_results import evaluate
-
     root = Path(__file__).resolve().parents[2]
+    spec = importlib.util.spec_from_file_location(
+        "archived_baseline_checker", root / "evals/check_results.py"
+    )
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
     results = json.loads((root / "evals/reviewed_quality_results.json").read_text(encoding="utf-8"))
     report = json.loads((root / "evals/reviewed_quality_report.json").read_text(encoding="utf-8"))
-    assert evaluate(results) == report
+    assert checker.evaluate(results) == report
 
 
 # AGENT-004-A offline-v2：来自本轮截图文字说明，不含科学答案或外部资料。
