@@ -761,3 +761,42 @@ describe("后端数据与操作边界", () => {
     expect(mockedApi.mock.calls).toHaveLength(calls);
   });
 });
+
+describe("AGENT-004-A 期望收获契约", () => {
+  it.each([
+    ["想了解一点知识", "knowledge"],
+    ["想动手试试看", "hands_on"],
+    ["想发挥一点创意", "creative"],
+    ["还没想好", undefined],
+  ])("%s 仅提交时传递本次方向", async (label, direction) => {
+    backend();
+    render(<App />);
+    await screen.findByText("Mock 模式 · 规则生成");
+    fireEvent.click(screen.getByRole("button", { name: "微型探索" }));
+    expect(screen.getByRole("radio", { name: /还没想好/ })).toBeChecked();
+    const before = mockedApi.mock.calls.length;
+    fireEvent.click(screen.getByRole("radio", { name: new RegExp(label) }));
+    expect(mockedApi.mock.calls.length).toBe(before);
+    if (direction === "knowledge")
+      expect(
+        screen.getByText(/不能保证直接给出经过核验的科学答案/),
+      ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("今天想靠近哪份好奇？"), {
+      target: { value: "海洋" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "寻找小体验" }));
+    await waitFor(() =>
+      expect(
+        mockedApi.mock.calls.some(
+          ([path, method]) => path === "/agent/runs" && method === "POST",
+        ),
+      ).toBe(true),
+    );
+    const payload = mockedApi.mock.calls.find(
+      ([path, method]) => path === "/agent/runs" && method === "POST",
+    )![2];
+    if (direction)
+      expect(payload).toHaveProperty("exploration_direction", direction);
+    else expect(payload).not.toHaveProperty("exploration_direction");
+  });
+});

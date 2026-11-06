@@ -47,7 +47,9 @@ export interface Match {
   score: number;
   match_basis: string[];
 }
+export type ExplorationDirection = "knowledge" | "hands_on" | "creative";
 export interface AgentRequest {
+  exploration_direction?: ExplorationDirection | null;
   request_type: "collect" | "explore";
   text: string;
   available_minutes?: number | null;

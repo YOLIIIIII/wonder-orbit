@@ -34,6 +34,7 @@ import {
 } from "./components";
 import type {
   AgentRequest,
+  ExplorationDirection,
   Energy,
   PreferenceData,
   Proposal,
@@ -44,6 +45,25 @@ import type {
   StarInput,
   Stats,
 } from "./types";
+
+const directionOptions = [
+  {
+    value: "knowledge",
+    title: "想了解一点知识",
+    text: "弄清一个问题，找到可核实的学习线索。",
+  },
+  {
+    value: "hands_on",
+    title: "想动手试试看",
+    text: "做一个符合当前条件的小尝试。",
+  },
+  {
+    value: "creative",
+    title: "想发挥一点创意",
+    text: "通过构思、设计或表达继续探索。",
+  },
+  { value: "", title: "还没想好", text: "先不限定方向。" },
+] as const;
 
 type Page =
   | "home"
@@ -201,6 +221,7 @@ export default function App() {
   }
   const [minutes, setMinutes] = useState("15");
   const [budget, setBudget] = useState("");
+  const [direction, setDirection] = useState<ExplorationDirection | "">("");
   const [energy, setEnergy] = useState<Energy>("low");
   const [query, setQuery] = useState("");
   const [searchIds, setSearchIds] = useState<string[] | null>(null);
@@ -1191,6 +1212,9 @@ export default function App() {
                       generate({
                         request_type: "explore",
                         text,
+                        ...(direction
+                          ? { exploration_direction: direction }
+                          : {}),
                         available_minutes: numeric(minutes),
                         budget: numeric(budget),
                         energy_level: energy,
@@ -1209,6 +1233,34 @@ export default function App() {
                       placeholder="使用档案里的关键词，如：海洋、星空…"
                     />
                   </label>
+                  <fieldset className="exploration-direction">
+                    <legend>这次想收获什么？（可选）</legend>
+                    <p className="field-hint">
+                      只用于本次探索，不会记为长期偏好，随时可以先放下。
+                    </p>
+                    <div className="direction-options">
+                      {directionOptions.map((option) => (
+                        <label key={option.value}>
+                          <input
+                            type="radio"
+                            name="exploration-direction"
+                            value={option.value}
+                            checked={direction === option.value}
+                            onChange={() => setDirection(option.value)}
+                          />
+                          <span>
+                            <strong>{option.title}</strong>
+                            <small>{option.text}</small>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {direction === "knowledge" && (
+                      <p className="field-hint" id="knowledge-boundary">
+                        目前星屿不联网，也不自动检索外部事实；可以帮你整理可验证的学习问题和路径，但不能保证直接给出经过核验的科学答案。
+                      </p>
+                    )}
+                  </fieldset>
                   <div className="field-grid three">
                     <label>
                       可用时间（分钟，可选）
@@ -1547,6 +1599,17 @@ export default function App() {
                       </p>
                       {selectedRun.error_type && (
                         <p className="alert">{selectedRun.error_type}</p>
+                      )}
+                      {selectedRun.request_type === "explore" && (
+                        <p>
+                          本次探索方向：
+                          {directionOptions.find(
+                            (option) =>
+                              option.value ===
+                              (selectedRun.state.request
+                                ?.exploration_direction ?? ""),
+                          )?.title ?? "还没想好"}
+                        </p>
                       )}
                       <ol className="timeline">
                         {selectedRun.events.map((event, i) => (

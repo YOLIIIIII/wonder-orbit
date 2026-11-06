@@ -1366,3 +1366,72 @@ AGENT-004候选优先方向：先定义“学到知识/动手体验/创意表达
 交付前实际检查：原始SHA256仍为89eeb9c71de5458a00fab39b39a788a6b8913482bcfd68827b2a4c6755815bdb；三份公开JSON逐条核对capture与原报告完全相同、正式manual仅一项用户分、report与evaluate(results)完全一致。374个本地Markdown链接/锚点、29项任务索引/详情一致，公开JSON敏感签名/URL扫描无命中，git diff --check通过。范围为新建三个公开JSON，更新VERIFICATION/PRODUCT_BACKLOG/IDEA_LOG/evals README/CHANGELOG/ROADMAP六份文档，共九个文件；应用/检查器/案例源码未改，暂存区为空、HEAD保持e0afb62，无commit/push或上传。
 
 公开产物SHA256：reviewed_quality_captures.json=4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be；reviewed_quality_results.json=dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f；reviewed_quality_report.json=47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db。最后仅追加本段文档记录，未冒称重跑应用测试。
+
+
+<a id="agent-004-a-20261106"></a>
+## 2026-11-06 · AGENT-004-A 显式期望收获（离线）
+
+授权与起点：工作区初始干净，HEAD=733747719009e3176c4cf0e5f5ef24fc0752c662，与用户给定 SHA 一致；本轮没有远程 CI 查询/新 CI 运行，不将用户提供的 CI 链接当成本轮结果。不 commit/push/云连接/发布。沿用 IDEA-006 / AGENT-004，正式状态仅 Backlog 维护；EVAL-001 整体仍待验收。
+
+实现：可选四状态原生 radio，默认还没想好，切换仅本地 state，方向不会变成偏好。枚举字段 exploration_direction；Collect 非空方向 422。wrap serializer 仅省略新增空方向，旧默认字段和嵌套 payload 保持，旧 Run 无字段显示还没想好。main/workflow 原链直接保存与恢复 request，无新工作流/迁移/Quest 或 Reflection 结构改动。方向专属策略仅用于明确 Explore；生成/确定性校验分离，支持约束按所选有限步骤逐字验证，不支持约束继续澄清，不用关键词评判探索价值。
+
+Mock（AGENT-004-A offline-v1）：knowledge 整理用户已提供信息、一个待核实问题、检索词及来源核实方向；不输出科学机制。hands_on 只用已有 Star 文字选两个词、排序比较并记录观察，是实际文字小尝试，明确不是设备/实物实验。creative 自愿构思短文或设计点子，并标明不代表科学结论。未选沿用原三个好奇问题步骤。所有候选有 Mock 标识、真实检索 Star 引用和估计不确定性；这些证明契约，不证明语义质量。
+
+环境与安全：Windows / 项目现有 Python 3.12 .venv、Node 22.23.3，未安装或升级依赖。pytest fixture 禁用 .env/Key、隔离 SQLite；内存 SDK fixture 禁止网络，只用 fake-test/test-placeholder。所有新增真实 Qwen 请求数 **0**，未执行真实开关、探针或真实模型。独立浏览器启动器 `.cache/agent004a_server.py` 启动前断言新库不存在、禁用 .env、Mock=true/空 Key/tracing=false，Alembic 初始化并核对实际 engine URL 指向 `.cache/agent004a-e2e.db`，回环 5173→8000；只对该隔离库做模拟审批。专用进程中一次 timeout 注入仅为原恢复回归。
+
+实际命令与结果（最终补充见下段）：
+
+- `.venv/Scripts/ruff.exe check backend evals` 与 `format --check backend evals` 通过；初次完整 pytest 为 285 passed / 1 skipped，后因增加离线 SDK 策略检查重跑，最终结果下补。
+- 前端以进程 PATH 前置 `.tools/node/node_modules/node/bin` 执行 `npm run format:check`、`lint`、`typecheck`、`test`、`build` 全部通过；89 tests / 4 files，build 1581 modules。初次误用系统 Node 16：lint 因 structuredClone 缺失、Vite/test 因 fs/promises.constants 缺失失败；此失败为环境问题，切到已有 Node 22 后重跑通过。后续仅新增 E2E 脚本和收紧选项排版，格式/lint/build 最终检查下补，不重复声称组件测试重跑。
+- `npm run test:e2e`（E2E_ALLOW_WRITE=true / E2E_INJECTED_FAILURE=true / PLAYWRIGHT_BROWSERS_PATH=.cache/browsers）exit 0：原收集→草稿批准→搜索/关联→候选批准→编辑→反馈→偏好→审计、Star 只读/编辑失败恢复/归档保护、结果定位/刷新恢复和真实模拟失败重试三条 PASS。1440/390 原生 Space/方向键四状态、焦点、标签边界和切换无 API 写请求通过。截图已实际查看，知识说明无弹窗，页面无横向溢出；新增方向结果/刷新专项与最终视觉下补。
+- `.venv/Scripts/python.exe -X utf8 evals/check_results.py --results evals/reviewed_quality_results.json`：原检查器复现历史报告，stdout 另存 `.cache/agent004a-historical-report.json`，**预期 exit 1** 是既有未知预算误填的真实失败，不是本轮 CI 结果；测试 evaluate(results)==归档 report 通过。历史确定性 20 passed / 1 failed / 7 not_run / 3 not_rated；人工 1 rated / 59 not_rated，未补评分。
+- 三份归档 JSON SHA256 与上轮记录完全一致：captures=4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be；results=dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f；report=47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db。cases-v1 / quality-v1 及其检查器未修改。
+
+限制与复盘：用户需要先表达希望得到什么，避免把好奇变成 Agent 布置的无关练习。Agent 改进是显式意图进入生成契约且可追溯；radio 与布局是 UX 工程价值，不能说模型已更懂科学。我们从真实反馈学到原请求歧义与能力边界需要分别解决，安全、可执行、结构合法不等于有学习价值。此次没有知识资料或外部核验，不能保证直接给出科学答案；hands_on 仍局限文字，不假设设备。AGENT-004 的可信材料学习、更丰富实际尝试、逐模板用户评价及真实质量效果尚未验收；Collect 整理独立保留，未同时修。未执行真实模型/PG/完整容器/远程 CI，不把历史成绩说成本轮重跑。当前 M3 穿插 M2，无新增已证实 P0；剩余 P1 为 UX-003、INFRA-001/002、EVAL-001。下一切片建议用户提供可信材料的有出处学习路径，等待独立授权。
+
+
+最终补充（2026-11-06，同轮）：
+
+- 增加内存 SDK SystemMessage 四状态检查后，最终 `.venv/Scripts/python.exe -m pytest -q -rs`：**289 passed / 1 skipped，19.64s**；唯一跳过 test_postgres，未配置 TEST_POSTGRES_URL。Ruff check / format check 均通过，31 files。新增专项 13 项及 SDK 4 项全部离线。
+- 前端最终 CSS 调整为选项横向图文排列后，format:check / lint / build 再次通过，build 1581 modules；TS/组件逻辑未再变，typecheck 与 89 项测试结果来自前述本轮执行，不虚构再次重跑。新增方向 E2E 最终格式/lint 也通过。
+- 专项通过 `.cache/agent004a_directions.mjs` 调用正式 `frontend/e2e/directions.mjs`：**exit 0**，四方向 × 1440/390 的真实表单 payload、Mock 候选标题、Run API/state、刷新后点击最新运行并核对具体 run_id 和方向、无 Quest/偏好新增均通过。原 smoke 全链与此专项分开执行；最终 smoke 已接入专项，未再对同库冒称从空库全跑。专项前两类失败是脚本遗漏刷新后选择运行，以及手机上等待隐藏的桌面模式标记 visible；已分别改为点击运行并核对 ID、等待模式标记 attached（API run.mode 另核验为 mock）。这些失败不计通过，应用持久化未因此修改。
+- 最终实际查看 `direction-result-knowledge-390.png` 与 `direction-result-hands_on-1440.png`，两尺寸图文无裁切/重叠，知识说明与待核实问题清楚，动手结果明确限定文字尝试。图像/临时启动器/隔离库留在忽略的 `.cache/agent004a-e2e` 等缓存中。旧记录不是本轮重跑。
+- 再用 subprocess 捕获原检查器，确认返回码确为 1 且 stdout JSON 与归档 report 完全一致；三份 JSON 实际字节 SHA256 不变，固定案例和 rubric 与 HEAD 规范换行后内容一致，检查器源码未改。
+- 文档检查：377 个本地链接/锚点、29 项任务索引/详情状态一致、16 个 IDEA ID 唯一；git diff --check 通过。最终范围和安全检查见下。
+
+本轮文件清单（18 个；仅项目内）：backend/app/{schemas.py,model_adapter.py,rules.py,tools.py}；backend/tests/{test_exploration_direction.py（新增）,test_qwen_adapter.py}；frontend/src/{App.tsx,types.ts,styles.css,App.test.tsx}；frontend/e2e/{smoke.mjs,directions.mjs（新增）}；docs/{IDEA_LOG.md,PRODUCT_BACKLOG.md,PROJECT_GUIDE.md,VERIFICATION.md}；ROADMAP.md；CHANGELOG.md。没有依赖、迁移、正式数据库、首页邀请卡、评测归档或 Collect 整理策略改动。
+
+最终范围安全实测：18 个预期文件，暂存区为空，HEAD 仍为 733747719009e3176c4cf0e5f5ef24fc0752c662；变更文件密钥/Bearer/私钥签名扫描无命中，.env 未跟踪。最后仅追加此记录，未冒称再次运行应用检查。隔离 Mock 预览暂留回环 5173→8000 供用户检查，与个人库无关。
+
+
+<a id="agent-004-a-finish-20261106"></a>
+## 2026-11-06 · AGENT-004-A 截图收尾：知识候选针对性与呈现
+
+起点与范围：承接上一轮全部18个未提交改动，未 reset/checkout/丢弃；HEAD 仍为733747719009e3176c4cf0e5f5ef24fc0752c662。用户本轮以两张隔离 Mock 截图说明问题，消息没有附图文件；本轮根据其准确文字描述建立两颗公开测试 Star 并实际浏览器截图，不冒称读到了未附的原图。沿用 IDEA-006/AGENT-004，两个任务状态仍仅 Backlog 维护。
+
+截图暴露的问题：知识方向把长 Star 标题取前30字再拼接，可能半句话截断；不同 Star 复用相同三步，宽泛“深海”关键词命中没有解释与“深海发光”的距离。不是 Qwen 新输出或真实模型退步/提升证据。修正前是“给『长篇文字前30字』整理一个待核实的问题”加读原文/写问题/记方向；修正后第一张标题“挑选适合这份兴趣的入门资料”，使用原文片段“找入门书”，给出初学者定位、问题覆盖、作者/机构/参考出处、更新时间等比较标准，不给书名/购买渠道；第二张“拆解星星中已有的学习问题”，引用实际可见问题片段，分别提出黑暗、高压条件下如何适应的待核实问题与检索词，不预填答案。两张来源均说明“相邻兴趣：仅有部分关键词关联，未找到本次主题的直接知识依据。匹配词：深海。”提供换方向或补更贴近问题的 Star 选择。
+
+实际调用链核对：search 的 text=description 或 original_text，含 title/tags/category/score/match_basis；Workflow 另读的 star_details 没有传入 generate，adapter 收到 ranked related_stars。没有假设完整原文一定可见，没有改变 retrieval.py/workflow.py 或固定 EVAL 快照。知识 Mock 只读取可见 text（空才用 title），不偷用未传递原文。完整主题包含只称“词面匹配，不是科学证据”，部分匹配称相邻兴趣；不是通用相关性判定。RETR-001 的匹配精度独立候选已关联 IDEA-006/Backlog，未实施 Embedding/检索重构。
+
+实现边界：同文件两种显式文本结构（资料意图、如何/为什么/怎么问题），并列适应条件只按原文拆分，绝无科学知识表。一个结构只保留首个候选；未知结构只保守展示一个。超过120字的片段不截取伪装成完整问题。支持约束时不扩大确定性规则，退回一个原 knowledge 固定步骤示例并说明原因。unsupported constraints、低精力/时间预算、真实 Star ID、审批幂等、Run 方向、Collect、其他方向、旧请求序列化和 Live Prompt/payload 维持。Mock offline-v2 不代表语义理解或事实核验能力；词形规则可能漏识别/误识别，无法识别时减量，仍待用户体验。
+
+本轮实测环境/命令：Windows、已有 Python3.12 .venv / Node22.23.3（进程 PATH 前置项目 .tools/node），未安装依赖，真实 Qwen/其他模型请求0，未执行真实开关、探针、联网检索或迁移新增。
+
+| 实际检查 | 结果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest -q -rs` | 最终 **293 passed / 1 skipped，27.94s**；PG 未配置 TEST_POSTGRES_URL，未验收PG |
+| `.venv/Scripts/ruff.exe check backend evals`、`format --check backend evals` | 全通过，31 files |
+| 前端 `npx prettier --write e2e/directions.mjs`、`npm run format:check` / `lint` / `typecheck` / `test` / `build` | 全通过，89 tests / 4 files，build 1581 modules |
+| 原 `npm run test:e2e`，E2E_BASE_URL=127.0.0.1:5178、E2E_ALLOW_WRITE=true、E2E_INJECTED_FAILURE=true | exit0；四条PASS：只读/编辑/归档保护；结果/失败重试/刷新恢复；四方向请求/结果/方向追溯与无Quest/偏好写入；收集→草稿批准→搜索/关联→候选批准→编辑→反馈→偏好→审计，1440/390 |
+| `.tools/node/node_modules/node/bin/node.exe .cache/agent004a_finish_screenshot.mjs` | exit0；按用户文字说明的两颗Star，深海发光查询，两条不同路径、准确来源、有效ID、两尺寸无横向溢出、Quest数不变 |
+| 原 `evals/check_results.py --results evals/reviewed_quality_results.json`，subprocess捕获 | **预期exit1**；JSON与归档report完全一致；20 passed / 1 failed / 7 not_run / 3 not_rated，人工1 rated / 59 not_rated |
+
+首次静态检查发现新增 path 变量漏定义，pytest对应截图用例随之失败（1 failed / 292 passed / 1 skipped）；修正后完整重跑上述293/1，不删除断言或修改证据。新增4项离线用例覆盖截图两类差异、长文本保守标题、同类/未知结构减量、摘要边界及完整词面匹配不等于科学证据；旧契约测试仍保留。
+
+隔离浏览器：新启动器 `.cache/agent004a_finish_server.py` 禁用.env、空Key、强制Mock、关闭tracing，启动前断言 `.cache/agent004a-finish.db` 不存在，运行既有 Alembic 初始化并核对 engine URL；回环5178→8034。没有碰个人库，也没有重启/覆盖上一轮5173服务。先在空库完成原完整smoke，再在同一已核验隔离库将原测试Star归档、增加两颗目标Star复现；仅测试准备写入Star，探索生成无Quest写入。已实际查看 `.cache/agent004a-finish/knowledge-screenshot-1440.png` 与 `knowledge-screenshot-390.png`，标题完整、步骤有实质区别、说明可读且无重叠。预览5178仍留给用户验收；原5173进程可能仍运行旧版本，检查本轮请用5178。
+
+本轮增量文件：backend/app/model_adapter.py、backend/tests/test_exploration_direction.py、frontend/e2e/directions.mjs、docs/IDEA_LOG.md、PRODUCT_BACKLOG.md、PROJECT_GUIDE.md、VERIFICATION.md、CHANGELOG.md。没有改其他既有实现/依赖/迁移；未 commit/push/云连接/发布。
+
+复盘：为什么用户需要——避免阅读半截标题和多张同义活动卡，能看清建议究竟帮助选择资料还是拆问题。Agent系统解决什么——收紧Mock生成与可见上下文、来源说明、候选数量之间的关系；呈现修正属于UX/规则工程，不证明Live模型能力提升。学到什么——显式方向仍不足以保证针对性，生成内容必须受实际传入证据和可解释结构约束；少给一张比换词制造差异更诚实。知识解答真实性仍需可信材料、资料依据校验与独立真实质量验收；完整相关性判断属于RETR-001后续评估。当前M3穿插M2，无新增已证实P0，剩余P1为UX-003、INFRA-001/002、EVAL-001；AGENT-004/EVAL-001未收尾。下一项仍建议可信资料支持的学习路径，但本轮结束等待界面验收。
+
+最终检查：380个本地链接/锚点、任务索引/详情状态及IDEA唯一性通过；git diff --check通过。三份归档JSON SHA256与上一节完全一致。原18个工作区文件保留，HEAD/暂存区未变；变更文件敏感签名扫描无命中。最后仅追加本记录，不冒称应用测试再次重跑。

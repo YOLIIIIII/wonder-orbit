@@ -390,3 +390,24 @@ def test_mock_reason_behavior_remains_unchanged(monkeypatch, text):
         "estimated_budget",
         "energy_level",
     ]
+
+
+@pytest.mark.parametrize("direction", [None, "knowledge", "hands_on", "creative"])
+def test_direction_system_policy_on_offline_wire(wire, direction):
+    from app.model_adapter import DIRECTION_INSTRUCTIONS
+
+    wire.message["tool_calls"] = [
+        tool({"proposals": [], "questions": ["离线澄清"]}, "generate_quest_proposal")
+    ]
+    model = ModelAdapter(config())
+    from app.schemas import Preferences
+
+    request = AgentRequest(request_type="explore", text="海洋", exploration_direction=direction)
+    model.proposals(request, [{"star_id": "existing", "title": "海洋"}], Preferences())
+    body = wire.calls[0]["body"]
+    messages = body["messages"]
+    system = messages[0]["content"]
+    payload = json.loads(messages[1]["content"])
+    assert payload["request"].get("exploration_direction") == direction
+    for key, instruction in DIRECTION_INSTRUCTIONS.items():
+        assert (instruction in system) == (direction == key)

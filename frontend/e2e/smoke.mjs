@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
+import { verifyDirections } from "./directions.mjs";
 import { verifyResults } from "./results.mjs";
 
 // 对专用临时数据库执行真实写入，避免把测试兴趣混入个人档案。
@@ -451,6 +452,49 @@ try {
         await guideToggle.evaluate((el) => el === document.activeElement),
         true,
       );
+      if (name === "微型探索") {
+        const writes = [];
+        const listener = (request) => {
+          if (request.method() !== "GET" && request.url().includes("/api/"))
+            writes.push(request.url());
+        };
+        page.on("request", listener);
+        const radios = page.getByRole("radio");
+        const knowledge = page.getByRole("radio", { name: /想了解一点知识/ });
+        await knowledge.focus();
+        await page.keyboard.press("Space");
+        assert.equal(await knowledge.isChecked(), true);
+        await page.getByText(/不能保证直接给出经过核验的科学答案/).waitFor();
+        assert.equal(
+          await knowledge.evaluate((el) => el.matches(":focus-visible")),
+          true,
+        );
+        await page.screenshot({
+          path: `${artifact}/direction-knowledge-${width}.png`,
+          fullPage: true,
+        });
+        await page.keyboard.press("ArrowRight");
+        assert.equal(
+          await page.getByRole("radio", { name: /想动手试试看/ }).isChecked(),
+          true,
+        );
+        await page.keyboard.press("ArrowRight");
+        assert.equal(
+          await page.getByRole("radio", { name: /想发挥一点创意/ }).isChecked(),
+          true,
+        );
+        await page.keyboard.press("ArrowRight");
+        assert.equal(
+          await page.getByRole("radio", { name: /还没想好/ }).isChecked(),
+          true,
+        );
+        for (const radio of await radios.all()) {
+          const box = await radio.locator("..").boundingBox();
+          assert.ok(box && box.x >= 0 && box.x + box.width <= width);
+        }
+        assert.deepEqual(writes, [], "切换方向不得产生 API 写请求");
+        page.off("request", listener);
+      }
       if (name === "微型探索" || name === "我的偏好") {
         const help = page.locator("details.form-help");
         const toggle = help.locator("summary");
@@ -489,6 +533,7 @@ try {
     }
   }
   await verifyResults(page, base, artifact);
+  await verifyDirections(page, base, artifact);
   assert.deepEqual(failures, [], "不应出现浏览器脚本异常");
   console.log(
     "PASS: collection → draft approval → archive/search → relations → proposal approval → edit → reflection → preference confirmation → audit; desktop/mobile",

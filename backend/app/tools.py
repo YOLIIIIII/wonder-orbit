@@ -3,7 +3,7 @@ from sqlalchemy import select
 from fastapi import HTTPException
 from .models import AgentRun, Quest, QuestStar, Reflection, Star, UserPreference
 from .retrieval import search, star_dict
-from .rules import SUPPORTED_CONSTRAINTS, TEXT_STEPS
+from .rules import SUPPORTED_CONSTRAINTS, exploration_steps
 from .schemas import (
     AgentRequest,
     DetailArgs,
@@ -97,7 +97,10 @@ class ToolRegistry:
         if pref.constraints:
             if any(c not in SUPPORTED_CONSTRAINTS for c in pref.constraints):
                 errors.append("存在未支持的约束，需要用户澄清")
-            elif proposal.steps != TEXT_STEPS or proposal.estimated_budget != 0:
+            elif (
+                proposal.steps != exploration_steps(request.exploration_direction)
+                or proposal.estimated_budget != 0
+            ):
                 errors.append("约束要求可验证的免费室内文字记录步骤")
         return {"valid": not errors, "errors": errors}
 

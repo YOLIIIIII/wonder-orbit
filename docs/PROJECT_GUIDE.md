@@ -604,3 +604,15 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 2026-11-01（EVAL-001 第二阶段准备 / UX-006 打磨）局部导航更新：`evals/check_results.py` 仍是同一离线评价器，新增 Capture DTO、normalize_capture/prepare_captures 与互斥 `--prepare-captures` 命令；输入明确公开 JSON→核对案例/版本/输入/偏好/检索快照与一一 ID 映射→stdout 既有结果封装（附原始 capture）→原 `--results` 重新验证及人工评分。只导入既有 DTO/规则，不触及 Live runner、模型、配置或数据库；无生产调用链/启动命令变化。新增 `evals/sample_public_captures.json` 是两个手写 Fake 自测夹具与合成 UUID，非真实报告；`backend/tests/test_offline_evals.py` 扩展映射/来源/版本/离线边界回归。首页仅把原三个 button 改成含标题/说明的紧凑邀请卡，保留 aria-expanded、原导航和审批，复用首页规则建议/StarDetails。使用说明见 [evals README](../evals/README.md)，证据见 [本轮验证](VERIFICATION.md#eval-001-phase2-prep-20261101)。
 
 2026-11-01（EVAL-001 第三阶段 A）导航增量：新增 [evals/collect_quality.py](../evals/collect_quality.py)，默认公开固定计划→显式 --allow-live 后 Settings/既有配置预检→固定三例直接 ModelAdapter.draft/proposals→忽略目录预写尝试/实际参数/源码哈希/DTO/usage；不导入数据库、图或检索 API。合成 UUID 只映射公开快照。人工审核后 --export-reviewed-public→原 --prepare-captures→--results；Result 增加可选 failure_type，Results 增加可选 sampling 旁证，不放宽既有映射/版本/上下文规则。新增 [test_quality_collector.py](../backend/tests/test_quality_collector.py) 验证默认离线、真实模式拒绝条件、次数/失败保护、上下文/来源、未知 usage 与转换保真；全部使用 Fake，非真实采样。生产启动/数据流/数据库 Schema 不变。固定命令、输出路径和人工步骤见 [evals README](../evals/README.md)，本轮禁止运行真实命令。
+
+
+## 2026-11-06 · AGENT-004-A 数据流增量
+
+沿用同一条 Explore Workflow，无新表或迁移。`frontend/src/App.tsx` 的可选原生 radio → `types.ts` 的 `exploration_direction`（knowledge/hands_on/creative）→ `schemas.AgentRequest` 枚举校验 → `main.create_run` / `workflow` 保存 request/state → `ProposalArgs` → `ModelAdapter.proposals` → 方向专属 SystemMessage 策略或明确 Mock 模板 → `ToolRegistry.validate_quest_proposal` → 原审批 API。方向仅本次请求有效；Collect 拒绝非空方向。
+
+`AgentRequest` 的 wrap serializer 仅移除新增的空方向字段，保留所有旧字段默认值，覆盖嵌套模型、model_dump 与 model_dump_json；所以旧 Run/旧请求及旧幂等核心 payload 不变。无需改 main/workflow；详情用旧 Run 缺字段时显示“还没想好”。`rules.exploration_steps` 为生成和支持约束校验共用有限步骤表，未选择返回原 TEXT_STEPS，未知约束仍澄清；这不是自由文本语义/事实验证器。
+
+新增 `backend/tests/test_exploration_direction.py`（AGENT-004-A offline-v1）覆盖契约/生命周期/历史结果；`test_qwen_adapter.py` 以内存 SDK 和禁止网络的 fixture 检查策略消息。`frontend/e2e/directions.mjs` 由原 smoke runner 在核验的隔离 Mock 库上调用，覆盖双尺寸四状态请求/结果/刷新详情和无 Quest/偏好写入；单独调用须先建立同样的隔离环境。原启动命令不变。实际结果见 [本轮验证](VERIFICATION.md#agent-004-a-20261106)。
+
+
+2026-11-06（A 截图收尾）局部导航补充：`ModelAdapter.proposals` 仅在 Mock+knowledge 进入同文件 `mock_knowledge_proposals` / `mock_knowledge_focus`（offline-v2），从实际可见 `text`（为空才用 title）识别资料意图或显式问题片段；同种内容结构只保留首项，未知结构只保守展示一项。支持约束仍只用原固定 knowledge 步骤、一个候选，不扩展 tools 校验规则。其他方向与 Live payload/Prompt 不变。`retrieval.search` 返回 title/text/tags/category/score/match_basis；text=description 或 original_text，二字中文词命中不是事实证据。`Workflow.retrieve` 另加载 star_details，但 `generate` 仍传 ranked related_stars，不传完整原文。此轮未改检索/工作流，不把固定 EVAL 快照视作生产 payload。见 [本轮实证](VERIFICATION.md#agent-004-a-finish-20261106)。

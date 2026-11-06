@@ -1,5 +1,5 @@
 from typing import Annotated, Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer, model_validator
 from urllib.parse import urlparse
 
 Energy = Literal["low", "medium", "high"]
@@ -46,7 +46,11 @@ class DraftResult(StrictModel):
     questions: list[str]
 
 
+ExplorationDirection = Literal["knowledge", "hands_on", "creative"]
+
+
 class AgentRequest(StrictModel):
+    exploration_direction: ExplorationDirection | None = None
     request_type: Literal["collect", "explore"]
     text: str = Field(min_length=1, max_length=12000)
     available_minutes: int | None = Field(default=None, ge=1, le=1440)
@@ -54,6 +58,20 @@ class AgentRequest(StrictModel):
     energy_level: Energy | None = None
     source_type: Literal["manual", "paste", "link"] = "paste"
     source_reference: str | None = None
+
+    @model_validator(mode="after")
+    def explore_only(self):
+        if self.request_type != "explore" and self.exploration_direction is not None:
+            raise ValueError("探索方向仅适用于 Explore")
+        return self
+
+    @model_serializer(mode="wrap")
+    def compatible_payload(self, handler):
+        # 仅省略新增的空方向，保留旧字段默认值、历史 payload 与幂等哈希语义。
+        data = handler(self)
+        if self.exploration_direction is None:
+            data.pop("exploration_direction", None)
+        return data
 
     @field_validator("source_reference")
     @classmethod

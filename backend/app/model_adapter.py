@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
 from .config import Settings
-from .rules import SUPPORTED_CONSTRAINTS, TEXT_STEPS
+from .rules import SUPPORTED_CONSTRAINTS, exploration_steps
 from .schemas import AgentRequest, DraftResult, Preferences, Proposal, ProposalResult, StarInput
 
 
@@ -17,6 +17,13 @@ INTEREST_REASON_INSTRUCTION = (
     "不是个人兴趣动机；‘我不是因为想赚钱才学绘画’不能提取否定的动机。"
     "不要猜测经历、心理或兴趣价值，不确定就用 null。"
 )
+
+DIRECTION_INSTRUCTIONS = {
+    "knowledge": "用户想了解知识：从真实 Star 提炼具体问题，区分用户提供的信息、待核实问题与模型不确定性。给出具体检索词和可信来源类型等学习线索，不编造机制或引用，不声称已联网或用户已学到事实。避免比喻命名、角色扮演和想象游戏；无资料支持就说明无法确认，可返回空建议和简短澄清，不必凑三步。",
+    "hands_on": "用户想动手尝试：明确动作、对象和产出，遵守有效时间预算精力上限，不假定材料设备工具。当前仅支持已有文字的小尝试；若主题需要其他条件，先澄清，不编造成本。",
+    "creative": "用户自愿选择创意表达：可以设计、写作、构思、想象或比喻，产出须与 Star 主题有关；明确创作不是科学解释或事实学习。",
+}
+
 
 # 只识别明确的个人因果句式；不是通用中文语义判断，宁可漏提取。
 _PERSONAL_INTEREST = (
@@ -53,6 +60,95 @@ def explicit_interest_reason(text: str, reason: str | None) -> str | None:
             if candidate == cause and not _TOPIC_OR_GOAL.search(cause):
                 return reason
     return None
+
+
+def mock_knowledge_focus(star):
+    """offline-v2：仅识别可见文字的两类显式结构；不做知识或通用语义判断。"""
+    text = star.get("text") or star.get("title", "")
+    fragments = [part.strip() for part in re.split(r"[，,。；;！!？?\n、]", text) if part.strip()]
+    for fragment in fragments:
+        if len(fragment) <= 120 and re.search(r"入门书|入门资料|找[^，。]{0,12}书", fragment):
+            return (
+                "resources",
+                "挑选适合这份兴趣的入门资料",
+                [
+                    f"星星提到‘{fragment}’；先把它作为选资料的目标，不假定你已经有书。",
+                    "可先比较资料是否面向初学者、是否覆盖你关心的问题、是否标明作者或机构及参考出处。",
+                    "以后查看资料时，核对作者背景、出版或更新时间与引用依据；目前没有实际书目或检索结果，不需要购书。",
+                ],
+            )
+    for fragment in fragments:
+        if len(fragment) <= 120 and re.search(r"如何|为什么|怎么", fragment):
+            path = f"先用原文片段‘{fragment}’作检索词；若它并列了不同条件，可分别核实，再比较资料是否讨论同一条件。"
+            adaptation = re.search(r"适应(.+?)(?:感兴趣)?$", fragment)
+            if adaptation:
+                conditions = re.split(r"和|与|及", adaptation[1])
+                if 1 < len(conditions) <= 3 and all(0 < len(c) <= 12 for c in conditions):
+                    path = (
+                        "可分别追问："
+                        + "；".join(
+                            f"在‘{condition}’条件下如何适应？检索词：适应 {condition}"
+                            for condition in conditions
+                        )
+                        + "。这些问题均待核实。"
+                    )
+            return (
+                "question",
+                "拆解星星中已有的学习问题",
+                [
+                    f"星星里的待核实表述是‘{fragment}’；这是学习兴趣，不是事实答案。",
+                    path,
+                    "后续阅读时，分别记录资料对哪个条件给出了什么证据、哪些问题仍无依据；本次不联网，也不预填科学结论。",
+                ],
+            )
+    return None
+
+
+def mock_knowledge_proposals(request, stars, preferences, limit):
+    """不同内容结构才保留不同候选；未知结构只展示一个保守示例。"""
+    proposals, seen = [], set()
+    focused = [(star, mock_knowledge_focus(star)) for star in stars[:3]]
+    selected = [(star, focus) for star, focus in focused if focus]
+    if preferences.constraints or not selected:
+        selected = [(stars[0], None)]
+    adjacent = False
+    for star, focus in selected:
+        kind, title, steps = focus or ("generic", "整理一个待核实的问题", exploration_steps("knowledge"))
+        if kind in seen:
+            continue
+        seen.add(kind)
+        visible = " ".join([star.get("title", ""), star.get("text", "")])
+        literal_match = request.text in visible
+        adjacent = adjacent or not literal_match
+        relation = (
+            "可见文字完整包含本次主题，仅表示词面匹配，不是科学证据。"
+            if literal_match
+            else "相邻兴趣：仅有部分关键词关联，未找到本次主题的直接知识依据。"
+        )
+        proposals.append(
+            Proposal(
+                title=title,
+                description="Mock · 只整理学习问题与资料核实路径，未查询或验证科学答案。",
+                estimated_minutes=min(limit, max(5, preferences.min_minutes)),
+                estimated_budget=0,
+                energy_level="low",
+                steps=steps,
+                based_on_star_ids=[star["star_id"]],
+                rationale=relation + "匹配词：" + "、".join(star.get("match_basis", [])) + "。",
+                uncertainties=[
+                    "Mock 有限规则示例；预计时间为估计值。",
+                    "只依据检索摘要中的可见文字，不代表掌握完整原文或外部资料。",
+                ],
+            )
+        )
+    questions = []
+    if adjacent:
+        questions.append(
+            "目前只找到相邻兴趣。可以选择下面的学习方向，或补充一颗更贴近本次问题的星星后再探索。"
+        )
+    if preferences.constraints:
+        questions.append("当前约束仅支持固定文字步骤，因此只展示一个保守示例。")
+    return ProposalResult(proposals=proposals, questions=questions)
 
 
 class ModelFailure(Exception):
@@ -103,6 +199,13 @@ class ModelAdapter:
                             "免费文字记录可估算预算为0。提出1到3项，每项引用真实ID并说明不确定性。"
                             "如果信息不足或无法满足约束，返回问题和空建议。不输出隐藏推理。"
                             + (INTEREST_REASON_INSTRUCTION if tool_name == "create_star_draft" else "")
+                            + (
+                                DIRECTION_INSTRUCTIONS.get(
+                                    payload.get("request", {}).get("exploration_direction"), ""
+                                )
+                                if tool_name == "generate_quest_proposal"
+                                else ""
+                            )
                         )
                     ),
                     HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
@@ -186,6 +289,7 @@ class ModelAdapter:
         energies = [e for e in [request.energy_level, preferences.energy_level] if e]
         levels = {"low": 1, "medium": 2, "high": 3}
         energy = min(energies, key=lambda e: levels[e]) if energies else "low"
+        steps = exploration_steps(request.exploration_direction)
         constraints = preferences.constraints
         unsupported = [c for c in constraints if c not in SUPPORTED_CONSTRAINTS]
         if unsupported:
@@ -214,7 +318,7 @@ class ModelAdapter:
                     "effective_limits": {"minutes": limit, "budget": budget, "energy": energy},
                     "constraint_template": (
                         {
-                            "steps": TEXT_STEPS,
+                            "steps": steps,
                             "estimated_budget": 0,
                             "energy_level": "low",
                             "instruction": "有明确约束时必须逐字使用这些步骤；时间仍按 effective_limits 设置。",
@@ -224,17 +328,33 @@ class ModelAdapter:
                     ),
                 },
             )
+        if request.exploration_direction == "knowledge":
+            return mock_knowledge_proposals(request, stars, preferences, limit)
         proposals = []
         for star in stars[:3]:
             minutes = min(limit, max(5, preferences.min_minutes))
             proposals.append(
                 Proposal(
-                    title=f"给「{star['title'][:30]}」写三个好奇问题",
-                    description="用这条已收藏的文字做一次轻量的室内文字探索。",
+                    title=(
+                        f"给「{star['title'][:30]}」"
+                        + {
+                            "knowledge": "整理一个待核实的问题",
+                            "hands_on": "做一次文字排序小尝试",
+                            "creative": "构思一份小创作",
+                        }.get(request.exploration_direction, "写三个好奇问题")
+                    ),
+                    description=(
+                        "Mock · "
+                        + {
+                            "knowledge": "整理学习问题与核实线索；没有外部资料，无法确认科学答案。",
+                            "hands_on": "仅用已有文字完成小尝试，不涉及实物或设备实验。",
+                            "creative": "按你本次选择的创意方向留下表达，可随时放下。",
+                        }.get(request.exploration_direction, "用这条已收藏的文字做一次轻量的室内文字探索。")
+                    ),
                     estimated_minutes=minutes,
                     estimated_budget=0,
                     energy_level="low",
-                    steps=TEXT_STEPS,
+                    steps=steps,
                     based_on_star_ids=[star["star_id"]],
                     rationale=f"来自你的星星「{star['title']}」；关键词依据：{'、'.join(star['match_basis'])}。",
                     uncertainties=["Mock 规则建议；预计时间为估计值。", "尚不知道你对这次体验的真实感受。"],

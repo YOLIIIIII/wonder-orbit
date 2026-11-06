@@ -1635,3 +1635,51 @@ nav button {
     transition: none;
   }
 }
+
+.exploration-direction {
+  margin: 20px 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.exploration-direction legend {
+  font-weight: 600;
+}
+.direction-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.direction-options label {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line, #ddd6e7);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.direction-options input {
+  width: auto;
+  margin-top: 5px;
+  accent-color: #73569c;
+}
+.direction-options label:has(:checked) {
+  background: #f4effa;
+  border-color: #9275b5;
+}
+.direction-options label:has(:focus-visible) {
+  outline: 3px solid #73569c;
+  outline-offset: 3px;
+}
+.direction-options small {
+  display: block;
+  margin-top: 4px;
+  font-weight: normal;
+}
+@media (max-width: 600px) {
+  .direction-options {
+    grid-template-columns: 1fr;
+  }
+}
