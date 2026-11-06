@@ -48,7 +48,20 @@ export interface Match {
   match_basis: string[];
 }
 export type ExplorationDirection = "knowledge" | "hands_on" | "creative";
+export interface LearningCard {
+  evidence_quote: string;
+  quote_start: number;
+  quote_end: number;
+  takeaway: string;
+  interest_relevance: string;
+  follow_up_question: string;
+  uncertainties: string[];
+  source_kind: "user_supplied_unverified";
+  source_label: string | null;
+  source_url: string | null;
+}
 export interface AgentRequest {
+  learning_source?: { text: string; label: string | null; url: string | null };
   exploration_direction?: ExplorationDirection | null;
   request_type: "collect" | "explore";
   text: string;
@@ -72,6 +85,7 @@ export interface Run {
   state: {
     request: AgentRequest;
     draft?: { draft: StarInput; missing_fields: string[]; questions: string[] };
+    learning_card?: LearningCard | null;
     proposals?: Proposal[];
     questions?: string[];
     related_stars?: Match[];

@@ -616,3 +616,14 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 
 
 2026-11-06（A 截图收尾）局部导航补充：`ModelAdapter.proposals` 仅在 Mock+knowledge 进入同文件 `mock_knowledge_proposals` / `mock_knowledge_focus`（offline-v2），从实际可见 `text`（为空才用 title）识别资料意图或显式问题片段；同种内容结构只保留首项，未知结构只保守展示一项。支持约束仍只用原固定 knowledge 步骤、一个候选，不扩展 tools 校验规则。其他方向与 Live payload/Prompt 不变。`retrieval.search` 返回 title/text/tags/category/score/match_basis；text=description 或 original_text，二字中文词命中不是事实证据。`Workflow.retrieve` 另加载 star_details，但 `generate` 仍传 ranked related_stars，不传完整原文。此轮未改检索/工作流，不把固定 EVAL 快照视作生产 payload。见 [本轮实证](VERIFICATION.md#agent-004-a-finish-20261106)。
+
+
+## 2026-11-06 · AGENT-004-B 局部导航与数据流
+
+新增 [backend/app/learning.py](../backend/app/learning.py)：单次生成的材料指令边界、公开虚构Mock材料A–E、卡片精确引用与来源元数据校验；不是语义验证器或检索器。schemas.py新增LearningSource/LearningCard与可空结果字段；learning_source为空时序列化省略该键，兼容旧请求哈希。输入原文不strip，以Python Unicode字符零基半开区间验证原文引用。
+
+链路仍为 main.create_run→同一Workflow→ToolRegistry.generate_quest_proposal→ModelAdapter.proposals（至多原有单次生成）→validate_learning_result→Run.state.learning_card→App.LearningResult。工具先校验再交图节点保存；坏引用/错误元数据清空卡片和候选，结构错误使Run失败。没有新增可调用工具、数据库列、迁移或正式写权限。main.py/rules.py经检查保持原审批/幂等/约束逻辑；Proposal及Quest协议不变。
+
+前端App仅knowledge显示可选材料/来源/URL与折叠预览；结果页与Agent足迹共用LearningResult，刷新后读取已有Run。URL不访问、不输出可点击的模型链接。材料和卡片随Run保留，不自动成为Star/偏好/个人知识库；批准Quest不携带卡片。当前无材料清理入口，DATA-004保留其生命周期依赖。
+
+新增 [backend/tests/test_learning_source.py](../backend/tests/test_learning_source.py) 覆盖输入、来源、拒绝路径、Run/审批/幂等与Mock零模型网络；test_qwen_adapter.py内存SDK传输覆盖材料位于Human JSON而非System、单调用与不足输出。新增 [frontend/e2e/learning.mjs](../frontend/e2e/learning.mjs) 接入smoke：验证双尺寸输入/预览/键盘/卡片/刷新/无额外正式写入，仅在核验过的隔离Mock库运行。公开测试材料为learning.py的MOCK_SOURCES；不是科学资料，不会收集真实用户材料为公开夹具。真实科学质量不由这些检查证明。实际命令与结果见 [本轮验证](VERIFICATION.md#agent-004-b-20261106)。

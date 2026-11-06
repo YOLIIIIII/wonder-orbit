@@ -49,7 +49,41 @@ class DraftResult(StrictModel):
 ExplorationDirection = Literal["knowledge", "hands_on", "creative"]
 
 
+class LearningSource(StrictModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
+    text: str = Field(min_length=1, max_length=5000)
+    label: str | None = Field(default=None, max_length=200)
+    url: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def nonblank(cls, value):
+        if not value.strip():
+            raise ValueError("材料不能为空白")
+        return value
+
+    @field_validator("url")
+    @classmethod
+    def valid_url(cls, value):
+        return StarInput.valid_url(value)
+
+
+class LearningCard(StrictModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
+    evidence_quote: str = Field(min_length=1, max_length=1000)
+    quote_start: int = Field(ge=0, strict=True)
+    quote_end: int = Field(ge=1, strict=True)
+    takeaway: str = Field(min_length=1, max_length=1000)
+    interest_relevance: str = Field(min_length=1, max_length=500)
+    follow_up_question: str = Field(min_length=1, max_length=500)
+    uncertainties: list[Step] = Field(min_length=1, max_length=10)
+    source_kind: Literal["user_supplied_unverified"] = "user_supplied_unverified"
+    source_label: str | None = Field(default=None, max_length=200)
+    source_url: str | None = Field(default=None, max_length=2000)
+
+
 class AgentRequest(StrictModel):
+    learning_source: LearningSource | None = None
     exploration_direction: ExplorationDirection | None = None
     request_type: Literal["collect", "explore"]
     text: str = Field(min_length=1, max_length=12000)
@@ -63,12 +97,18 @@ class AgentRequest(StrictModel):
     def explore_only(self):
         if self.request_type != "explore" and self.exploration_direction is not None:
             raise ValueError("探索方向仅适用于 Explore")
+        if self.learning_source is not None and (
+            self.request_type != "explore" or self.exploration_direction != "knowledge"
+        ):
+            raise ValueError("学习材料仅适用于 knowledge Explore")
         return self
 
     @model_serializer(mode="wrap")
     def compatible_payload(self, handler):
         # 仅省略新增的空方向，保留旧字段默认值、历史 payload 与幂等哈希语义。
         data = handler(self)
+        if self.learning_source is None:
+            data.pop("learning_source", None)
         if self.exploration_direction is None:
             data.pop("exploration_direction", None)
         return data
@@ -92,6 +132,7 @@ class Proposal(StrictModel):
 
 
 class ProposalResult(StrictModel):
+    learning_card: LearningCard | None = None
     proposals: list[Proposal] = Field(max_length=3)
     questions: list[str] = Field(default_factory=list)
 

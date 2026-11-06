@@ -1435,3 +1435,61 @@ Mock（AGENT-004-A offline-v1）：knowledge 整理用户已提供信息、一�
 复盘：为什么用户需要——避免阅读半截标题和多张同义活动卡，能看清建议究竟帮助选择资料还是拆问题。Agent系统解决什么——收紧Mock生成与可见上下文、来源说明、候选数量之间的关系；呈现修正属于UX/规则工程，不证明Live模型能力提升。学到什么——显式方向仍不足以保证针对性，生成内容必须受实际传入证据和可解释结构约束；少给一张比换词制造差异更诚实。知识解答真实性仍需可信材料、资料依据校验与独立真实质量验收；完整相关性判断属于RETR-001后续评估。当前M3穿插M2，无新增已证实P0，剩余P1为UX-003、INFRA-001/002、EVAL-001；AGENT-004/EVAL-001未收尾。下一项仍建议可信资料支持的学习路径，但本轮结束等待界面验收。
 
 最终检查：380个本地链接/锚点、任务索引/详情状态及IDEA唯一性通过；git diff --check通过。三份归档JSON SHA256与上一节完全一致。原18个工作区文件保留，HEAD/暂存区未变；变更文件敏感签名扫描无命中。最后仅追加本记录，不冒称应用测试再次重跑。
+
+
+<a id="agent-004-a-ci-import-20261106"></a>
+## 2026-11-06 · AGENT-004-A 测试导入兼容修复
+
+来源：用户确认 Actions 42143836403 的 backend 为292 passed / 1 failed / 1 skipped，唯一失败是 test_archived_public_baseline_unchanged 直接导入 evals 引起 ModuleNotFoundError。本轮未独立查询远程日志或运行新CI，以上为用户提供证据。起点工作区干净，HEAD=6136e4bb01e8a5bedb88e35eddc1d69caa7355cf。
+
+仅改 backend/tests/test_exploration_direction.py：参照 test_offline_evals.py，以文件自身推导的仓库路径定位 evals/check_results.py，通过 importlib.util.spec_from_file_location/module_from_spec/exec_module 加载，再调用 checker.evaluate；保留原报告完全相等断言。没有改全局pytest配置、evals包结构、依赖、生产代码/Prompt/审批、历史JSON或评分，也没有删除/跳过失败测试。本文仅补充真实检查记录；不新增需求、改变阶段/任务状态/优先级或重写导航。
+
+本轮Windows环境：Python3.12.15、pytest9.1.1，已有项目.venv。进程PATH前置项目 .tools/bootstrap/bin，设置PYTHONPATH=backend（与CI一致）；UV_NO_SYNC=true、UV_OFFLINE=true、UV_CACHE_DIR=.cache/uv，避免同步/安装依赖和访问网络，使用已有环境。按用户要求使用uv run调用pytest控制台入口，未以python -m pytest替代。
+
+| 实际命令 | 结果 |
+| --- | --- |
+| `uv run pytest backend/tests/test_exploration_direction.py` | **17 passed，2.92s** |
+| `uv run pytest` | **293 passed / 1 skipped，28.21s**；test_postgres因未配置独立TEST_POSTGRES_URL跳过，不代表PG通过 |
+| `uv run ruff check backend evals` | passed |
+| `uv run ruff format --check backend evals` | 最初1个文件需换行；仅对修改的测试运行ruff format后重跑，**31 files already formatted** |
+| 既有check_results.py对reviewed_quality_results.json的离线CLI复核（subprocess捕获） | **预期exit1**，JSON与归档report完全一致；确定性20 passed / 1 failed / 7 not_run / 3 not_rated；人工1 rated / 59 not_rated |
+
+最后的formatter只折行新增spec调用，未改变测试逻辑；pytest成绩来自本轮格式化前的实际执行，不冒称再次重跑。三份JSON SHA256保持：captures=4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be；results=dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f；report=47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db。
+
+真实模型请求0，未运行真实开关/探针/工作流。未重跑前端或浏览器：本轮只有测试导入与本文记录，无业务/依赖/界面改动，不以历史成绩冒充本轮。当前M3穿插M2，AGENT-004/EVAL-001保持既有未完成状态；无新增已证实P0，剩余P1仍为UX-003、INFRA-001/002、EVAL-001。下一步是用户提交推送后核对远程CI，本轮未commit/push，不能称Linux CI已通过。
+
+复盘：用户需要可靠的CI保护现有交付；Agent系统解决的是离线基线保护测试在不同pytest入口下的导入稳定性，不改变Agent能力。我们学到python -m pytest与pytest控制台入口的sys.path行为可能不同，仓库外于backend的脚本应复用明确文件路径加载方式，不能依赖本地偶然可导入的仓库根目录。历史评测中的真实1 failed仍然是证据，不因导入修复消失。
+
+
+<a id="agent-004-b-20261106"></a>
+## 2026-11-06 · AGENT-004-B 用户材料知识微探索（离线开发）
+
+起点HEAD=ff45e291a2a9df6abd2d9438bdf245c9e41bd839；git status仅有M docs/VERIFICATION.md。先完整读取并保留既有24行“A测试导入兼容修复”修改，本节仅追加，不将它当作B交付。A验收及Actions 42145983644成功为本次用户提供证据，本轮未独立查询远程CI。沿用IDEA-006/AGENT-004，AGENT-004/EVAL-001保持in_progress；M3穿插M2。无新增已证实P0；剩余P1 UX-003、INFRA-001/002、EVAL-001。完整复评见Backlog同日B记录。
+
+真实实现：LearningSource(text≤5000,label≤200,url≤2000且http/https)仅knowledge Explore接受，原文与空白保留，纯空白拒绝；无材料序列化不增加learning_source键。材料作为结构化Human JSON数据，System只含固定边界指令，仍原有一次工具生成，无第二LLM核查。受控工具对LearningCard的Python Unicode零基半开位置、非空连续子串、source_kind字面值、用户来源名/URL完全一致性校验；不合格清空卡片与候选并说明依据不足，结构错误导致Run失败。无新增工具或SQL/执行权限。卡片在Run.state保存、结果与足迹均可重读，不给Proposal添加数据库字段；正式Quest仍按真实Star ID、时间/预算/精力/约束及用户审批验证。main.py/rules.py已核对，无需修改。
+
+来源真实性边界：user_supplied_unverified仅指用户提供且未独立核实；精确引用存在不证明原文真实、来源身份或解释语义正确。界面明确分开原文/Agent简要解释/未知；不称已验证科学事实。Prompt数据隔离降低指令混淆，不能证明已解决Prompt Injection或语义幻觉。URL从未访问；本轮无科学知识联网查询。
+
+数据保留：提交材料与卡片随本次Agent Run记录保存直到记录清理；不自动存Star、偏好、知识库，也不随批准写入Quest。当前无材料清理入口，UI已说明，长期保留/导出依赖DATA-004/002，未实现自动清理。未将用户真实材料写入公开夹具；Mock材料全部为显式虚构测试文本A–E，位于learning.py。仅A/C/D且海洋主题的固定示例能保守复述引用；B不相关/E恶意或任意未知材料均拒绝知识结论，不伪装任意文章理解能力。
+
+本轮环境：Windows、已有Python3.12.15 .venv、Node22.23.3；没有依赖安装/更新。真实Qwen/OpenAI/其他模型请求0，SDK测试为内存MockTransport。未执行采样入口、云连接、commit/push或发布。
+
+| 实际命令/检查 | 结果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest -q -rs` | 最终319 passed / 1 skipped，29.55s；唯一test_postgres因未配置独立TEST_POSTGRES_URL跳过；不代表PG通过。此前新增SDK用例前318/1为同轮早期结果。 |
+| `.venv/Scripts/ruff.exe check backend evals` / `format --check backend evals` | 通过，33 files。首次新增测试E701排版错误经formatter修正后重跑通过。 |
+| Node22下前端 `npm run format:check` / `lint` / `typecheck` / `test` / `build` | 全通过；89 tests / 4 files，build 1581 modules。新增E2E格式化后format:check/lint再次通过；业务代码未再改，不冒称后面重复其他前端检查。首次误用系统旧Node导致lint structuredClone错误，纠正PATH后上述全项重跑；未改依赖。 |
+| Node22执行 `frontend/e2e/smoke.mjs` | exit0，原Star阅读编辑/UX-002恢复/四方向/收集审批反馈全链加B专项五条PASS，1440/390。首次缺默认浏览器缓存启动失败，改用项目已有PLAYWRIGHT_BROWSERS_PATH后通过，无下载。 |
+| 原 `evals/check_results.py --results evals/reviewed_quality_results.json`（subprocess捕获） | 预期exit1，JSON与原归档report完全相等；确定性20 passed / 1 failed / 7 not_run / 3 not_rated，人工1 rated / 59 not_rated。首次捕获因Windows编码错误失败，设置子进程PYTHONIOENCODING=utf-8后复核成功，不改检查器。 |
+
+三份JSON实际SHA256与本轮开始前已有记录完全一致：captures=4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be；results=dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f；report=47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db。工作树CRLF与Git blob LF原本不同，不能声称原始字节与HEAD相等；已核对换行规范化内容一致且工作树上述字节哈希未变。原EVAL版本、历史评分和检查器未改。
+
+浏览器专用启动器.cache/agent004b_server.py先断言新库.cache/agent004b.db不存在，禁用.env、空Key、强制Mock/关tracing、Alembic head并核对实际engine.url.database；回环5179→8035，与个人库及旧预览分离。E2E_ALLOW_WRITE=true、E2E_INJECTED_FAILURE=true，PLAYWRIGHT_BROWSERS_PATH=.cache/browsers，产物.cache/agent004b-e2e。新增B专项覆盖完整输入、折叠预览、来源/URL、切创意隐藏材料、Tab标签焦点、准确payload、限定词、原文引用、刷新后按run_id重读卡片、无横向溢出且Quest/偏好无新增；原四方向验证保证无材料路径。实际查看learning-result-1440.png、learning-result-390.png，引用和解释区分、正文可读无重叠；不把自动浏览器当用户主观验收或屏幕阅读器人工实测。
+
+新文件（当前未跟踪，交付时务必纳入后续用户提交）：backend/app/learning.py、backend/tests/test_learning_source.py、frontend/e2e/learning.mjs。修改：backend/app/{schemas.py,model_adapter.py,tools.py,workflow.py}、backend/tests/test_qwen_adapter.py、frontend/src/{App.tsx,types.ts,styles.css}、frontend/e2e/smoke.mjs、docs/{IDEA_LOG.md,PRODUCT_BACKLOG.md,PROJECT_GUIDE.md,VERIFICATION.md}、ROADMAP.md、CHANGELOG.md。VERIFICATION包含明确保留的先前修改。忽略缓存中的隔离启动器/数据库/截图不应提交。
+
+未执行/待验收：真实Qwen材料解释、任意材料相关性/语义忠实性、真实科学质量与用户亲测；自动知识检索、PDF/网页解析、Embedding/RAG不在范围。无本轮远程CI或PG结果。AGENT-004-B离线切片之后停止，等待用户与助手验收，不执行真实采样。下一项推荐先在Mock预览验收卡片，再单独约定公开非敏感材料与真实调用额度，不能据本轮推断已授权。
+
+复盘：用户需要——从“写问题/去搜索”前进到看到有原文根据的一条信息，并可追问。Agent系统解决——把外部不可信文本接入同一生成边界，用独立DTO与确定性来源门控约束可展示结果，同时保留正式写入审批；表单与视觉属于UX工程，非模型能力提升。学到什么——精确出处、来源真实性和语义正确性是三个不同问题；Mock能证明协议/留存/安全路径，不能证明真实解释质量，自动来源门控也不能替代人工语义评价。
+
+最终文档/范围检查：349个本地Markdown链接路径存在（本次未逐一检查锚点，不冒称锚点全通过）；git diff --check通过。确认先前A导入兼容记录仍完整位于新增B节之前。工作区15个修改文件+3个新且未跟踪文件，暂存区为空，HEAD未变；无个人库/历史评测文件改动。隔离Mock预览留在回环5179供用户验收。最后仅追加此检查，不冒称应用测试再次重跑。

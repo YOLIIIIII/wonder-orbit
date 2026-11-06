@@ -1,3 +1,4 @@
+from .learning import LEARNING_INSTRUCTION, mock_learning_card
 import json
 import re
 from langchain_openai import ChatOpenAI
@@ -198,6 +199,11 @@ class ModelAdapter:
                             "建议限定为使用已有文字的室内思考/记录小体验，不能购买物品、联网或假定有任何设备。"
                             "免费文字记录可估算预算为0。提出1到3项，每项引用真实ID并说明不确定性。"
                             "如果信息不足或无法满足约束，返回问题和空建议。不输出隐藏推理。"
+                            + (
+                                LEARNING_INSTRUCTION
+                                if payload.get("request", {}).get("learning_source")
+                                else ""
+                            )
                             + (INTEREST_REASON_INSTRUCTION if tool_name == "create_star_draft" else "")
                             + (
                                 DIRECTION_INSTRUCTIONS.get(
@@ -328,6 +334,16 @@ class ModelAdapter:
                     ),
                 },
             )
+        if request.learning_source is not None:
+            card = mock_learning_card(request)
+            if card is None:
+                return ProposalResult(
+                    proposals=[],
+                    questions=["Mock无法可靠解释这段材料；仅支持公开固定测试材料，不生成知识结论。"],
+                )
+            result = mock_knowledge_proposals(request, stars, preferences, limit)
+            result.learning_card = card
+            return result
         if request.exploration_direction == "knowledge":
             return mock_knowledge_proposals(request, stars, preferences, limit)
         proposals = []

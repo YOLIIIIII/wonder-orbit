@@ -1,6 +1,7 @@
 from time import perf_counter
 from sqlalchemy import select
 from fastapi import HTTPException
+from .learning import validate_learning_result
 from .models import AgentRun, Quest, QuestStar, Reflection, Star, UserPreference
 from .retrieval import search, star_dict
 from .rules import SUPPORTED_CONSTRAINTS, exploration_steps
@@ -72,7 +73,9 @@ class ToolRegistry:
         return DraftResult.model_validate(self.adapter.draft(request)).model_dump(mode="json")
 
     def generate_quest_proposal(self, args):
-        return self.adapter.proposals(args.request, args.stars, args.preferences).model_dump(mode="json")
+        return validate_learning_result(
+            args.request, self.adapter.proposals(args.request, args.stars, args.preferences)
+        ).model_dump(mode="json")
 
     def validate_quest_proposal(self, args):
         proposal, request, pref = args.proposal, args.request, args.preferences

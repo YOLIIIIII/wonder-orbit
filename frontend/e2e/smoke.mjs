@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
+import { verifyLearning } from "./learning.mjs";
 import { verifyDirections } from "./directions.mjs";
 import { verifyResults } from "./results.mjs";
 
@@ -534,6 +535,7 @@ try {
   }
   await verifyResults(page, base, artifact);
   await verifyDirections(page, base, artifact);
+  await verifyLearning(page, base, artifact);
   assert.deepEqual(failures, [], "不应出现浏览器脚本异常");
   console.log(
     "PASS: collection → draft approval → archive/search → relations → proposal approval → edit → reflection → preference confirmation → audit; desktop/mobile",

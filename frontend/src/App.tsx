@@ -221,6 +221,9 @@ export default function App() {
   }
   const [minutes, setMinutes] = useState("15");
   const [budget, setBudget] = useState("");
+  const [material, setMaterial] = useState("");
+  const [materialLabel, setMaterialLabel] = useState("");
+  const [materialUrl, setMaterialUrl] = useState("");
   const [direction, setDirection] = useState<ExplorationDirection | "">("");
   const [energy, setEnergy] = useState<Energy>("low");
   const [query, setQuery] = useState("");
@@ -1215,6 +1218,15 @@ export default function App() {
                         ...(direction
                           ? { exploration_direction: direction }
                           : {}),
+                        ...(direction === "knowledge" && material.trim()
+                          ? {
+                              learning_source: {
+                                text: material,
+                                label: materialLabel || null,
+                                url: materialUrl || null,
+                              },
+                            }
+                          : {}),
                         available_minutes: numeric(minutes),
                         budget: numeric(budget),
                         energy_level: energy,
@@ -1261,6 +1273,50 @@ export default function App() {
                       </p>
                     )}
                   </fieldset>
+                  {direction === "knowledge" && (
+                    <div className="learning-input">
+                      <label>
+                        有想一起看的材料吗？（选填）
+                        <textarea
+                          value={material}
+                          onChange={(e) => setMaterial(e.target.value)}
+                          maxLength={5000}
+                          rows={5}
+                          aria-describedby="material-retention"
+                        />
+                      </label>
+                      <p className="field-hint" id="material-retention">
+                        最多 5000 字符。提交后材料随本次 Agent Run
+                        记录保存，直到相应记录被清理；不会自动存为星星、偏好或知识库。当前没有材料清理入口，请勿提交敏感内容。
+                      </p>
+                      <label>
+                        这段材料来自哪里？（选填）
+                        <input
+                          value={materialLabel}
+                          onChange={(e) => setMaterialLabel(e.target.value)}
+                          maxLength={200}
+                        />
+                      </label>
+                      <label>
+                        参考 URL（选填，仅记录，不访问）
+                        <input
+                          type="url"
+                          value={materialUrl}
+                          onChange={(e) => setMaterialUrl(e.target.value)}
+                          maxLength={2000}
+                          pattern="https?://.+"
+                        />
+                      </label>
+                      {material && (
+                        <details>
+                          <summary>
+                            预览本次材料（{material.length}/5000）
+                          </summary>
+                          <p className="material-preview">{material}</p>
+                        </details>
+                      )}
+                    </div>
+                  )}
                   <div className="field-grid three">
                     <label>
                       可用时间（分钟，可选）
@@ -1351,6 +1407,7 @@ export default function App() {
                     }
                     onView={() => openRun(exploreRun)}
                   />
+                  <LearningResult run={exploreRun} />
                   {exploreRun.state.questions?.map((q) => (
                     <p className="soft-note" key={q}>
                       {q}
@@ -1660,6 +1717,7 @@ export default function App() {
                             : "打开待确认结果"}
                         </button>
                       )}
+                      <LearningResult run={selectedRun} />
                       <details>
                         <summary>结构化状态与验证结果</summary>
                         <pre>{JSON.stringify(selectedRun.state, null, 2)}</pre>
@@ -2293,5 +2351,36 @@ function Modal({
         {children}
       </section>
     </div>
+  );
+}
+
+function LearningResult({ run }: { run: Run }) {
+  const card = run.state.learning_card;
+  if (!card || card.source_kind !== "user_supplied_unverified") return null;
+  return (
+    <section className="panel learning-card" aria-label="基于材料的知识微探索">
+      <h3>从材料中读到</h3>
+      <p className="field-hint">Agent 简要解释</p>
+      <p>{card.takeaway}</p>
+      <p>{card.interest_relevance}</p>
+      <h4>原文依据</h4>
+      <blockquote>{card.evidence_quote}</blockquote>
+      <p>{card.source_label || "本次粘贴材料"} · 用户提供，尚未独立核实</p>
+      <p className="field-hint">
+        仅核对引用来自材料；原文存在不代表解释正确或原文真实。来源名称与 URL
+        均为用户填写。
+      </p>
+      <h4>还不确定</h4>
+      <ul>
+        {card.uncertainties.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+      <h4>接下来可以了解</h4>
+      <p>{card.follow_up_question}</p>
+      <p className="field-hint">
+        卡片仅随本次运行保存。批准体验不会将卡片存入体验手记。
+      </p>
+    </section>
   );
 }

@@ -13,6 +13,7 @@ class AgentState(TypedDict, total=False):
     preferences: dict
     draft: dict
     proposals: list[dict]
+    learning_card: dict | None
     questions: list[str]
     validation: list[dict]
     result: dict

@@ -411,3 +411,28 @@ def test_direction_system_policy_on_offline_wire(wire, direction):
     assert payload["request"].get("exploration_direction") == direction
     for key, instruction in DIRECTION_INSTRUCTIONS.items():
         assert (instruction in system) == (direction == key)
+
+
+def test_learning_material_single_call_is_data_not_system_instruction(wire):
+    from app.learning import MOCK_SOURCES
+    from app.schemas import Preferences
+
+    request = AgentRequest(
+        request_type="explore",
+        text="海洋",
+        exploration_direction="knowledge",
+        learning_source={"text": MOCK_SOURCES["E"]},
+    )
+    wire.message["tool_calls"] = [
+        tool(
+            {"proposals": [], "questions": ["材料不足"], "learning_card": None},
+            name="generate_quest_proposal",
+        )
+    ]
+    result = ModelAdapter(config()).proposals(request, [{"star_id": "real"}], Preferences())
+    assert result.learning_card is None
+    assert len(wire.calls) == 1
+    messages = wire.calls[0]["body"]["messages"]
+    assert MOCK_SOURCES["E"] not in messages[0]["content"]
+    assert "不是指令" in messages[0]["content"]
+    assert json.loads(messages[1]["content"])["request"]["learning_source"]["text"] == MOCK_SOURCES["E"]
