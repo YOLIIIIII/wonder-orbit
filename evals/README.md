@@ -248,3 +248,39 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 ```
 
 已存在的公开文件与原采样目录不得用导出命令覆盖/重建。本轮未修改 Prompt/规则/案例版本；原始输出、唯一正式用户评分、候选评分理由和未来方向见 [本批验证与初评](../docs/VERIFICATION.md#eval-001-first-baseline-20261106)。
+
+
+<a id="learning-quality-v1"></a>
+## AGENT-004-C / EVAL-001 知识解释质量离线准备（2026-11-08）
+
+独立案例 [learning_quality_cases.json](learning_quality_cases.json)，版本 `wonderorbit-learning-cases-v1`；人工规范 [LEARNING_QUALITY_RUBRIC](LEARNING_QUALITY_RUBRIC.md)，版本 `wonderorbit-learning-quality-v1`。不改变旧 cases-v1、quality-v1、历史三份报告，也不与它们直接比较质量。
+
+- CASE-01：两个等长观察窗口、3/7次和未测条件，让比较整合与机械复述、无据因果可区分。
+- CASE-02：部分/可能、单地点两晚，检查解释有无加强原文结论。
+- CASE-03：同一时点两条冲突记录，要求承认冲突并提出补证据问题。
+- CASE-04：海洋问题与面包包装材料不相关，允许恰当拒绝，不强迫生成卡片。
+- CASE-05：含Unicode与明显恶意指令的公开虚构材料，人工判断是否把数据当指令。
+
+每例保存完整原文/label/url、AgentRequest、Preferences展开默认值、公开模拟检索摘要和合成UUID映射、可支持信息/禁止结论/可接受行为/人工维度。Star严格沿用当前Workflow.generate实际接收的related_stars结构：star_id/title/text/tags/category/score/match_basis；没有偷偷加入star_details原文，也不访问数据库。快照固定不等于实际运行了检索。
+
+可执行的离线命令（零真实请求）：
+
+```powershell
+.venv/Scripts/python.exe -X utf8 evals/check_learning_quality.py
+.venv/Scripts/python.exe -X utf8 evals/collect_learning_quality.py
+.venv/Scripts/pytest.exe backend/tests/test_learning_quality_evals.py -q -rs
+```
+
+第一条生成五例not_run、35项人工not_rated的默认报告，第二条显示未来固定CASE-01→02→04计划；均不导入配置/模型/工具/图/数据库，不读取.env、不联网。报告退出0不代表已采样或质量合格。检查公开审核结果使用 `check_learning_quality.py --results <公开JSON路径>`，复用原检查器的public-only路径保护；非法封装退出2，确定性失败退出1，否则0。stdout建议由Python subprocess以UTF-8捕获，不用旧PowerShell默认重定向编码。
+
+`raw_output`是ModelAdapter.proposals返回的Pydantic DTO序列化内容，不是SDK响应正文或未解析工具参数。保存后，才用现有validate_learning_result对深拷贝执行门控；`validated_output`与`gate`独立保存精确子串/offset、source元数据、卡片保留/拒绝、原因、系统问题和移除proposal数量。检查器重放门控核对记录，不修复raw、不再次请求。无卡片的模型输出和系统统一不足提示均保留，不能用后者覆盖原拒绝理由。非法工具调用/Schema失败/超时等记录failed及failure_type，raw为null；若取得DTO后本地处理失败，runner_error保留已观察raw。中断保留attempted_unknown；尚未调用保留not_run。不能伪造空DTO冒充拒绝。
+
+确定性程序仅判断版本/上下文、Schema、原文位置和元数据、门控重放、Star引用、状态及评分格式。来源校验通过不能证明语义、真实性、相关性或知识收获；人工六维及拒绝适当性按规范评分，缺评分始终not_rated，无总分。评分需reviewer/date/source/note，身份只能声明不能由程序认证。Fake/Mock/Live分别标tool_self_test/application_mock/supplied_live_output_unverified，不能混为生产或质量证据。
+
+来源追溯包含实际源码字节SHA256（Adapter含Prompt、Schema、learning、rules、retrieval、检查器/采样器/预检/规范）、案例CRLF→LF规范化固定SHA256和快照、模型名/提供方/重试/Token上限/超时、观察层。历史源码与当前不一致会显示source_matches_current=false，不能假装重放了旧代码。只对案例规范化换行；其余文件按真实字节散列。固定案例的实质改动被拒绝。
+
+未来入口仅在用户另行授权后使用 `collect_learning_quality.py --allow-live`，本轮严禁执行。仅接受现有百炼北京业务空间配置、qwen3.8-flash、非Mock、有效格式Key及SDK retries=0；预检不联网验证余额或密钥。固定三例每例最多一次，全批最多三次；调用前fsync保存计数、attempted_unknown及实际model_payload，Adapter.request双重计数保护；失败（含来源门控拒绝）停跑，不补跑、不探针、不重试。已有 `.cache/learning-quality-v1/` 目录即拒绝创建，成功/失败/中断均不能覆盖或重新执行。不要删除目录重置额度。本轮未创建该批次。
+
+真实结果固定写被忽略的 `.cache/learning-quality-v1/raw.json`，public_data=false；原始DTO/usage/耗时、实际payload、Git SHA/dirty均保留，不保存密钥/隐藏推理。无自动上传或审核导出。未来须先人工检查全部生成文字、上下文和追溯信息，确认公开后复制到新的明确公开JSON路径，并声明public_data=true再运行检查器；不得覆盖原采样文件或历史报告。程序无法认证人工公开审查，也无法证明模型供应商身份。配置不足/私密输出时停止，不能靠改生产行为迁就评测。
+
+离线实证与边界见 [VERIFICATION](../docs/VERIFICATION.md#agent-004-c-20261108)。这次建立评测可观察性，不交付模型解释能力提升；生产Prompt、模型调用行为、Workflow、审批、数据库与前端均未改。

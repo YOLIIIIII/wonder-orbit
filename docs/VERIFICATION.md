@@ -1493,3 +1493,42 @@ Mock（AGENT-004-A offline-v1）：knowledge 整理用户已提供信息、一�
 复盘：用户需要——从“写问题/去搜索”前进到看到有原文根据的一条信息，并可追问。Agent系统解决——把外部不可信文本接入同一生成边界，用独立DTO与确定性来源门控约束可展示结果，同时保留正式写入审批；表单与视觉属于UX工程，非模型能力提升。学到什么——精确出处、来源真实性和语义正确性是三个不同问题；Mock能证明协议/留存/安全路径，不能证明真实解释质量，自动来源门控也不能替代人工语义评价。
 
 最终文档/范围检查：349个本地Markdown链接路径存在（本次未逐一检查锚点，不冒称锚点全通过）；git diff --check通过。确认先前A导入兼容记录仍完整位于新增B节之前。工作区15个修改文件+3个新且未跟踪文件，暂存区为空，HEAD未变；无个人库/历史评测文件改动。隔离Mock预览留在回环5179供用户验收。最后仅追加此检查，不冒称应用测试再次重跑。
+
+
+<a id="agent-004-c-20261108"></a>
+## 2026-11-08 · AGENT-004-C / EVAL-001 知识解释质量离线准备
+
+起点HEAD=0dd5dc48b936b34aeb8859b1d9e62fecf8564057，git status --short为空；未覆盖已有用户修改。读取AGENTS、ROADMAP、Backlog、IDEA、PROJECT_GUIDE、最新VERIFICATION、evals README/QUALITY_RUBRIC与指定生产/评测/测试源码。用户提供成功CI链接为来源信息，本轮没有访问远程CI或连接云服务。当前仍M3穿插M2，两任务整体仍in_progress，优先级/未完成任务完整复评见Backlog本轮记录。
+
+案例：独立learning-cases-v1/learning-quality-v1，五例公开固定虚构数据：等长窗口3/7次可比较记录、部分/可能与范围、相互冲突记录、主题无关、恶意材料与Unicode。每例固定AgentRequest材料元数据、公开模拟related_stars七字段、Preferences默认展开与合成UUID映射、支持信息/禁止结论/可接受行为及人工维度。没有star_details/original_text补料、真实Star或个人库访问。CASE-01/02/04固定为未来三例，不能按输出事后挑选。
+
+双层证据：ModelAdapter.proposals原始Pydantic DTO先保存，再对深拷贝调用现有validate_learning_result；validated_output和gate保存位置/元数据、保留/拒绝/移除数及系统问题。原始卡片、uncertainties、后续问题、proposals/questions随raw保留。非法工具/Pydantic失败/超时保留分类和null原始DTO，不伪装主动拒绝；取得DTO后本地失败可保留raw。来源失败与成功拦截分别呈现，不再次请求。人工六维+拒绝适当性独立，默认not_rated，无总分；有评分必须附日期/评审者/依据/来源声明，程序不能认证身份。
+
+安全边界：默认检查与计划入口在独立子进程审计下拒绝socket/sqlite/.env/.cache读取及模型/配置/数据库/图导入。未来真实入口只有--allow-live后才读取配置，复用北京百炼预检，固定qwen3.8-flash、SDK retries=0；预写fsync尝试/实际payload、每例一次/全批三次、失败或来源门控拒绝即停。批次目录原子创建，已有目录拒绝重跑；中断不恢复，不提供覆盖。测试只用内存Fake，含真实Adapter解析分支但SDK构造器被替换，所有模型网络请求0。未创建.cache/learning-quality-v1，未删除/覆盖任何已有真实采样记录。无数据库/API审批/生产材料操作。
+
+追溯：源码/Prompt所在Adapter/Schema/learning/rules/retrieval/采样器/检查器/预检/规范按真实字节SHA256；案例仅CRLF→LF规范化，固定SHA256=8d390e8d4425b9849351a11ddd82916899efeea52a5368887627b2297ea96a4f。LF/CRLF等价且实质变化拒绝；保存完整上下文、模型配置摘要、Git SHA/dirty、usage或unknown和耗时。历史源码差异显式显示source_matches_current，不宣称当前门控重放等于旧代码执行。Live来源离线无法独立认证，不混合Fake/Mock/Live，不保存隐藏推理或密钥。
+
+环境：Windows PowerShell、Python3.12.15、已有.venv，未安装/修改依赖。uv未在PATH发现；采用与CI `uv run pytest`相同的pytest控制台入口 `.venv/Scripts/pytest.exe`，使用仓库pyproject与隔离SQLite测试配置，不依赖python -m pytest偶然sys.path。未在Linux执行，不能宣称新远程CI通过。
+
+| 实际执行 | 结果 |
+| --- | --- |
+| 新专项首次 `.venv/Scripts/pytest.exe backend/tests/test_learning_quality_evals.py -q -rs` | 初版42 passed；随后添加额度/中断/真实Adapter解析/非法封装保护，最终48项均在最终完整回归中执行通过，不冒称首次已含后续用例。 |
+| 最终 `.venv/Scripts/pytest.exe -q -rs` | **367 passed / 1 skipped，36.59s**；唯一PostgreSQL测试因未配置独立TEST_POSTGRES_URL跳过，不代表PG通过。中间版364/366 passed仅是同轮历史结果。 |
+| `.venv/Scripts/ruff.exe check backend evals` | passed |
+| `.venv/Scripts/ruff.exe format --check backend evals` | 最终passed，37 files；初次新增文件格式化、末轮新增参数保护后一个条件需折行，执行ruff format后重跑check/format通过。最终完整pytest在最后一次仅格式化折行前执行，没有冒称格式化后再跑全部应用测试。 |
+| 新check_learning_quality.py / collect_learning_quality.py默认CLI（Python -X utf8，subprocess解析stdout） | exit0；默认报告5 not_run、0人工rated/35 not_rated，计划固定01/02/04、最多3次。无模型输出、无质量结论。 |
+| 原check_results.py --results evals/reviewed_quality_results.json（最终完整pytest内子进程执行） | **预期exit1**，输出JSON与旧report完全相等：20 passed / 1 failed / 7 not_run / 3 not_rated；人工1 rated / 59 not_rated。未知预算被写成0.0的真实失败继续保留。 |
+| 文档本地链接路径检查（正则提取本轮七份Markdown中的非远程链接） | 308条路径存在，无缺失；未逐一验证所有历史锚点，不宣称全锚点通过。新知识入口与本节使用显式锚点。 |
+| git diff --check | passed；交付前再次检查范围、未跟踪文件与HEAD/暂存区。 |
+
+旧三份JSON从开始到结束逐字节SHA256不变：captures=4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be；results=dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f；report=47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db。旧案例/规范/采样器/检查器均未修改。新案例不冒充旧版本对照，没有质量提升结论。
+
+新增且未跟踪（全部5个）：evals/learning_quality_cases.json、evals/LEARNING_QUALITY_RUBRIC.md、evals/check_learning_quality.py、evals/collect_learning_quality.py、backend/tests/test_learning_quality_evals.py。修改7份文档：evals/README.md、docs/IDEA_LOG.md、docs/PRODUCT_BACKLOG.md、docs/PROJECT_GUIDE.md、docs/VERIFICATION.md、ROADMAP.md、CHANGELOG.md。生产后端/Prompt/Workflow/审批/数据库Schema、依赖和前端均未改。没有commit/push、发布、私人报告上传或真实请求。
+
+未执行：真实Qwen/任何探针、人工知识内容评分、完整LangGraph/审批评价、Linux新CI、独立PG集成；前端lint/typecheck/test/build和浏览器视觉测试未重跑，因为本轮仅独立评测设施/后端离线测试及文档，未改业务/依赖/前端，不以历史成绩代替新结果。未来配置预检只验证本地格式，无法证明Key/余额/真实兼容性或质量；这些需另行授权。离线准备具备本地验收条件，停止于此，等待用户验收，不进入Live。
+
+为什么用户需要：来源能定位仍可能解释错误，用户需要可复核的学习价值评价，而非只看到合法卡片。Agent系统解决什么：建立模型生成与系统门控之间的可观察边界，以及严格请求预算和分层证据；这是评测/安全工程改进，不是模型能力或普通UI改进。学到了什么：准确引用、保留限定、语义忠实与有学习收获须分别判断；正确拒绝也可能有价值，Schema失败则没有可评分解释。48项离线保护能证明协议与执行边界，不能证明真实科学正确性、全面Prompt Injection防护或真实用户学习效果。
+
+剩余P0/P1：无新增已证实P0；P1仍为UX-003、INFRA-001/002、EVAL-001。下一项推荐先验收本轮离线成果，再单独确认未来固定三例采样及人工评价来源，AGENT-004/EVAL-001整体不done。
+
+最终收尾复查：新增本节后8份相关Markdown共315条本地链接路径存在；两个默认CLI再次exit0，旧三份JSON字节哈希仍相等，未来固定Live批次目录不存在。git diff --check通过，7份修改文档+5个未跟踪新文件，暂存区为空，HEAD仍为0dd5dc48b936b34aeb8859b1d9e62fecf8564057。没有再次执行应用测试。

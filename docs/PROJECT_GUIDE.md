@@ -627,3 +627,14 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 前端App仅knowledge显示可选材料/来源/URL与折叠预览；结果页与Agent足迹共用LearningResult，刷新后读取已有Run。URL不访问、不输出可点击的模型链接。材料和卡片随Run保留，不自动成为Star/偏好/个人知识库；批准Quest不携带卡片。当前无材料清理入口，DATA-004保留其生命周期依赖。
 
 新增 [backend/tests/test_learning_source.py](../backend/tests/test_learning_source.py) 覆盖输入、来源、拒绝路径、Run/审批/幂等与Mock零模型网络；test_qwen_adapter.py内存SDK传输覆盖材料位于Human JSON而非System、单调用与不足输出。新增 [frontend/e2e/learning.mjs](../frontend/e2e/learning.mjs) 接入smoke：验证双尺寸输入/预览/键盘/卡片/刷新/无额外正式写入，仅在核验过的隔离Mock库运行。公开测试材料为learning.py的MOCK_SOURCES；不是科学资料，不会收集真实用户材料为公开夹具。真实科学质量不由这些检查证明。实际命令与结果见 [本轮验证](VERIFICATION.md#agent-004-b-20261106)。
+
+
+## 2026-11-08 知识质量评测局部导航
+
+- [learning_quality_cases.json](../evals/learning_quality_cases.json)：五个公开固定模拟案例、生产检索摘要参数与合成ID映射，独立于历史quality_cases。
+- [LEARNING_QUALITY_RUBRIC.md](../evals/LEARNING_QUALITY_RUBRIC.md)：六维人工语义评价与独立拒绝适当性；无分数默认not_rated。
+- [check_learning_quality.py](../evals/check_learning_quality.py)：仅schemas/learning依赖；校验上下文、原始DTO、validate_learning_result重放及人工来源，输出分层报告，不访问配置/数据库/网络。
+- [collect_learning_quality.py](../evals/collect_learning_quality.py)：默认离线计划；未来显式授权才延迟导入Settings/Adapter/原run_live预检，固定三例、零重试、预写计数、保留双层结果，不触发生产Workflow或审批。
+- [test_learning_quality_evals.py](../backend/tests/test_learning_quality_evals.py)：按路径加载脚本，离线Fake、网络/数据库访问审计、额度/中断保护、旧报告字节与结果保护。
+
+数据流：固定公开输入与related_stars摘要→ModelAdapter.proposals原始DTO→保存raw_output→现有来源校验→validated_output+gate→离线检查与独立人工评分。无生产模块职责变化，命令/公开审核边界见[evals README](../evals/README.md#learning-quality-v1)。
