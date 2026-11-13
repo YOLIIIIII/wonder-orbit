@@ -641,3 +641,11 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 
 
 2026-11-13 AGENT-004-D 调用链增量：生产tools→learning.validate_learning_result→resolve_learning_offsets→原严格来源门控；新评测observe→同一验证入口/定位函数→validated_output与gate.offset_resolution，raw_output保留深拷贝隔离。LearningCard及正式持久化协议不变。评测封装v2增加定位证据，v1重放关闭定位纠正以保留历史失败。具体字段、默认离线命令与旧协议边界见[评测README](../evals/README.md#offset-resolution-v2)；离线审阅见[摘要](AGENT004D_OFFLINE_REVIEW.md)。
+
+
+### 2026-11-13 · AGENT-004-E 导航增量
+
+- [collect_learning_quality_v3.py](../evals/collect_learning_quality_v3.py)：独立重复采样入口；默认离线，固定两批六槽、独立持久预算账本；依赖旧checker的context/provenance/observe与现有Adapter，不运行Workflow/数据库/审批。
+- [rules.py](../backend/app/rules.py) 的quest_constraint_errors：由原[tools.py](../backend/app/tools.py)提取原有时间/预算/精力/约束纯规则；ToolRegistry仍独立检查检索ID和数据库存在性；v3只读诊断调用同一纯规则，数据库证据缺失明示。
+- [model_adapter.py](../backend/app/model_adapter.py)：仅knowledge+effective_limits.budget=0拼接条件提示，不后处理预算字段。
+- [test_learning_quality_v3.py](../backend/tests/test_learning_quality_v3.py)：pytest自动发现；全Fake SDK、授权/六槽/跨批/停跑/只读/预算和Prompt回归。既有CI的pytest与Ruff命令覆盖新增文件，无需修改CI入口。具体未来启动命令与数据流见[评测说明](../evals/README.md#learning-quality-v3)。

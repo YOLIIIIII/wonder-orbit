@@ -29,3 +29,28 @@ DIRECTION_STEPS = {
 
 def exploration_steps(direction):
     return DIRECTION_STEPS.get(direction, TEXT_STEPS)
+
+
+def quest_constraint_errors(proposal, request, pref):
+    """Shared pure checks; no database evidence or semantic cost inference."""
+    errors = []
+    if proposal.estimated_minutes > min(request.available_minutes or pref.max_minutes, pref.max_minutes):
+        errors.append("超过时间上限")
+    if proposal.estimated_minutes < pref.min_minutes:
+        errors.append("少于偏好的最短时间")
+    budgets = [b for b in [request.budget, pref.max_budget] if b is not None]
+    if budgets and (proposal.estimated_budget is None or proposal.estimated_budget > min(budgets)):
+        errors.append("预算未知或超过上限")
+    levels = {"low": 1, "medium": 2, "high": 3}
+    if any(levels[proposal.energy_level] > levels[e] for e in [request.energy_level, pref.energy_level] if e):
+        errors.append("超过精力上限")
+    # 自由文本约束不由模型判定；支持的约束也限定为可验证的文字记录模板。
+    if pref.constraints:
+        if any(c not in SUPPORTED_CONSTRAINTS for c in pref.constraints):
+            errors.append("存在未支持的约束，需要用户澄清")
+        elif (
+            proposal.steps != exploration_steps(request.exploration_direction)
+            or proposal.estimated_budget != 0
+        ):
+            errors.append("约束要求可验证的免费室内文字记录步骤")
+    return errors

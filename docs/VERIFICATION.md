@@ -1574,3 +1574,39 @@ Mock（AGENT-004-A offline-v1）：knowledge 整理用户已提供信息、一�
 三问复盘：用户需要避免有效原文因模型计数失误被拦；Agent系统将可机械计算的坐标交给后端，保留模型证据与严格边界；实际学到引用定位、解释语义、Proposal约束必须分别评价。本例可以修位置，同时预算仍失败、语义未评分。这是Agent可靠性/评测工程改进，不是UI变化或模型知识提升。
 
 交付前收尾：本轮变更Markdown共294条本地链接路径存在；新增两个显式锚点和AGENT-004/EVAL-001详情in_progress一致性检查通过（未声称逐一验证历史锚点）。git diff --check通过；最终12修改+1未跟踪文件，暂存区为空，HEAD保持基线。最终测试后仅补文档，无业务再改，不冒称再次重跑应用测试。
+
+
+<a id="agent-004-e-20261113"></a>
+
+## 2026-11-13 · AGENT-004-E 零预算契约与两批六槽采样（离线交付，等待人工验收）
+
+基线HEAD=97350c88c215ae0d6c4466a340979695cd82a408，初始工作区干净。依次读取AGENTS、ROADMAP/Backlog、IDEA-005/006与D最新实证/离线评估及生产与评测源码；用户提供最新GitHub CI通过，本轮未再次查远程、不以旧CI证明新代码。全部未完成含deferred复评见Backlog；M3继续、M2独立缺口保留。AGENT-004/EVAL-001保持in_progress，真实请求0，不commit/push、连接Cloud、发布或访问私人业务数据库。
+
+改动与验收：ModelAdapter只在generate_quest_proposal、knowledge、effective_limits.budget=0时追加免费文字活动提示。仅现有文字阅读/分析/比较/记录且不要求购买、工具、设备或收费服务时可以估算0；成本未知仍null，实际成本不得掩盖，可空Proposal澄清，并保留来源未核实。没有DTO预算后处理、CASE文本特判或成本推断引擎。原ToolRegistry时间/预算/精力/模板约束逐字逻辑提取为rules.quest_constraint_errors共享；检索ID与真实数据库存在性仍由原ToolRegistry检查。0元上限仍拒绝null和超预算，规则顺序及错误语义保留。
+
+新collect_learning_quality_v3入口独立封装learning-captures-v3，不改变旧v1/v2解析/评测语义、案例/rubric或历史JSON。两批均固定CASE-01/02/04，sample_id分别S01/S02，共六槽、每例两槽、每批三槽；模型qwen3.8-flash、原本地预检拒绝非零SDK重试。原子独占计划/批次/尝试/结果/完成文件使用flush/fsync；报告快照临时文件+os.replace。尝试预写后才进入Adapter，结果含原DTO与实际usage/耗时；未知/中断消耗已预约槽且禁止补跑，第一批没有完整成功执行标记则第二批拒绝。来源门控拒绝、规则失败与模型正常拒绝是executed质量样本，可继续固定后例；配置/网络/权限/限流/工具/非法DTO/运行器/落盘异常停跑。删除报告目录不能重用独立预算账本；不宣称可以抵抗恶意删除全部账本或复制项目绕过本地状态。
+
+每次原DTO先保存、再只读Quest诊断、再共享observe定位/来源门控；Quest观察raw中的检索ID、时间、预算、精力、未支持约束，独立于来源删卡/删Proposal。database_star_existence=not_observed，workflow=not_executed，自由文本执行条件仍需人工审阅；空Proposal单列。manual沿用七维、默认not_rated，不用规则替代忠实性/学习收获/拒绝人工评分。v3报告直接人工审阅，不假称旧checker已支持v3。相同case可并排比较，不由小样本推总体准确率；没有对照组。
+
+本轮实际验证（Windows、项目.venv Python；前端将已有本地运行时Node v24.22.1加入当前进程PATH，未安装/改依赖）：
+
+| 命令/范围 | 本轮真实结果 |
+| --- | --- |
+| `.venv/Scripts/pytest.exe -q -rs` 最终完整回归 | **417 passed / 1 skipped / 1 warning，48.39s**。PG因未设置TEST_POSTGRES_URL跳过；既有故意model_copy注入字符串偏移测试触发Pydantic warning。中间415 passed不是最终版本。 |
+| `.venv/Scripts/ruff.exe check backend evals` / `format --check backend evals` | passed；39 files already formatted。 |
+| Node v24.22.1下frontend `npm run format:check` / `lint` / `typecheck` / `test` / `build` | 全部passed；89 tests / 4 files，build 1581 modules。npm提示旧global/local配置弃用，不影响结果。 |
+| 三个默认CLI：check_learning_quality.py / collect_learning_quality.py / collect_learning_quality_v3.py | 由项目Python `-X utf8` 子进程执行并解析JSON，均exit0；旧checker仍v2，新入口仅offline_plan/v3，0网络。 |
+| `evals/check_results.py --results evals/reviewed_quality_results.json` | 预期exit1；输出与历史reviewed_quality_report.json对象完全相同，旧质量失败保持。 |
+| 四个受保护文件SHA256前后比较 | 全部相同；新Live报告目录及预算账本均不存在，未预约任何真实槽。 |
+
+新增29项pytest测试（原388→417）经完整pytest自动发现，既有CI对backend/tests默认发现与Ruff backend/evals覆盖，无需改workflow。测试覆盖：两批六槽/每例两次/唯一sample_id/报告删除不恢复/重复请求与非法工具拒绝/预置全局和每例已占槽拒绝；无授权不读配置、默认CLI不入采样；配置预检拒绝；来源拒绝后继续且原Proposal保留，基础设施各类失败立即停止/第二批拒绝；中断未知计槽；实际usage和耗时保存；原DTO不被observe或诊断修改；预算null/0/超限、时间/精力、未知约束和未满足模板约束；Prompt明确免费/不确定/实际成本条件，模拟SDK返回null/0/2均不被改写；“随机波动”“无对照组”“天气导致发光变化”引用即使可通过，也不产生自动语义评分。原定位/去歧义/Unicode、生产数据库Star存在性和约束/审批回归随完整pytest通过。
+
+历史保护：reviewed_quality_captures/results/report及.cache/learning-quality-v1/raw.json起止哈希与D节一致。私人raw仍保留原1请求、2654 total tokens、21/116偏移及source_gate_rejected，其余案例not_run；未写回D的新定位结果。未读取/输出密钥或私人原文，不上传报告。测试使用公开虚构案例与隔离测试库，临时删除仅限pytest自己的报告目录。
+
+新增2个文件：evals/collect_learning_quality_v3.py、backend/tests/test_learning_quality_v3.py。修改11个文件：backend/app/model_adapter.py、backend/app/rules.py、backend/app/tools.py、README.md、evals/README.md、docs/IDEA_LOG.md、docs/PRODUCT_BACKLOG.md、docs/PROJECT_GUIDE.md、docs/VERIFICATION.md、ROADMAP.md、CHANGELOG.md。无新依赖/前端功能/数据库迁移/联网搜索/RAG。CI入口已覆盖新增文件，但本轮未commit/push，远程新CI未执行。浏览器E2E/视觉未重跑（无UI改动）；独立PG、容器、真实Qwen兼容性/权限/余额及人工语义评分未执行，历史证据不冒称本轮重跑。
+
+为什么用户需要：已有引用定位修复仍可能因未知预算被拒，用户需要明确免费活动的正确表示和有限额度内可比较的真实证据。Agent系统解决什么：最小生成契约与严格校验解耦，加上跨批预算、不可重放尝试和材料/来源/Proposal/语义分层观察；是Agent可靠性与评测改进，无UI增量。学到了什么：合法DTO、定位成功、来源通过和Quest规则通过不能互相替代，更不能证明解释忠实；离线可以验证保护及0表示方式，真实生成质量仍须真实样本与人工审阅。本轮没有证明模型效果提升。
+
+当前无新增已证实P0；剩余P1为UX-003、INFRA-001/002、EVAL-001，AGENT-004整体仍未验收。两批代码和离线执行保护具备本地验收条件，真实配置/额度未联网验证；下一项仅推荐人工验收后单独授权首批三次，再人工分析决定第二批。本轮到此停止，真实调用0。
+
+交付前文档检查：8份变更Markdown共353条本地链接路径存在；本轮新增显式锚点与Backlog两项in_progress核对无冲突。历史私人记录的1请求/2654 tokens/21与116原始偏移/source_gate_rejected及其余not_run逐项断言通过，四个文件哈希相同，新Live目录/账本均未创建。git diff --check通过；最终应用测试后仅补充文档，未声称再次重跑应用测试。

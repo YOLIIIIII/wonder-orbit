@@ -195,3 +195,12 @@ scripts/        当前 Windows 环境启动脚本
 历史交付记录（2026-10-17，非本轮操作）：已核对远程 main 的 CI 修复基线 172103d，Author/Committer 为 GitHub noreply 身份。历史身份修正、旧失败和后续成功证据分别保留在 [验证记录](docs/VERIFICATION.md)；本轮仅按用户授权普通推送，不改写远程历史，未连接 Codex Cloud。
 
 历史实证（2026-11-01 真实复验轮，非本轮调用）：最新语义代码下仅执行一次现有工作流 runner，collect/explore 各一次全通过（共 2869 Token），原始动机 null、隔离库模拟批准/幂等/真实来源/约束/关联通过，最终 Star/Quest/Reflection=1/1/0。单一服务验收已具证，不代表模型质量基线或真实体验效果；历史失败保留。两次额度用完，本轮停止，任何新调用需新授权。详见 [最新实证](docs/VERIFICATION.md#agent-001-live-recheck-20261101)。
+
+
+### AGENT-004-E：零预算知识探索与第二批采样准备（2026-11-13）
+
+knowledge 且有效预算为0时，提示允许仅阅读/分析/比较/记录现有文字、无需购买/外部工具/设备/收费服务的建议明确估算0元；未知仍为null，后端继续拒绝有预算上限的未知成本。源材料仍未独立核实。
+
+新版入口 `.venv/Scripts/python.exe -X utf8 evals/collect_learning_quality_v3.py`默认仅输出离线计划。固定CASE-01/02/04各两次、两批各最多三次、qwen3.8-flash、SDK零重试。**本轮真实调用0次；需人工验收及单独授权后才执行Live。** 独立v3报告和预算账本不能删除以重获额度；原v1批次保留不动。
+
+执行协议、未来命令及证据分层见[采样说明](evals/README.md#learning-quality-v3)，实际检查见[本轮实证](docs/VERIFICATION.md#agent-004-e-20261113)。这只是离线准备，不证明真实零预算生成质量已改善。

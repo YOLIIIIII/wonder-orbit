@@ -295,3 +295,34 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 v2 的 `gate.offset_resolution` 在有来源/卡片时记录 `original_start/end`、`resolved_start/end`、`status`（unchanged/corrected/rejected）、`reason`（original_exact/unique_exact_match/quote_not_found/ambiguous_quote/blank_quote），拒绝时resolved为null；无可观察卡片为null。定位状态与最终门控独立：corrected仍可能因label/url失败而被拒绝。`gate.exact_quote` 指定位后的严格引用结果，原始位置保留在 raw_output 与定位记录。报告 `capture_format_version` 明示版本；检查器重算并核对全部证据，拒绝漂移。
 
 原始 `raw_output` 先落盘，深拷贝后门控，绝不反写修正DTO。v1不新增定位字段，以 `resolve_offsets=False` 调用同一严格验证器重放原规则，保留当时的失败；不得把v1原批次升级、覆盖或将v2模拟记为历史实际成功。新版本仍拒绝已有批次目录；本轮没有新采样授权。CASE-01的新逻辑离线模拟与语义观察见[本地审阅摘要](../docs/AGENT004D_OFFLINE_REVIEW.md)，不是新质量基线或人工评分。
+
+
+<a id="learning-quality-v3"></a>
+
+## AGENT-004-E / learning-captures-v3（2026-11-13，仅离线准备）
+
+旧 `collect_learning_quality.py`、v1/v2评测语义及历史raw保持；本轮第二批只能使用独立 `collect_learning_quality_v3.py`，不能重跑旧入口。案例版本与人工rubric不变。v3是重复采样的新封装，不交给只支持v1/v2的旧checker；直接逐份JSON人工审阅，不自动导出私人内容。
+
+默认命令（0网络）：
+
+```powershell
+.venv/Scripts/python.exe -X utf8 evals/collect_learning_quality_v3.py
+```
+
+以下命令**本轮未执行**，仅供人工验收并单独授权后使用；第二批也必须再次决定，不能串联自动运行：
+
+```powershell
+.venv/Scripts/python.exe -X utf8 evals/collect_learning_quality_v3.py --allow-live --batch 1
+# 首批人工分析并明确授权第二批后：
+.venv/Scripts/python.exe -X utf8 evals/collect_learning_quality_v3.py --allow-live --batch 2
+```
+
+固定计划：每批顺序CASE-01→02→04，sample_id为CASE-xx-S01 / CASE-xx-S02；每批3次、每例2次、总计6次。固定qwen3.8-flash、SDK重试0，原本地配置预检仍复用。没有输出路径/新campaign命令行选项。第一批不会自动启动第二批。
+
+报告位于 `.cache/learning-quality-v3/batch-1/raw.json` 与 `batch-2/raw.json`。独立 `.cache/learning-quality-v3-budget/` 保存原子独占创建的计划、批次预约、每sample尝试与结果，以及完成标记。请求前先以x模式创建attempt并flush/fsync，再预写报告才调用Adapter；每槽最多一次，未知完成状态也消耗槽位。快照用临时文件+os.replace，原始DTO先落盘、诊断后单独存储；结果也在预算账本独占保存。删除报告目录不能重新预约批次。**不得删除/修改预算账本来恢复次数，也不得复制项目重新执行同一授权计划。** 本地文件保护不宣称能抵抗用户蓄意篡改所有账本。
+
+第一批有基础设施错误/未知尝试时不生成完成标记，第二批拒绝；不补跑。合法DTO即使来源门控拒绝、Proposal规则失败或模型适当拒绝，仍是executed质量样本，保存后可继续固定后续例。网络/配置/权限/限流/非法工具/非法DTO/运行器及落盘异常立即停止，错误只留脱敏类别，不记录异常字符串。中断记录attempted_unknown，无自动重试。
+
+每条结果依次保存：context和实际model_payload；raw_output（合法Adapter DTO，未定位/未改预算）；quest（对raw只读规则诊断）；validated_output + gate（含offset_resolution与来源门控）；真实usage或unknown、elapsed_ms、状态；manual七维默认not_rated。Quest诊断记录检索ID、时间、预算、精力、未支持约束，复用生产纯规则。数据库存在性not_observed、Workflow not_executed，自由文本执行条件需人工审阅，不声称完整合规。空Proposal明确单列，不能据空集合称Quest可执行。若Adapter解析失败，没有合法原始DTO，不伪造输出。
+
+人工沿用[LEARNING_QUALITY_RUBRIC](LEARNING_QUALITY_RUBRIC.md)：先Schema，再来源/定位，再Quest，再解释忠实性/学习收获/拒绝。相同case两份可并排阅读，但不得由六次小样本推出总体准确率。“随机波动”“无对照组”“天气导致发光变化”等必须核对原文支持程度；来源引用通过不替代语义评分。本轮没有自动语义评分器、对照组或真实效果结论。

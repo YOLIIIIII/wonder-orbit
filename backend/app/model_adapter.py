@@ -26,6 +26,15 @@ DIRECTION_INSTRUCTIONS = {
 }
 
 
+ZERO_BUDGET_KNOWLEDGE_INSTRUCTION = (
+    "knowledge 且 effective_limits.budget=0 时：若建议仅使用已提供文字进行阅读、分析、比较或记录，"
+    "不要求购买、外部工具、设备或有成本的服务，可以明确填写 estimated_budget=0。"
+    "无法确定成本时仍填 null，并接受后端预算拒绝；实际需要成本时不得改写数字掩盖。"
+    "不能将所有 null 统一改为0；无法满足条件可返回空 proposals 和澄清问题。"
+    "源材料仍是用户提供且未独立核实，不因零预算或引用通过而成为已核实事实。"
+)
+
+
 # 只识别明确的个人因果句式；不是通用中文语义判断，宁可漏提取。
 _PERSONAL_INTEREST = (
     r"我(?:之所以)?(?:一直|很|非常|特别)?(?:喜欢|好奇|对[^，,]{1,60}(?:感兴趣|好奇|着迷))[^，,]{0,60}"
@@ -202,6 +211,13 @@ class ModelAdapter:
                             + (
                                 LEARNING_INSTRUCTION
                                 if payload.get("request", {}).get("learning_source")
+                                else ""
+                            )
+                            + (
+                                ZERO_BUDGET_KNOWLEDGE_INSTRUCTION
+                                if tool_name == "generate_quest_proposal"
+                                and payload.get("request", {}).get("exploration_direction") == "knowledge"
+                                and payload.get("effective_limits", {}).get("budget") == 0
                                 else ""
                             )
                             + (INTEREST_REASON_INSTRUCTION if tool_name == "create_star_draft" else "")
