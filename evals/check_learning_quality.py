@@ -10,7 +10,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
-from app.learning import validate_learning_result
+from app.learning import resolve_learning_offsets, validate_learning_result
 from app.schemas import AgentRequest, Preferences, ProposalResult
 from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
 
@@ -106,7 +106,7 @@ def empty_batch(mode="fake"):
     if mode not in {"fake", "mock", "live"}:
         raise ValueError("mode")
     return {
-        "format_version": "learning-captures-v1",
+        "format_version": "learning-captures-v2",
         "case_version": CASE_VERSION,
         "rubric_version": RUBRIC_VERSION,
         "public_data": mode != "live",
@@ -130,11 +130,21 @@ def empty_batch(mode="fake"):
     }
 
 
-def observe(request, raw):
+def observe(request, raw, *, format_version="learning-captures-v2"):
+    if format_version not in {"learning-captures-v1", "learning-captures-v2"}:
+        raise ValueError("format_version")
+    resolve = format_version == "learning-captures-v2"
     dto = ProposalResult.model_validate(raw)
-    validated = validate_learning_result(request, dto.model_copy(deep=True)).model_dump(mode="json")
+    validated = validate_learning_result(
+        request, dto.model_copy(deep=True), resolve_offsets=resolve
+    ).model_dump(mode="json")
     card = dto.learning_card
     source = request.learning_source
+    offsets = resolve_learning_offsets(source, card) if resolve and source and card else None
+    if offsets and offsets["status"] != "rejected":
+        card = card.model_copy(
+            update={"quote_start": offsets["resolved_start"], "quote_end": offsets["resolved_end"]}
+        )
     gate = {
         "exact_quote": None
         if card is None
@@ -159,6 +169,8 @@ def observe(request, raw):
         else "source_gate_rejected",
         "system_questions": validated["questions"],
     }
+    if resolve:
+        gate["offset_resolution"] = offsets
     return validated, gate
 
 
@@ -207,7 +219,7 @@ def evaluate(data):
     if not isinstance(data, dict):
         raise ValueError("envelope_object_required")
     if (
-        data.get("format_version") != "learning-captures-v1"
+        data.get("format_version") not in {"learning-captures-v1", "learning-captures-v2"}
         or data.get("case_version") != CASE_VERSION
         or data.get("rubric_version") != RUBRIC_VERSION
         or data.get("mode") not in {"fake", "mock", "live"}
@@ -279,7 +291,9 @@ def evaluate(data):
         if status == "executed":
             if raw is None or row["failure_type"] is not None or elapsed is None:
                 raise ValueError("executed_without_dto")
-            validated, gate = observe(AgentRequest.model_validate(case["input"]), raw)
+            validated, gate = observe(
+                AgentRequest.model_validate(case["input"]), raw, format_version=data["format_version"]
+            )
             if not same(row["validated_output"], validated) or not same(row["gate"], gate):
                 raise ValueError("gate_evidence_changed")
             allowed = set(case["id_map"])
@@ -326,6 +340,7 @@ def evaluate(data):
             raise ValueError("no_output_to_rate")
         report.append({**deepcopy(row), "checks": checks, "manual": ratings})
     return {
+        "capture_format_version": data["format_version"],
         "case_version": CASE_VERSION,
         "rubric_version": RUBRIC_VERSION,
         "evidence_type": {

@@ -91,8 +91,6 @@ def test_run_persistence_approval_and_mock_no_network(client, star, key):
     [
         dict(evidence_quote="伪造"),
         dict(evidence_quote=" "),
-        dict(quote_start=1),
-        dict(quote_end=99999),
         dict(source_label="伪造机构"),
         dict(source_url="https://fake.example"),
     ],
@@ -134,3 +132,107 @@ def test_invalid_adapter_result_never_reaches_state(client, star):
         run = client.post("/api/agent/runs", json=payload()).json()
     assert run["state"]["learning_card"] is None
     assert run["state"]["questions"]
+
+
+@pytest.mark.parametrize(
+    "text,quote,start,end,status,expected",
+    [
+        ("前😀中文，\n全角！后", "😀中文，\n全角！", 2, 12, "corrected", (1, 9)),
+        ("abc", "abc", 0, 3, "unchanged", (0, 3)),
+        ("abc", "abd", 0, 3, "rejected", None),
+        ("中文，", "中文,", 0, 3, "rejected", None),
+        ("a a", "aa", 0, 2, "rejected", None),
+        ("aaaa", "aaa", 0, 4, "rejected", None),
+        ("aaaa", "aaa", 1, 4, "unchanged", (1, 4)),
+        ("abc abc", "abc", 2, 4, "rejected", None),
+        ("abc abc", "abc", 4, 7, "unchanged", (4, 7)),
+        ("abc", " ", 0, 1, "rejected", None),
+    ],
+)
+def test_offset_resolution_exact_only(text, quote, start, end, status, expected):
+    from app.learning import resolve_learning_offsets
+    from app.schemas import LearningSource
+
+    source = LearningSource(text=text)
+    card = mock_learning_card(AgentRequest(**payload())).model_copy(
+        update={
+            "evidence_quote": quote,
+            "quote_start": start,
+            "quote_end": end,
+        }
+    )
+    before = card.model_dump()
+    evidence = resolve_learning_offsets(source, card)
+    assert evidence["status"] == status
+    assert (evidence["resolved_start"], evidence["resolved_end"]) == (expected or (None, None))
+    assert card.model_dump() == before
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"quote_start": -1},
+        {"quote_start": True},
+        {"quote_end": 0},
+        {"quote_end": "5"},
+        {"evidence_quote": "x" * 1001},
+    ],
+)
+def test_offset_resolution_revalidates_invalid_model_copy(change):
+    from app.learning import resolve_learning_offsets
+
+    request = AgentRequest(**payload())
+    card = mock_learning_card(request).model_copy(update=change)
+    with pytest.raises(ValidationError):
+        resolve_learning_offsets(request.learning_source, card)
+
+
+def test_corrected_card_uses_production_gate_and_approval(client, star):
+    request = AgentRequest(**payload())
+    card = mock_learning_card(request)
+    card.quote_start += 1
+    original = card.model_dump()
+    with patch(
+        "app.model_adapter.ModelAdapter.proposals",
+        return_value=ProposalResult(proposals=[], learning_card=card),
+    ):
+        run = client.post("/api/agent/runs", json=payload()).json()
+    assert run["state"]["learning_card"]["quote_start"] == original["quote_start"] - 1
+    assert card.model_dump() == original
+    assert client.get("/api/quests").json() == []
+
+
+@pytest.mark.parametrize(
+    "change,error",
+    [
+        ({"estimated_minutes": 11}, "超过时间上限"),
+        ({"estimated_budget": None}, "预算未知或超过上限"),
+        ({"estimated_budget": 1}, "预算未知或超过上限"),
+        ({"energy_level": "high"}, "超过精力上限"),
+        ({"based_on_star_ids": ["nonexistent"]}, "引用了未检索到的星星"),
+    ],
+)
+def test_corrected_card_preserves_constraint_checks(db, client, star, change, error):
+    from app.schemas import Proposal, Preferences, ValidateArgs
+    from app.tools import ToolRegistry
+
+    request = AgentRequest(**payload())
+    card = mock_learning_card(request).model_copy(update={"quote_start": 1})
+    proposal = Proposal(
+        title="阅读",
+        description="阅读",
+        steps=["读原文"],
+        rationale="已有兴趣",
+        estimated_minutes=8,
+        estimated_budget=0,
+        energy_level="low",
+        based_on_star_ids=[star["id"]],
+    ).model_copy(update=change)
+    result = validate_learning_result(request, ProposalResult(proposals=[proposal], learning_card=card))
+    assert result.learning_card is not None
+    checked = ToolRegistry(db, None, None).validate_quest_proposal(
+        ValidateArgs(
+            proposal=result.proposals[0], request=request, preferences=Preferences(), allowed_ids=[star["id"]]
+        )
+    )
+    assert error in checked["errors"] and not checked["valid"]

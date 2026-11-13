@@ -74,10 +74,12 @@ def sample(config, output=RAW, *, allow_live=False):
             )
             if item["status"] != "attempted_unknown":
                 raise ModelFailure("runner_error")
-            # Save the adapter DTO before any system validation; never repair or re-request it.
+            # Save the adapter DTO before any system validation; never mutate or re-request it.
             item["raw_output"] = dto.model_dump(mode="json")
             save(output, report)
-            item["validated_output"], item["gate"] = observe(request, item["raw_output"])
+            item["validated_output"], item["gate"] = observe(
+                request, item["raw_output"], format_version=report["format_version"]
+            )
             item["status"] = "executed"
         except ModelFailure as exc:
             item.update(status="failed", failure_type=exc.kind)

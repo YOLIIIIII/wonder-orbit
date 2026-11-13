@@ -638,3 +638,6 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 - [test_learning_quality_evals.py](../backend/tests/test_learning_quality_evals.py)：按路径加载脚本，离线Fake、网络/数据库访问审计、额度/中断保护、旧报告字节与结果保护。
 
 数据流：固定公开输入与related_stars摘要→ModelAdapter.proposals原始DTO→保存raw_output→现有来源校验→validated_output+gate→离线检查与独立人工评分。无生产模块职责变化，命令/公开审核边界见[evals README](../evals/README.md#learning-quality-v1)。
+
+
+2026-11-13 AGENT-004-D 调用链增量：生产tools→learning.validate_learning_result→resolve_learning_offsets→原严格来源门控；新评测observe→同一验证入口/定位函数→validated_output与gate.offset_resolution，raw_output保留深拷贝隔离。LearningCard及正式持久化协议不变。评测封装v2增加定位证据，v1重放关闭定位纠正以保留历史失败。具体字段、默认离线命令与旧协议边界见[评测README](../evals/README.md#offset-resolution-v2)；离线审阅见[摘要](AGENT004D_OFFLINE_REVIEW.md)。

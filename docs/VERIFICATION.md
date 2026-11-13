@@ -1532,3 +1532,45 @@ Mock（AGENT-004-A offline-v1）：knowledge 整理用户已提供信息、一�
 剩余P0/P1：无新增已证实P0；P1仍为UX-003、INFRA-001/002、EVAL-001。下一项推荐先验收本轮离线成果，再单独确认未来固定三例采样及人工评价来源，AGENT-004/EVAL-001整体不done。
 
 最终收尾复查：新增本节后8份相关Markdown共315条本地链接路径存在；两个默认CLI再次exit0，旧三份JSON字节哈希仍相等，未来固定Live批次目录不存在。git diff --check通过，7份修改文档+5个未跟踪新文件，暂存区为空，HEAD仍为0dd5dc48b936b34aeb8859b1d9e62fecf8564057。没有再次执行应用测试。
+
+
+<a id="agent-004-d-20261113"></a>
+
+## 2026-11-13 · AGENT-004-D 确定性引用定位（离线，待人工验收）
+
+起点：HEAD=e5f7117f85b34e0af88178400d01c83762eac2e9，初始git status --short为空。读取AGENTS→ROADMAP/Backlog→IDEA-005/006与最新C实证及相关源码。沿用两任务，全部未完成项含deferred复评见Backlog；M3穿插M2、M1已交付，阶段/优先级不变，不改ROADMAP。真实模型请求0，未运行真实CLI开关/探针/重新采样，不commit/push/云连接/发布；未改依赖、前端、固定案例、数据库或审批协议。
+
+实现：learning.resolve_learning_offsets纯函数复用LearningSource/LearningCard严格schema和长度约束，包含绕过校验的model_copy输入重验。schema不合法抛ValidationError；合法但空白/无匹配/多位置歧义返回rejected。先保留严格正确原坐标，即使原文重复；否则只找完全一致连续子串，第二次从首位置+1查找以覆盖重叠，唯一才重算Python Unicode字符半开偏移。仅复制改quote_start/end，再执行validate_learning_result原严格来源校验，不改原DTO或语义。
+
+生产与新评测共享该算法：tools.generate_quest_proposal已有validate_learning_result入口默认启用定位；observe对DTO深拷贝调用同一入口，再用同一纯函数记录定位证据。未引入第二套来源接受规则；既有Star存在/检索集合、时间/预算/精力和审批独立检查继续保留。新封装learning-captures-v2记录offset_resolution与原始/定位后坐标、状态、原因；最终gate独立，定位成功仍可能元数据失败。v1显式关闭定位纠正并继续调用原严格门控，不升级/反写旧批次，报告明示capture_format_version。案例/rubric评分版本不变，规范/README/导航已同步。
+
+只读私人CASE-01：历史source_gate_rejected/exact_quote=false和模型21/116保持；本轮新逻辑离线模拟唯一修正为20/110（90字符），exact_quote=true、metadata_match=true、card_retained=true。其余DTO完全不变，非历史结果或新采样。解释观察与not_rated见[离线审阅摘要](AGENT004D_OFFLINE_REVIEW.md)。原文3/7比较和不可推出因果界限基本明确，但“随机波动”等候选解释、Proposal“无对照组/变量混淆”及系统追问的机制术语需人工复核。Proposal为8分钟/low、引用公开模拟Star快照匹配；budget=null不满足0上限，不能宣称整体可执行或真实库Star存在。没有访问个人库，历史adapter观察不代表workflow/approval通过。
+
+环境：Windows PowerShell、已有Python3.12 .venv；最终前端使用仓库已有Node22.23.3，仅当前进程PATH前置.tools/node/node_modules/node/bin，无安装/升级。pytest使用既有conftest禁用.env、空Key、Mock和隔离SQLite。SDK采集测试仅Fake替换/禁止真实构造器，临时批次仅pytest目录，绝不使用私人批次。
+
+| 本轮实际命令/检查 | 实际结果 |
+| --- | --- |
+| `.venv/Scripts/pytest.exe -q -rs` 最终完整回归 | **388 passed / 1 skipped / 1 warning，19.46s**。独立TEST_POSTGRES_URL未配置，PG跳过。warning来自故意以model_copy注入字符串偏移的非法类型测试，随后验证拒绝。前两次完整回归380/386 passed为中间版本，不作为最终覆盖数字。 |
+| `.venv/Scripts/ruff.exe check backend evals` / `format --check backend evals` | passed；37 files already formatted。 |
+| Node22下 `npm run lint` / `typecheck` / `test` / `build` | 全部passed，89 tests / 4 files，build 1581 modules。第一次系统Node16.16.0：typecheck成功，lint缺structuredClone、test/build缺fs/promises.constants失败；切换已有Node22后全项重跑成功，未改依赖。 |
+| `python -X utf8 evals/check_learning_quality.py`（项目.venv Python，子进程解析stdout） | exit0，capture_format_version=v2，0 rated/35 not_rated；无执行案例，不是模型质量通过。 |
+| 同环境 `evals/collect_learning_quality.py` 默认入口 | exit0，offline_plan、v2，无真实请求。 |
+| 同环境 `evals/check_results.py --results evals/reviewed_quality_results.json` | 预期exit1；JSON与历史report完全相同，20 passed/1 failed/7 not_run/3 not_rated，人工1 rated/59 not_rated；旧失败不改。 |
+| 私人raw只读内存observe/v1 evaluate | v1原失败可重放，v2仅离线模拟定位成功，原对象深拷贝前后相同；文件SHA256不变。 |
+
+覆盖：公开CASE-01固定材料21/116→20/110；正确原位置/重复正确位置保留；无匹配/单字或标点改动/空白/空格差异/重复错误位置/重叠歧义拒绝；emoji、中文、换行、全角标点；非法类型/长度/负数边界；修正成功但label/url错误仍拒绝；无依据因果不自动评分；raw和DTO不变；Fake采集无额外修复请求；v1/v2版本隔离与定位证据漂移拒绝。生产API修正路径与既有审批/幂等全套回归；增加修正后预算null/超预算、时间、精力及无效Star仍拒绝。默认新旧离线评测的网络审计保护在完整pytest内执行。
+
+保护文件的开始/结束SHA256一致：
+
+- evals/reviewed_quality_captures.json：4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be。
+- evals/reviewed_quality_results.json：dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f。
+- evals/reviewed_quality_report.json：47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db。
+- 私人.cache/learning-quality-v1/raw.json：5a26ae03d9d59a87d8a9839eb0a824e873dec84d5683afeb5bfa37154767c27b。未改写/删除/清理整个批次目录；未将新模拟结果保存回该目录。
+
+修改12个文件：backend/app/learning.py、backend/tests/test_learning_source.py、backend/tests/test_learning_quality_evals.py、evals/check_learning_quality.py、evals/collect_learning_quality.py、evals/README.md、evals/LEARNING_QUALITY_RUBRIC.md、docs/IDEA_LOG.md、docs/PRODUCT_BACKLOG.md、docs/PROJECT_GUIDE.md、docs/VERIFICATION.md、CHANGELOG.md。新增且未跟踪1个：docs/AGENT004D_OFFLINE_REVIEW.md。tools.py调用链已检查，无需改动；未新增运行产物到Git，构建输出和pytest缓存沿用忽略路径。
+
+未执行：真实Qwen/其余采样、用户人工语义评分（七维not_rated）、本轮浏览器E2E/视觉（无前端改动，API/组件回归已跑）、完整容器/PG/远程CI与生产部署，不拿旧记录当本轮成绩。AGENT-004/EVAL-001整体仍in_progress；无新增已证实P0，剩余P1为UX-003、INFRA-001/002、EVAL-001。下一项建议先人工验收本轮与语义复核；确认真实效果仍需另行授权新批次和调用额度，不能复跑旧CASE-01批次。本轮完成即停止。
+
+三问复盘：用户需要避免有效原文因模型计数失误被拦；Agent系统将可机械计算的坐标交给后端，保留模型证据与严格边界；实际学到引用定位、解释语义、Proposal约束必须分别评价。本例可以修位置，同时预算仍失败、语义未评分。这是Agent可靠性/评测工程改进，不是UI变化或模型知识提升。
+
+交付前收尾：本轮变更Markdown共294条本地链接路径存在；新增两个显式锚点和AGENT-004/EVAL-001详情in_progress一致性检查通过（未声称逐一验证历史锚点）。git diff --check通过；最终12修改+1未跟踪文件，暂存区为空，HEAD保持基线。最终测试后仅补文档，无业务再改，不冒称再次重跑应用测试。

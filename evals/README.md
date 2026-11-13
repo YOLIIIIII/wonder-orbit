@@ -284,3 +284,14 @@ interest_reason 仅表达用户明确说出的个人兴趣原因。collect 专�
 真实结果固定写被忽略的 `.cache/learning-quality-v1/raw.json`，public_data=false；原始DTO/usage/耗时、实际payload、Git SHA/dirty均保留，不保存密钥/隐藏推理。无自动上传或审核导出。未来须先人工检查全部生成文字、上下文和追溯信息，确认公开后复制到新的明确公开JSON路径，并声明public_data=true再运行检查器；不得覆盖原采样文件或历史报告。程序无法认证人工公开审查，也无法证明模型供应商身份。配置不足/私密输出时停止，不能靠改生产行为迁就评测。
 
 离线实证与边界见 [VERIFICATION](../docs/VERIFICATION.md#agent-004-c-20261108)。这次建立评测可观察性，不交付模型解释能力提升；生产Prompt、模型调用行为、Workflow、审批、数据库与前端均未改。
+
+
+<a id="offset-resolution-v2"></a>
+
+### AGENT-004-D：精确偏移证据 v2（2026-11-13）
+
+新采集封装为 `learning-captures-v2`；案例 `wonderorbit-learning-cases-v1`、人工规范 `wonderorbit-learning-quality-v1` 不变。默认两个离线CLI命令不变。生产 `ToolRegistry.generate_quest_proposal` 和新评测 `observe` 都通过 `validate_learning_result` 使用 `resolve_learning_offsets`：原位置严格正确则保留，否则只接受唯一连续逐字匹配；第二次查找从首位置+1开始，包含重叠匹配。禁止规范化/模糊匹配，schema非法输入抛验证错误；无匹配、空白或歧义拒绝，来源元数据等全部严格条件继续检查。仅复制修改两个偏移，不改卡片解释或Proposal。
+
+v2 的 `gate.offset_resolution` 在有来源/卡片时记录 `original_start/end`、`resolved_start/end`、`status`（unchanged/corrected/rejected）、`reason`（original_exact/unique_exact_match/quote_not_found/ambiguous_quote/blank_quote），拒绝时resolved为null；无可观察卡片为null。定位状态与最终门控独立：corrected仍可能因label/url失败而被拒绝。`gate.exact_quote` 指定位后的严格引用结果，原始位置保留在 raw_output 与定位记录。报告 `capture_format_version` 明示版本；检查器重算并核对全部证据，拒绝漂移。
+
+原始 `raw_output` 先落盘，深拷贝后门控，绝不反写修正DTO。v1不新增定位字段，以 `resolve_offsets=False` 调用同一严格验证器重放原规则，保留当时的失败；不得把v1原批次升级、覆盖或将v2模拟记为历史实际成功。新版本仍拒绝已有批次目录；本轮没有新采样授权。CASE-01的新逻辑离线模拟与语义观察见[本地审阅摘要](../docs/AGENT004D_OFFLINE_REVIEW.md)，不是新质量基线或人工评分。

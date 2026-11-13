@@ -1,6 +1,6 @@
 """Run-only learning evidence. Exact provenance is not semantic verification."""
 
-from .schemas import LearningCard, ProposalResult
+from .schemas import AgentRequest, LearningCard, LearningSource, ProposalResult
 
 # Public synthetic fixtures, never independently verified science references.
 MOCK_SOURCES = {
@@ -44,14 +44,72 @@ def mock_learning_card(request):
     )
 
 
-def validate_learning_result(request, result):
+def resolve_learning_offsets(source, card):
+    """Resolve exact codepoint offsets only; never mutate or judge semantics.
+
+    Revalidate dumps because Pydantic model_copy/update can bypass constraints.
+    Invalid schemas raise ValidationError, as at the existing DTO boundary.
+    """
+    card = LearningCard.model_validate(
+        card.model_dump() if isinstance(card, LearningCard) else card, strict=True
+    )
+    source = LearningSource.model_validate(
+        source.model_dump() if isinstance(source, LearningSource) else source, strict=True
+    )
+    start, end, quote = card.quote_start, card.quote_end, card.evidence_quote
+    evidence = dict(
+        original_start=start,
+        original_end=end,
+        resolved_start=None,
+        resolved_end=None,
+        status="rejected",
+        reason="quote_not_found",
+    )
+    if not quote.strip():
+        return {**evidence, "reason": "blank_quote"}
+    if start < end <= len(source.text) and source.text[start:end] == quote:
+        return {
+            **evidence,
+            "resolved_start": start,
+            "resolved_end": end,
+            "status": "unchanged",
+            "reason": "original_exact",
+        }
+    first = source.text.find(quote)
+    if first < 0:
+        return evidence
+    # Advance one codepoint, not len(quote): repeated matches may overlap.
+    if source.text.find(quote, first + 1) >= 0:
+        return {**evidence, "reason": "ambiguous_quote"}
+    return {
+        **evidence,
+        "resolved_start": first,
+        "resolved_end": first + len(quote),
+        "status": "corrected",
+        "reason": "unique_exact_match",
+    }
+
+
+def validate_learning_result(request, result, *, resolve_offsets=True):
     """Fail closed before any generated content reaches persisted display state."""
-    result = ProposalResult.model_validate(result)
+    request = AgentRequest.model_validate(
+        request.model_dump() if isinstance(request, AgentRequest) else request
+    )
+    result = ProposalResult.model_validate(
+        result.model_dump() if isinstance(result, ProposalResult) else result
+    )
     source, card = request.learning_source, result.learning_card
     if source is None:
         if card is not None:
             return ProposalResult(proposals=[], questions=["未提供材料，无法展示材料知识卡片。"])
         return result
+    if card is not None and resolve_offsets:
+        offsets = resolve_learning_offsets(source, card)
+        if offsets["status"] != "rejected":
+            card = card.model_copy(
+                update={"quote_start": offsets["resolved_start"], "quote_end": offsets["resolved_end"]}
+            )
+            result = result.model_copy(update={"learning_card": card})
     valid = card is not None and (
         card.quote_start < card.quote_end <= len(source.text)
         and source.text[card.quote_start : card.quote_end] == card.evidence_quote

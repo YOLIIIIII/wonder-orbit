@@ -109,8 +109,6 @@ def test_semantic_errors_never_get_automatic_scores(index, change):
     "change",
     [
         {"evidence_quote": "伪造引用"},
-        {"quote_start": 1},
-        {"quote_end": 99999},
         {"source_label": "伪造机构"},
         {"source_url": "https://example.org/forged"},
     ],
@@ -148,10 +146,10 @@ def test_unicode_offsets_are_python_codepoints_and_proposals_removed():
     ]
     request = AgentRequest.model_validate(row["context"]["request"])
     assert checker.observe(request, raw)[1]["card_retained"]
-    # A UTF-16-style extra offset after the emoji must fail.
+    # A UTF-16-style extra offset is uniquely resolvable.
     raw["learning_card"]["quote_end"] += 1
     validated, gate = checker.observe(request, raw)
-    assert not validated["proposals"] and gate["proposals_removed"] == 1
+    assert validated["proposals"] and gate["offset_resolution"]["status"] == "corrected"
 
 
 def test_failure_vs_refusal_and_unobservable_dimensions():
@@ -453,3 +451,78 @@ def test_legacy_reviewed_evidence_byte_unchanged_and_report_identical():
     assert report["deterministic"] == {"passed": 20, "failed": 1, "not_run": 7, "not_rated": 3}
     assert report["manual"] == {"rated": 1, "not_rated": 59}
     assert before == [hashlib.sha256(p.read_bytes()).hexdigest() for p in paths]
+
+
+def test_case01_unique_offsets_v2_and_legacy_v1_are_separate():
+    from app.schemas import AgentRequest, ProposalResult
+    from app.learning import validate_learning_result
+
+    data = checker.empty_batch()
+    row = data["results"][0]
+    raw = raw_for(row)
+    raw["learning_card"].update(quote_start=21, quote_end=116)
+    original = deepcopy(raw)
+    request = AgentRequest.model_validate(row["context"]["request"])
+    validated, gate = checker.observe(request, raw)
+    assert gate["offset_resolution"] == dict(
+        original_start=21,
+        original_end=116,
+        resolved_start=20,
+        resolved_end=110,
+        status="corrected",
+        reason="unique_exact_match",
+    )
+    assert gate["exact_quote"] and gate["card_retained"]
+    assert validated == validate_learning_result(request, ProposalResult.model_validate(raw)).model_dump(
+        mode="json"
+    )
+    assert raw == original
+    expected = deepcopy(raw)
+    expected["learning_card"].update(quote_start=20, quote_end=110)
+    assert validated == expected
+    old_validated, old_gate = checker.observe(request, raw, format_version="learning-captures-v1")
+    assert not old_gate["exact_quote"] and old_validated["learning_card"] is None
+    assert "offset_resolution" not in old_gate
+    row.update(status="executed", elapsed_ms=1, raw_output=raw, validated_output=validated, gate=gate)
+    assert checker.evaluate(data)["manual"]["rated"] == 0
+    row["gate"]["offset_resolution"]["original_start"] = 20
+    with pytest.raises(ValueError, match="gate_evidence_changed"):
+        checker.evaluate(data)
+    data["format_version"] = "learning-captures-v1"
+    row.update(validated_output=old_validated, gate=old_gate)
+    assert checker.evaluate(data)["cases"][0]["checks"]["exact_quote"] == "failed"
+
+
+def test_collector_correction_keeps_original_dto_without_extra_request(monkeypatch, tmp_path):
+    import app.model_adapter as adapter
+
+    calls = []
+
+    def fake_request(self, tool_name, schema, payload):
+        calls.append(payload)
+        raw = raw_for({"context": {"request": payload["request"]}})
+        raw["learning_card"].update(quote_start=21, quote_end=116)
+        return schema.model_validate(raw)
+
+    monkeypatch.setattr(adapter.ModelAdapter, "request", fake_request)
+    monkeypatch.setattr(adapter, "ChatOpenAI", lambda **kw: pytest.fail("network forbidden"))
+    report = collector.sample(config(), tmp_path / "batch/raw.json", allow_live=True)
+    row = report["results"][0]
+    assert row["raw_output"]["learning_card"]["quote_start"] == 21
+    assert row["raw_output"]["learning_card"]["quote_end"] == 116
+    assert row["validated_output"]["learning_card"]["quote_start"] == 20
+    assert row["gate"]["offset_resolution"]["status"] == "corrected"
+    assert len(calls) == report["attempted_requests"] == 3
+    assert checker.evaluate(report)["manual"]["rated"] == 0
+
+
+@pytest.mark.parametrize(
+    "metadata", [{"source_label": "错误来源"}, {"source_url": "https://example.org/wrong"}]
+)
+def test_correction_does_not_bypass_metadata_gate(metadata):
+    data = executed(change={"quote_start": 21, "quote_end": 116, **metadata})
+    row = checker.evaluate(data)["cases"][0]
+    assert row["gate"]["offset_resolution"]["status"] == "corrected"
+    assert row["gate"]["exact_quote"] and not row["gate"]["metadata_match"]
+    assert row["validated_output"]["learning_card"] is None
+    assert row["gate"]["reason"] == "source_gate_rejected"
