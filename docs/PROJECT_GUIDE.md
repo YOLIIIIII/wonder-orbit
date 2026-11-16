@@ -649,3 +649,12 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 - [rules.py](../backend/app/rules.py) 的quest_constraint_errors：由原[tools.py](../backend/app/tools.py)提取原有时间/预算/精力/约束纯规则；ToolRegistry仍独立检查检索ID和数据库存在性；v3只读诊断调用同一纯规则，数据库证据缺失明示。
 - [model_adapter.py](../backend/app/model_adapter.py)：仅knowledge+effective_limits.budget=0拼接条件提示，不后处理预算字段。
 - [test_learning_quality_v3.py](../backend/tests/test_learning_quality_v3.py)：pytest自动发现；全Fake SDK、授权/六槽/跨批/停跑/只读/预算和Prompt回归。既有CI的pytest与Ruff命令覆盖新增文件，无需修改CI入口。具体未来启动命令与数据流见[评测说明](../evals/README.md#learning-quality-v3)。
+
+
+### 2026-11-13 · AGENT-004-F 知识体验导航增量
+
+- model_adapter.py / learning.py：knowledge独立“发现→解释→参与→延伸”策略，Mock仅固定文字演示；精确来源门控、工具、审批及持久化调用链不变。rules.py仅修改knowledge固定文字模板，不放松约束检查。
+- App.tsx 的 LearningResult：现有LearningCard主显示解释/关联/延伸/来源，原生details保留原文/限制/校验与Run保存范围；无迁移，历史无卡片Run仍兼容。
+- [knowledge_preview_material.json](../evals/knowledge_preview_material.json)：独立public v1中文转述及核对来源，不是历史评测输入。
+- [knowledge-preview.mjs](../frontend/e2e/knowledge-preview.mjs)：专用隔离Mock库启动后，在frontend运行 `node e2e/knowledge-preview.mjs`；先设置 E2E_ALLOW_WRITE=true、E2E_BASE_URL、E2E_ARTIFACT_DIR、项目PLAYWRIGHT_BROWSERS_PATH，启动器必须核对数据库与端口。会写测试Star/Run，不审批Quest；不能指向个人服务。
+- 新旧对照、内容边界与截图见[离线复核](AGENT004F_OFFLINE_REVIEW.md)，实际命令/失败/跳过见[实证](VERIFICATION.md#agent-004-f-20261113)。

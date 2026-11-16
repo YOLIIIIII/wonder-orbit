@@ -57,6 +57,9 @@ export async function verifyLearning(page, base, artifact) {
       .getByRole("region", { name: "本次探索结果" })
       .getByRole("region", { name: "基于材料的知识微探索" });
     // section has an accessible region role through its label.
+    assert.equal(await card.locator("details").getAttribute("open"), null);
+    await card.getByText("查看原文与说明").focus();
+    await page.keyboard.press("Enter");
     await card.getByText("原文依据", { exact: true }).waitFor();
     assert.match(await card.innerText(), /部分.*可能/);
     assert.equal(
@@ -75,6 +78,7 @@ export async function verifyLearning(page, base, artifact) {
       .locator(".run-detail .mono")
       .filter({ hasText: run.run_id })
       .waitFor();
+    await page.locator(".run-detail .learning-card summary").click();
     await page
       .locator(".run-detail .learning-card blockquote")
       .filter({ hasText: run.state.learning_card.evidence_quote })

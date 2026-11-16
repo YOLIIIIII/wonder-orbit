@@ -1708,3 +1708,40 @@ nav button {
   max-height: 260px;
   overflow: auto;
 }
+
+.learning-card .learning-takeaway {
+  font-size: 1.12rem;
+  color: #342b4c;
+  line-height: 1.85;
+  font-weight: 600;
+}
+.learning-relevance {
+  color: #615870;
+}
+.learning-extension {
+  padding: 12px 16px;
+  background: #f6f3fb;
+  border-radius: 12px;
+}
+.learning-extension h4 {
+  margin: 0 0 6px;
+}
+.learning-extension p {
+  margin: 0;
+}
+.learning-source {
+  margin-top: 16px;
+}
+.learning-details {
+  border-top: 1px solid #ddd5e8;
+  padding-top: 12px;
+}
+.learning-details summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+.learning-details summary:focus-visible {
+  outline: 3px solid #7964ad;
+  outline-offset: 3px;
+  border-radius: 4px;
+}

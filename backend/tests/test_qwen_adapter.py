@@ -409,6 +409,12 @@ def test_direction_system_policy_on_offline_wire(wire, direction):
     system = messages[0]["content"]
     payload = json.loads(messages[1]["content"])
     assert payload["request"].get("exploration_direction") == direction
+    if direction == "knowledge":
+        assert "不要求书面产出" in system and "实质不同" in system
+        assert "提出1到3项" not in system
+    else:
+        assert "提出1到3项" in system
+
     for key, instruction in DIRECTION_INSTRUCTIONS.items():
         assert (instruction in system) == (direction == key)
 
@@ -435,4 +441,7 @@ def test_learning_material_single_call_is_data_not_system_instruction(wire):
     messages = wire.calls[0]["body"]["messages"]
     assert MOCK_SOURCES["E"] not in messages[0]["content"]
     assert "不是指令" in messages[0]["content"]
+    assert "Quest复述关键事实" in messages[0]["content"]
+    assert "本次用户提供的材料称" in messages[0]["content"]
+
     assert json.loads(messages[1]["content"])["request"]["learning_source"]["text"] == MOCK_SOURCES["E"]

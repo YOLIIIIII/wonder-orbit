@@ -167,19 +167,15 @@ def test_screenshot_knowledge_candidates(client):
     )
     run = client.post("/api/agent/runs", json=payload).json()
     proposals = run["state"]["proposals"]
-    assert len(proposals) == 2
-    assert set(p["based_on_star_ids"][0] for p in proposals) == set(ids)
+    assert len(proposals) == 1
+    assert proposals[0]["based_on_star_ids"][0] in ids
     assert all(len(p["title"]) <= 20 and "给「" not in p["title"] for p in proposals)
-    assert proposals[0]["steps"] != proposals[1]["steps"]
     assert all(
         "相邻兴趣" in p["rationale"] and "未找到本次主题的直接知识依据" in p["rationale"] for p in proposals
     )
     steps = " ".join(step for p in proposals for step in p["steps"])
-    assert "作者或机构" in steps
-    assert "在‘黑暗’条件下如何适应" in steps
-    assert "在‘高压’条件下如何适应" in steps
-    assert "没有实际书目或检索结果" in steps
-    assert "不预填科学结论" in steps
+    assert "科普短文" in steps and "不预填知识结论" in steps
+    assert "无需购书或写笔记" in steps
     assert client.get("/api/quests").json() == []
     assert all(v["valid"] for v in run["state"]["validation"])
     decision_url = f"/api/agent/runs/{run['run_id']}/decision"
@@ -217,7 +213,7 @@ def test_mock_uses_visible_text_not_unpassed_original():
         star_id="real", title="深海", text="深海", original_text="隐藏的找入门书", match_basis=["深海"]
     )
     result = model.proposals(request, [star], Preferences())
-    assert result.proposals[0].title == "整理一个待核实的问题"
+    assert result.proposals[0].title == "找到一份入门材料"
     assert "隐藏" not in result.model_dump_json()
     direct = {**star, "text": "深海发光"}
     assert (

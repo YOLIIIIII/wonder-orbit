@@ -2354,33 +2354,39 @@ function Modal({
   );
 }
 
-function LearningResult({ run }: { run: Run }) {
+export function LearningResult({ run }: { run: Run }) {
   const card = run.state.learning_card;
   if (!card || card.source_kind !== "user_supplied_unverified") return null;
   return (
     <section className="panel learning-card" aria-label="基于材料的知识微探索">
-      <h3>从材料中读到</h3>
-      <p className="field-hint">Agent 简要解释</p>
-      <p>{card.takeaway}</p>
-      <p>{card.interest_relevance}</p>
-      <h4>原文依据</h4>
-      <blockquote>{card.evidence_quote}</blockquote>
-      <p>{card.source_label || "本次粘贴材料"} · 用户提供，尚未独立核实</p>
-      <p className="field-hint">
-        仅核对引用来自材料；原文存在不代表解释正确或原文真实。来源名称与 URL
-        均为用户填写。
+      <h3>从材料中发现</h3>
+      <p className="learning-takeaway">{card.takeaway}</p>
+      <p className="learning-relevance">{card.interest_relevance}</p>
+      <div className="learning-extension">
+        <h4>还可以好奇</h4>
+        <p>{card.follow_up_question}</p>
+      </div>
+      <p className="field-hint learning-source">
+        来源：{card.source_label || "本次粘贴材料"} · 用户提供，未经独立核实
       </p>
-      <h4>还不确定</h4>
-      <ul>
-        {card.uncertainties.map((item, i) => (
-          <li key={i}>{item}</li>
-        ))}
-      </ul>
-      <h4>接下来可以了解</h4>
-      <p>{card.follow_up_question}</p>
-      <p className="field-hint">
-        卡片仅随本次运行保存。批准体验不会将卡片存入体验手记。
-      </p>
+      <details className="learning-details">
+        <summary>查看原文与说明</summary>
+        <h4>原文依据</h4>
+        <blockquote>{card.evidence_quote}</blockquote>
+        <h4>关键未知与限制</h4>
+        <ul>
+          {card.uncertainties.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+        <p className="field-hint">
+          仅校验引用与所贴原文匹配；不证明解释正确或材料真实。来源名称与 URL
+          均为用户填写，产品未自动访问或验证粘贴内容。
+        </p>
+        <p className="field-hint">
+          卡片仅随本次运行保存。批准体验不会将卡片存入体验手记。
+        </p>
+      </details>
     </section>
   );
 }

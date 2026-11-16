@@ -1610,3 +1610,36 @@ Mock（AGENT-004-A offline-v1）：knowledge 整理用户已提供信息、一�
 当前无新增已证实P0；剩余P1为UX-003、INFRA-001/002、EVAL-001，AGENT-004整体仍未验收。两批代码和离线执行保护具备本地验收条件，真实配置/额度未联网验证；下一项仅推荐人工验收后单独授权首批三次，再人工分析决定第二批。本轮到此停止，真实调用0。
 
 交付前文档检查：8份变更Markdown共353条本地链接路径存在；本轮新增显式锚点与Backlog两项in_progress核对无冲突。历史私人记录的1请求/2654 tokens/21与116原始偏移/source_gate_rejected及其余not_run逐项断言通过，四个文件哈希相同，新Live目录/账本均未创建。git diff --check通过；最终应用测试后仅补充文档，未声称再次重跑应用测试。
+
+
+<a id="agent-004-f-20261113"></a>
+
+## 2026-11-13 · AGENT-004-F 知识体验离线开发（待用户验收）
+
+基线HEAD=e2ad44b946253a1a5d0f995c6dfa681df5714876，初始工作区干净。按AGENTS→ROADMAP/Backlog→IDEA-005/006及最新E证据读取，沿用两任务、全部未完成含deferred复评见Backlog。M3继续、M2缺口独立保留。本轮真实模型请求0，不运行采样CLI、探针或旧v3两批；不commit/push/Cloud/发布，不改依赖、表、DTO、原始固定CASE或个人数据库。
+
+实现与内容/视觉复核见[离线复核](AGENT004F_OFFLINE_REVIEW.md)。knowledge拆出原通用“思考/记录、1–3项”限制，材料Prompt允许有依据解释/比较并要求Quest事实归属；默认1项，第二项必须方式不同。无材料Mock只给1条资料方向。Science Mock仅显式匹配新public v1夹具，不将Mock特判用于真实模型。卡片使用原生details，始终保留用户提供/未独立核实来源标签，不删不确定性或隐藏校验失败。
+
+环境：Windows PowerShell、项目Python3.12 .venv、已有Node22.23.3；仅当前进程PATH前置 `.tools/node/node_modules/node/bin`。pytest按conftest清空真实Key/禁用.env并隔离SQLite。浏览器启动器在 `.cache/run-agent004f-preview.py` 明确设置DATABASE_URL到本项目 `.cache/agent004f/preview-browser.db`（首轮成功完整smoke）与 `preview-final.db`（最终A–E专用预览），先检查新库不存在、8000/5173端口无人占用，执行项目根目录Alembic upgrade head；MOCK_MODE=true/MODEL_API_KEY空，项目缓存PLAYWRIGHT_BROWSERS_PATH。所有服务在finally终止，无新安装。
+
+| 实际命令/检查 | 最终结果及边界 |
+| --- | --- |
+| `.venv/Scripts/pytest.exe -q -rs` | **418 passed / 1 skipped / 1 warning，41.51s**。PG因未配置独立TEST_POSTGRES_URL跳过；既有故意model_copy字符串偏移测试触发Pydantic warning。初版417及中间418不是最终重跑成绩。 |
+| `.venv/Scripts/ruff.exe check backend evals` / `format --check backend evals` | 均passed，39 files already formatted。 |
+| frontend `npm run lint` / `typecheck` / `test` / `build` / `format:check` | 均passed；**90 tests / 4 files**。旧npm global/local配置弃用提示仍在，不影响结果。 |
+| `.venv/Scripts/python.exe .cache/run-agent004f-preview.py` 首轮成功启动后内部 `node e2e/smoke.mjs` | collect→审批→档案→关系→Quest审批→编辑→反馈→偏好→审计，四方向、知识卡片刷新、键盘及1440/390通过。真实失败/retry浏览器fixture未启用，明确SKIP；相关已有组件回归通过不替代此浏览器项。 |
+| 最终同启动器内部 `node e2e/knowledge-preview.mjs` | A/B/C/D限定/D冲突/E在1440与390均通过；解释实际字号≥17、默认引用隐藏、Enter/Space展开/收起、无横向溢出、无pageerror、预览不新增Quest/偏好。在首次smoke后修正字号、材料卡片多余提示与D延伸问题，再执行此最终专项。没有把首次smoke说成最后修改后全量重跑。 |
+| 助手直接打开截图观察 | 初次桌面/移动/移动展开/冲突结果已观察；修复样式优先级后再次直接观察最终桌面A结果和移动A卡片，确认解释深色大字、发现优先、来源换行和折叠层级。具体本地截图/输出路径见离线复核，用户本人尚未验收。 |
+| 历史保护SHA256 | 起止核对 `.cache/learning-quality-v1/raw.json`、v3的raw/预算账本/尝试与结果、旧公开captures/results/report和learning_quality_cases均相等；无complete标记，未创建batch-2。其余tracked历史输入未出现在diff。 |
+
+本轮遇到并解决的检查失败：首次Alembic在backend目录执行，找不到script_location；改为根目录后成功。第二次浏览器默认用户缓存未找到Chromium，改用项目已有 `.cache/browsers` 后成功，没有安装。初始保护快照宽泛包含 `.cache/pytest` 的Fake临时raw/账本，完整回归重建这些fixture导致总断言失败；按真实历史目录排除当前pytest临时输出后，历史逐文件哈希全部相等，未改写历史。首次截图发现全局panel字体覆盖解释字号，增强选择器并加入浏览器实际字号断言后复验通过。
+
+新增覆盖：科学材料→有效来源/约束→显式审批→幂等→独立Quest保留原材料归属与0预算；SDK内存传输验证knowledge独立策略和其他方向原提示保留；前端展开可见性与历史无卡片Run。原引用歧义/非法引用/Unicode定位、注入材料不执行、预算null/0、时间/精力/真实Star引用/审批幂等回归随完整pytest执行，未更改确定性门控。约束模式仍严格使用共享固定模板（knowledge改为有材料比较、无材料取资料的一步文字模板），不能声称已支持任意活动的自动成本或语义安全判断。
+
+历史v3第一批依据用户提供：CASE-01-S01 executed/retained，Quest2/2规则通过；CASE-02-S01 invalid_model_output失败；CASE-04-S01未执行；两次真实请求6197 Tokens、无complete。本轮不把它们重算为新Prompt成绩，不更改状态。旧D/E日期下的采样建议保留历史语境，当前仅验收F，未来比较须独立新批次/授权。
+
+未执行：真实Qwen、Linux/新远程CI、PG、完整容器、屏幕阅读器人工测试、用户本人体验。真实模型能否给出自然机制解释、避免重复作业、节制免责声明和严格保留来源，仍须新授权真实样本验证。Mock是手工演示，Prompt断言只证明拼接契约，不证明生成质量。
+
+为什么用户需要：立刻理解兴趣相关知识，避免重复作业。Agent问题：校正生成目标与来源归属，而不是用更多评测掩盖体验不足；卡片层级是UI/UX价值，不是模型能力提升。学到什么：规则通过与知识收获需分别判断；弱材料不能制造机制课，视觉层级也须直接看截图。当前无新增已证实P0；剩余P1仍为UX-003、INFRA-001/002、EVAL-001。AGENT-004/EVAL-001仍in_progress，本轮离线切片完成，停在用户验收，不自动采样。
+
+交付收尾：7份变更Markdown共324条本地链接路径存在；未逐一检查历史锚点。git diff --check通过；HEAD仍为用户指定基线，暂存区为空。本轮应用测试之后仅补充文档和执行只读核对，不宣称再次运行应用测试。

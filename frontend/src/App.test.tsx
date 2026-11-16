@@ -7,7 +7,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import App from "./App";
+import App, { LearningResult } from "./App";
 import { api } from "./api";
 import type { Run, Star, StarInput } from "./types";
 vi.mock("./api", async (importOriginal) => ({
@@ -799,4 +799,31 @@ describe("AGENT-004-A 期望收获契约", () => {
       expect(payload).toHaveProperty("exploration_direction", direction);
     else expect(payload).not.toHaveProperty("exploration_direction");
   });
+});
+
+it("知识卡片优先解释并保留可展开依据，兼容无卡片历史运行", () => {
+  const run = {
+    state: {
+      learning_card: {
+        takeaway: "光来自化学反应。",
+        interest_relevance: "与你的海洋兴趣相关。",
+        follow_up_question: "光如何用于防御？",
+        evidence_quote: "生物通过化学反应产生光。",
+        uncertainties: ["并非所有生物采用同一种体系。"],
+        source_label: null,
+        source_kind: "user_supplied_unverified",
+      },
+    },
+  } as Run;
+  const { container, rerender } = render(<LearningResult run={run} />);
+  expect(screen.getByText("光来自化学反应。")).toBeVisible();
+  expect(screen.getByText(/来源：本次粘贴材料/)).toBeVisible();
+  expect(screen.getByText("生物通过化学反应产生光。")).not.toBeVisible();
+  const details = container.querySelector("details")!;
+  expect(details.open).toBe(false);
+  details.open = true;
+  expect(screen.getByText("生物通过化学反应产生光。")).toBeVisible();
+  expect(screen.getByText(/批准体验不会/)).toBeVisible();
+  rerender(<LearningResult run={{ state: {} } as Run} />);
+  expect(container).toBeEmptyDOMElement();
 });

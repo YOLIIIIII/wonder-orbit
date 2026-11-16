@@ -12,11 +12,7 @@ export async function verifyDirections(page, base, artifact) {
   const questsBefore = (await read("/quests")).length;
   const preferenceBefore = await read("/preferences");
   const options = [
-    [
-      "想了解一点知识",
-      "knowledge",
-      "整理一个待核实的问题|挑选适合这份兴趣的入门资料|拆解星星中已有的学习问题",
-    ],
+    ["想了解一点知识", "knowledge", "找到一份入门材料"],
     ["想动手试试看", "hands_on", "做一次文字排序小尝试"],
     ["想发挥一点创意", "creative", "构思一份小创作"],
     ["还没想好", undefined, "写三个好奇问题"],
