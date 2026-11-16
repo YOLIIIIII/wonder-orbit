@@ -1,0 +1,13 @@
+{
+  "version": "knowledge-preview-v1",
+  "visibility": "public",
+  "reviewed_on": "2026-11-13",
+  "label": "公开科普中文转述 v1 · NOAA / Smithsonian",
+  "url": "https://ocean.si.edu/ocean-life/fish/bioluminescence",
+  "sources": [
+    "https://oceanexplorer.noaa.gov/ocean-fact/bioluminescence/",
+    "https://ocean.si.edu/ocean-life/fish/bioluminescence"
+  ],
+  "text": "生物发光是生物通过化学反应产生光的现象。某些发光机制中，荧光素参与产光反应，荧光素酶作为催化剂加快反应；不同生物采用的化学体系并不相同，不能把一种机制推广到所有发光生物。海洋生物可能借助发光捕食、防御或交流：有些鱼用发光诱饵吸引猎物，有些鱿鱼喷出发光液体迷惑捕食者，也有生物用光吸引配偶。",
+  "notice": "人工核对后的简短中文转述，非逐字翻译；产品并未自动验证用户粘贴内容。固定离线Mock预览，不是历史CASE或真实模型采样。"
+}
