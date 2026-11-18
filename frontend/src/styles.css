@@ -1713,7 +1713,7 @@ nav button {
   font-size: 1.12rem;
   color: #342b4c;
   line-height: 1.85;
-  font-weight: 600;
+  font-weight: 400;
 }
 .learning-relevance {
   color: #615870;
@@ -1744,4 +1744,12 @@ nav button {
   outline: 3px solid #7964ad;
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+.learning-discovery button {
+  margin: 0.5rem 0 1rem;
+}
+.learning-card .learning-reveal {
+  padding: 0.5rem 0;
+  line-height: 1.8;
 }

@@ -288,3 +288,16 @@ def test_unsupported_explanations_remain_manual_not_rated(tmp_path, monkeypatch,
     assert all(
         r["score"] == "not_rated" for r in {d: v3.Rating().model_dump() for d in v3.DIMENSIONS}.values()
     )
+
+
+@pytest.mark.parametrize("budget", [0, None, 1])
+def test_zero_budget_quest_user_exercise(budget):
+    candidate = proposal(estimated_budget=budget)
+    request = AgentRequest(request_type="explore", text="海洋", budget=0)
+    preferences = Preferences(max_budget=0)
+    errors = quest_constraint_errors(candidate, request, preferences)
+    # TODO 1：根据 budget 填出 expected_rejected（0允许；None和1拒绝）。
+    expected_rejected = budget == 1 or budget is None
+    # TODO 2：亲自断言“预算未知或超过上限”是否在 errors 中，
+    #         并与 expected_rejected 比较。不要只检查函数没有报异常。
+    assert ("预算未知或超过上限" in errors) == expected_rejected

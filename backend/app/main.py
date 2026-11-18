@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import uuid4
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import ValidationError
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -188,8 +189,37 @@ def get_relations(session: DB):
     return relations(session)
 
 
+def resolve_continuation(session, request):
+    if request.parent_run_id is None:
+        return request
+    parent = require(session, AgentRun, request.parent_run_id)
+    try:
+        previous = AgentRequest.model_validate(parent.state["request"])
+    except (KeyError, ValidationError) as exc:
+        raise HTTPException(409, "原始运行缺少有效请求上下文") from exc
+    if (
+        parent.request_type != "explore"
+        or previous.exploration_direction != "knowledge"
+        or previous.parent_run_id is not None
+        or not parent.state.get("learning_card")
+        or previous.learning_source is None
+        or parent.status not in {"succeeded", "awaiting_decision", "decided"}
+    ):
+        raise HTTPException(409, "仅支持从原始知识结果接续一次")
+    if request.learning_source is not None and request.learning_source != previous.learning_source:
+        raise HTTPException(422, "接续材料必须来自原始运行，不能替换")
+    # Only original user material crosses the boundary; never the model's card.
+    return AgentRequest.model_validate(
+        {
+            **request.model_dump(mode="json"),
+            "learning_source": previous.learning_source.model_dump(mode="json"),
+        }
+    )
+
+
 @app.post("/api/agent/runs", status_code=201)
 def create_run(request: AgentRequest, session: DB, key: Key = None):
+    request = resolve_continuation(session, request)
     run, fresh = begin_run(session, request.request_type, request.model_dump(mode="json"), key)
     return execute_run(session, run, request) if fresh else run_dict(run)
 

@@ -326,3 +326,10 @@ v2 的 `gate.offset_resolution` 在有来源/卡片时记录 `original_start/end
 每条结果依次保存：context和实际model_payload；raw_output（合法Adapter DTO，未定位/未改预算）；quest（对raw只读规则诊断）；validated_output + gate（含offset_resolution与来源门控）；真实usage或unknown、elapsed_ms、状态；manual七维默认not_rated。Quest诊断记录检索ID、时间、预算、精力、未支持约束，复用生产纯规则。数据库存在性not_observed、Workflow not_executed，自由文本执行条件需人工审阅，不声称完整合规。空Proposal明确单列，不能据空集合称Quest可执行。若Adapter解析失败，没有合法原始DTO，不伪造输出。
 
 人工沿用[LEARNING_QUALITY_RUBRIC](LEARNING_QUALITY_RUBRIC.md)：先Schema，再来源/定位，再Quest，再解释忠实性/学习收获/拒绝。相同case两份可并排阅读，但不得由六次小样本推出总体准确率。“随机波动”“无对照组”“天气导致发光变化”等必须核对原文支持程度；来源引用通过不替代语义评分。本轮没有自动语义评分器、对照组或真实效果结论。
+
+
+## AGENT-004-G 独立体验采样（2026-11-18）
+
+`python evals/run_knowledge_experience_g.py` 默认只显示公开离线计划，不读本地配置、不调用模型。真实入口仅 `python evals/run_knowledge_experience_g.py --allow-live`，使用原本地北京配置与最大输出Token配置；本批用户已授权最多四次，不需再次授权。正式入口执行一次后不可补跑。
+
+顺序固定为公开科学材料、CASE-01、CASE-04、与首例完全相同的科学上下文。独立账本 `.cache/knowledge-experience-g-budget/` 与报告 `.cache/knowledge-experience-g/raw.json`；不改旧v1/v3，禁止删除账本或通过报告删除补跑。默认人工字段not_rated，助手语义候选意见仅写独立报告，不当用户确认。实际结果与未执行事项见[验证](../docs/VERIFICATION.md#agent-004-g-20261118)。

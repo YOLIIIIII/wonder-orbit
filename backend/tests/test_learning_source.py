@@ -77,13 +77,11 @@ def test_run_persistence_approval_and_mock_no_network(client, star, key):
         assert "部分" in card["takeaway"] and "可能" in card["takeaway"]
     if key == "D":
         assert any("冲突" in u for u in card["uncertainties"])
-    assert state["proposals"][0]["based_on_star_ids"] == [star["id"]]
-    url = f"/api/agent/runs/{run['run_id']}/decision"
-    approved = client.post(url, json={"approved": True})
-    assert approved.status_code == 200
-    assert client.post(url, json={"approved": True}).json() == approved.json()
-    quests = client.get("/api/quests").json()
-    assert len(quests) == 1 and "learning_card" not in quests[0]
+    assert state["proposals"] == []
+    assert run["status"] == "succeeded" and not run["decisions"]
+    assert (
+        client.post(f"/api/agent/runs/{run['run_id']}/decision", json={"approved": True}).status_code == 409
+    )
 
 
 @pytest.mark.parametrize(
@@ -238,7 +236,7 @@ def test_corrected_card_preserves_constraint_checks(db, client, star, change, er
     assert error in checked["errors"] and not checked["valid"]
 
 
-def test_public_science_preview_retains_attribution_after_approval(client, star):
+def test_public_science_preview_discovery_without_quest(client, star):
     import json
     from pathlib import Path
     from app.learning import PUBLIC_SCIENCE_PREVIEW
@@ -248,20 +246,34 @@ def test_public_science_preview_retains_attribution_after_approval(client, star)
     )
     assert fixture["text"] == PUBLIC_SCIENCE_PREVIEW
     data = payload()
+    data["text"] = "海洋发光：预测光也能帮助脱身吗？"
     data["learning_source"] = {k: fixture[k] for k in ("text", "label", "url")}
     with patch("app.model_adapter.ChatOpenAI", side_effect=AssertionError("network forbidden")):
         run = client.post("/api/agent/runs", json=data).json()
     state = run["state"]
-    assert len(state["proposals"]) == 1
+    assert state["proposals"] == []
+    assert card_discovery(run)["question"]
     assert all(v["valid"] for v in state["validation"])
     card = state["learning_card"]
-    assert "化学反应" in card["takeaway"] and "一些机制" in card["takeaway"]
+    assert "化学反应" in card["takeaway"] and "部分机制" in card["takeaway"]
     assert PUBLIC_SCIENCE_PREVIEW[card["quote_start"] : card["quote_end"]] == card["evidence_quote"]
     assert client.get("/api/quests").json() == []
-    url = f"/api/agent/runs/{run['run_id']}/decision"
-    approved = client.post(url, json={"approved": True})
-    assert approved.status_code == 200
-    assert client.post(url, json={"approved": True}).json() == approved.json()
-    quest = client.get("/api/quests").json()[0]
-    assert "本次用户提供的材料称（未经独立核实）" in quest["steps"][0]
-    assert quest["estimated_budget"] == 0 and quest["based_on_star_ids"] == [star["id"]]
+    assert run["status"] == "succeeded"
+    assert state["questions"] == []
+    assert "迷惑捕食者" in card["discovery"]["reveal"]
+
+
+def card_discovery(run):
+    return run["state"]["learning_card"]["discovery"]
+
+
+def test_public_science_direct_explanation_is_complete(client, star):
+    from app.learning import PUBLIC_SCIENCE_PREVIEW
+
+    data = payload()
+    data["learning_source"] = {"text": PUBLIC_SCIENCE_PREVIEW}
+    run = client.post("/api/agent/runs", json=data).json()
+    card = run["state"]["learning_card"]
+    assert card["discovery"] is None
+    assert "化学反应" in card["takeaway"] and "诱饵" in card["takeaway"]
+    assert run["status"] == "succeeded" and run["state"]["proposals"] == []

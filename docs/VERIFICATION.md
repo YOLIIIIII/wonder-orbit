@@ -1643,3 +1643,228 @@ Mock（AGENT-004-A offline-v1）：knowledge 整理用户已提供信息、一�
 为什么用户需要：立刻理解兴趣相关知识，避免重复作业。Agent问题：校正生成目标与来源归属，而不是用更多评测掩盖体验不足；卡片层级是UI/UX价值，不是模型能力提升。学到什么：规则通过与知识收获需分别判断；弱材料不能制造机制课，视觉层级也须直接看截图。当前无新增已证实P0；剩余P1仍为UX-003、INFRA-001/002、EVAL-001。AGENT-004/EVAL-001仍in_progress，本轮离线切片完成，停在用户验收，不自动采样。
 
 交付收尾：7份变更Markdown共324条本地链接路径存在；未逐一检查历史锚点。git diff --check通过；HEAD仍为用户指定基线，暂存区为空。本轮应用测试之后仅补充文档和执行只读核对，不宣称再次运行应用测试。
+
+
+<a id="agent-004-g-20261118"></a>
+
+## 2026-11-18 · AGENT-004-G 独立知识体验采样准备与真实预检停止
+
+任务：AGENT-004 / EVAL-001（G切片），当前仍M3穿插M2；正式状态见Backlog。基线HEAD `aad9ddba7ab7b6c4b0cb6aacb477584344dbb0b0` 与用户要求一致，初始git status --short为空。按AGENTS、ROADMAP、Backlog、IDEA-005/006、PROJECT_GUIDE与最新F验证阅读；指定Adapter/learning/schemas/rules、固定材料/案例、checker/v3/rubric均已检查。F的远程CI成功为用户本轮提供信息，本轮未访问远程CI。
+
+范围：新增evals/run_knowledge_experience_g.py与backend/tests/test_knowledge_experience_g.py，独立于旧v1/v3实验入口与账本。仅复用v3纯落盘与只读Quest诊断函数；固定G-01科学、G-02 CASE-01、G-03 CASE-04、G-04相同科学上下文。科学材料固定LF规范化SHA256=f8858622dbe048582169f99cf6308e593e35359fe360029704de1974f7c0ae96。原材料没有修改或案例特判。原始DTO与修正后DTO分开，完整实际messages/payload/schema、源码哈希/基线、usage与耗时留证；人工七维默认not_rated。只记录非法DTO的Pydantic字段路径/类型，未知额外字段名脱敏，不记录非法值、响应或异常全文。
+
+额度：默认只显示计划、不读配置/私有缓存/网络；--allow-live才采样。正式固定.cache/knowledge-experience-g-budget独占创建，尝试先独占写入flush/fsync；总四槽、每sample一次、已有账本或报告拒绝新批次，删除报告不解锁。中断/未知消耗预约，合法来源/Quest失败继续、网络/限流/工具/DTO/存储/运行器失败停止。无恢复、补跑或输出目录CLI。实际工具输入记录通过仅采样进程中的SDK代理捕获，调用仍复用生产ModelAdapter.proposals/request，不改生产Prompt。
+
+实际命令/结果（Windows PowerShell、项目既有.venv Python3.12、前端进程PATH前置已有.tools/node/node_modules/node/bin，无依赖安装）：
+
+| 检查 | 本轮真实结果 |
+| --- | --- |
+| 首轮 `.venv/Scripts/pytest.exe backend/tests/test_knowledge_experience_g.py -q -rs` | 16 passed / 1 failed；失败是测试替换sample后又调用被替换函数，已修正测试顺序，不涉及生产或放松保护。之后新增3项保护，以下完整回归验证最终版本。 |
+| `.venv/Scripts/pytest.exe -q -rs` | **438 passed / 1 skipped / 1 warning，43.74秒**；PG因未配置独立TEST_POSTGRES_URL跳过；warning为既有非法model_copy偏移测试，非本轮模型请求。 |
+| `.venv/Scripts/ruff.exe check backend evals` | passed。 |
+| `.venv/Scripts/ruff.exe format --check backend evals` | passed，41 files。新增两文件此前运行ruff format。 |
+| `npm --prefix frontend run lint` / `run typecheck` | 均通过。 |
+| `npm --prefix frontend test` | 4 files / **90 passed**。 |
+| `npm --prefix frontend run build` | passed，Vite 6.4.4构建；未改前端源码。 |
+| 默认G入口 | 完整pytest中独立进程审计禁止socket/sqlite/.env/.cache读取，runpy执行main，返回offline_plan、max_requests=4；无真实请求。 |
+| 历史保护 | 开始保存11份evals/reviewed*.json和.cache/learning-quality*/预算文件字节SHA256至忽略目录knowledge-g-historical-before.json；预检前逐一核对全部不变，交付时再核对。 |
+| 正式配置预检 | **失败并停止**：既有validate_live_config拒绝“必须显式配置 MOCK_MODE=false”。之后仅只读核对mock_mode=true/effective_mock=true、bailian/qwen3.8-flash、retries=0、max_tokens=2048、timeout=30秒；没有输出Key/业务空间URL，没有更改配置或降低校验。 |
+| 正式 `--allow-live` | **未执行**；用户要求任何预检失败即停。真实请求0，G-01/02/03/04均not_run，Token/门控/Quest检查不适用，G正式账本和raw报告均未创建。 |
+
+保护测试20项（参数化展开）：默认入口/授权、固定材料及科学上下文相同、Mock/缺Key/型号/重试/北京地址预检拒绝、四唯一槽、来源/Quest不合规留样继续、报告删除不解锁、timeout/rate_limit/非法工具/非法DTO/SDK错误/中断停跑、诊断脱敏、双请求阻断、初始/预约存储失败、预占满槽、只读不修改原DTO、独立进程离线审计。测试SDK均Fake，报告均在隔离pytest目录；没有访问个人数据库或正式审批。
+
+未执行：真实Qwen、真实卡片/Quest语义体验、相同科学材料输出差异、用户本人评分、浏览器E2E（无UI变动）、远程新CI、PG/完整容器。所有旧测试与CI仅作为历史，不称本轮重跑。配置失败未产生合法DTO，不能展示Fake为真实内容，也不能声称“技术成功但体验无聊”。详细逐例状态与用户待评价内容见[审阅记录](AGENT004G_EXPERIENCE_REVIEW.md)。
+
+为什么用户需要：从F的Mock展示转向真实知识收获与参与感的证据；本轮真实目标受配置阻塞。Agent解决问题：建立有限真实调用与原始/确定性/人工证据分层，而不是新增模型能力或UI效果。学到什么：Mock配置、离线契约通过和真实质量是独立条件；缺少真实输出时必须保留未知。剩余已知P0无新增，P1仍UX-003、INFRA-001/002、EVAL-001；整体AGENT-004/EVAL-001不done。下一项先处理本地Mock开关，再使用既有四次授权取得真实样本，不重复索要授权。
+
+交付范围：新增采样器、保护测试、独立审阅文档；局部更新IDEA_LOG、PRODUCT_BACKLOG、PROJECT_GUIDE、VERIFICATION、ROADMAP、CHANGELOG、evals/README。生产Prompt/学习卡片/Quest规则/前端/依赖/固定材料与旧正式报告未变；没有commit/push/Cloud/发布，没有上传私人raw/密钥/本地业务空间配置。
+
+最终只读收尾：历史11份文件集合与字节哈希均不变；8份变更Markdown共349条本地链接路径存在（未逐一验证历史锚点）；HEAD不变、暂存区为空、生产及固定材料无diff、G账本/raw不存在。git diff --check通过。应用完整回归后仅补文档和只读核对，未冒称再次运行应用测试。
+
+
+<a id="agent-004-g-live-20261118"></a>
+
+## 2026-11-18 · AGENT-004-G 续执行：真实四例已采集，体验问题保留
+
+本次继续G，不开启新开发。用户明确Mock为正常开发默认值，授权在同一PowerShell进程临时MOCK_MODE=false、MODEL_MAX_RETRIES=0，原最多四次授权继续有效。开始HEAD仍aad9ddba7ab7b6c4b0cb6aacb477584344dbb0b0，工作区为前轮7份文档修改与3个新增文件，未产生额外源码差异；入口实际存在evals/run_knowledge_experience_g.py，其正式参数为--allow-live。G账本、报告目录及raw.json均经Test-Path确认为False。读取AGENTS、最新路线/Backlog/想法/验证和入口，不重新设计实验。
+
+执行命令在一次exec_command的同一PowerShell进程中完成：先保存Env:MOCK_MODE/Env:MODEL_MAX_RETRIES是否存在与原值；try中设置false/0；项目Python -X utf8子进程导入run_knowledge_experience_g.preflight与Settings，执行原完整validate_live_config和基线/材料/上下文预检，确认effective_mock=false及正式路径不存在；仅exit0后调用 `.venv/Scripts/python.exe -X utf8 evals/run_knowledge_experience_g.py --allow-live` **一次**。finally依据原变量存在性恢复原值或删除临时变量，输出Process environment restored: True。没有打印Key、完整配置或业务空间URL。
+
+预检passed：bailian/qwen3.8-flash、effective_mock=false、retries=0、北京业务空间专属HTTPS compatible-mode/v1、现有API Key非空/非占位检查均通过。Key检查仅为既有本地验证，不虚称联网探针或供应商额度验证；随后真实请求成功。最大输出仍2048 Token、timeout仍30秒。没有.env/.env.example/默认配置/采样器/生产源码修改，没有隐藏重试、探针、自动检索或修复调用。
+
+| 样本 | 实际状态 | input / output / total Token | 耗时ms | 来源门控 | Quest只读规则 |
+| --- | --- | --- | --- | --- | --- |
+| G-01 | executed，合法DTO | 2281 / 816 / 3097 | 14719 | corrected→retained | 失败：预算null，超过0预算要求 |
+| G-02 | executed，合法DTO | 2260 / 858 / 3118 | 12776 | corrected→retained | 通过 |
+| G-03 | executed，合法DTO | 2219 / 645 / 2864 | 12078 | corrected→retained | 通过 |
+| G-04 | executed，合法DTO | 2281 / 1009 / 3290 | 15469 | corrected→retained | 失败：预算null，超过0预算要求 |
+
+合计真实请求4次，input=9041、output=3328、total=12369。没有网络/非法工具/Schema/存储失败，入口exit0。四例各只有一个Quest，时间/精力/公开检索ID均通过；预算null未被自动改0。这里的“预算未知或超过上限”实际原因是未知，不是测得收费。未执行生产Workflow、数据库Star存在性验证、正式审批或独立Quest保存，不将采样完成标记complete当作产品验收通过。
+
+位置记录：G-01原0/165→0/144；G-02原34/85→20/72；G-03原15/46→13/45；G-04原0/91→0/85。均唯一连续原文定位后exact_quote=true、metadata_match=true、card_retained=true、proposals_removed=0；未覆写raw_output。来源通过不代表语义相关，G-03无关材料仍生成卡片就是实证。G-01/G-04的context、实际payload、完整messages、tool_schema均完全相同，source版本/哈希相同，输出存在采样差异。
+
+助手候选语义审阅：科学卡片有化学反应与某些体系限定，G-01包含三种用途，G-04偏统一机制不可推广；两者并没有自然展开酶催化作用，内容重点仍是认识限制。科学Quest在描述中预告答案，G-01要求写三个例子，G-04明确两栏/记下/重述；防御性说明跨字段重复。G-02不编造机制但仍是证据分类作业。G-03不编造机制却将无关材料包装成写问题/数相关词/写结论的8分钟Quest；规则通过与体验价值明显分离。没有同次多Quest重复，但各样本套路近似。独立来源归属在description/rationale保留，代码只读确认persist_approved_quest会保存这些字段，未实际审批验证；科学Quest预算失败也不应进入正式合规建议。所有manual仍not_rated，没有代填用户分。完整卡片/Quest原文和逐项候选审阅见[报告](AGENT004G_EXPERIENCE_REVIEW.md)。
+
+实验限制：科学输入沿用CASE-01“现象与限制”请求与“观察记录能说明什么”Star，确实可能引导边界叙述；相同输入的两次比较有效，但没有直接机制问法对照，不能把问题全部归因于Prompt或声称普遍质量结论。无新调用额度或修复开发，本批已耗尽且禁止重跑。
+
+保护/验证：原11份历史文件字节SHA256不变；续执行前另保存.env/.env.example、G入口/测试、backend/app Python及frontend/src共28份保护哈希，执行后全部不变。raw.provenance源码哈希逐项匹配当前文件；四份账本result与raw各行完全相等；attempt数=4、complete存在；七维manual全not_rated。实际messages/payload/schema科学两例一致。raw与10份账本JSON共11份文件哈希保存至被忽略的.cache/knowledge-g-live-evidence-sha256.json，仅用于只读收尾保护。
+
+本轮没有改源码/依赖，因此未重跑pytest、前端lint/typecheck/test/build或浏览器E2E。上节438 passed/1 skipped、前端90 passed与Ruff为前轮实际结果，不冒称本轮重跑。PG/完整容器/远程新CI/用户本人体验仍未执行。本轮实际检查为完整Live预检、四次真实Adapter调用、结果/账本一致性、来源/规则报告、源码/配置/旧证据哈希、文档链接与git diff --check。
+
+为什么用户需要：结束只看Mock的证据缺口，直接看到真实卡片与Quest。AI Agent问题：定位生成目标与材料相关性/规则之间的实际差距，同时确认独立额度保护与原始证据链。学到什么：一次一个Quest不等于没有作业感，引用门控无法判相关性，零预算提示仍未使两条科学结果填0；同一输入也可输出不同长短的相近玩法。本轮是获得证据，没有声称生产能力提升。M3穿插M2维持，AGENT-004/EVAL-001仍in_progress；无新增已证实P0，剩余P1仍UX-003、INFRA-001/002、EVAL-001。下一项推荐用户亲自审阅趣味与参与意愿，不自动开启修复。
+
+本次仅追加IDEA_LOG、Backlog、CHANGELOG、VERIFICATION并更新独立审阅文档，前轮源代码文件原样保留。没有commit/push/Cloud/发布，没有修改或删除任何历史账本，没有提交raw、Key或本地业务空间配置。先前“0次/未执行”段落是当时历史快照，当前G采样以本节四次为准。
+
+原始raw.json SHA256：`1a260026eb4f4c4ab1a23a3e619e024bcec71221a494f22d070e1a8d8b5600d9`。
+
+续执行最终收尾：11份旧证据、28份配置/源码保护、11份本批raw/账本哈希再次全部相同；审阅文档四条takeaway及全部Quest标题/步骤与raw逐字相等；5份本轮变更Markdown共188条本地链接路径存在（未检查所有历史锚点）。git diff --check通过，HEAD未变、暂存区为空。没有再执行采样器。
+
+
+<a id="agent-004-h-20261118"></a>
+
+## 2026-11-18 · AGENT-004-H 发现式知识互动离线产品切片
+
+当前M3穿插M2；AGENT-004/EVAL-001仍in_progress，等待用户体验与真实质量验证。开始HEAD为aad9ddba7ab7b6c4b0cb6aacb477584344dbb0b0，工作区包含G的7份文档修改与3个新增文件，未覆盖、重置或清理。先阅读AGENTS、ROADMAP、Backlog、IDEA-005/006及最新F/G验证；用户新需求并入IDEA-006，全部未完成含deferred的复评见Backlog同日H条目。真实Qwen额度0，实际请求0，没有执行正式G/v3采样命令。
+
+实现：Discovery严格可选DTO（question/reveal）仅随Run保存；knowledge空候选复用已有succeeded状态，有卡片时标明内容已生成，无卡片时标明本次探索已结束，具体不足保留在questions，避免将时间冲突也误归因为材料问题。Collect/其他方向及有候选审批路径保持原规则。精确引用失败仍去掉卡片与候选；模型显式返回无卡片零候选时保留简短不足说明。前端排除知识卡片的误导空状态和澄清标题，卡片结果仍能获得焦点；详情直接查看，无虚假恢复审批入口。Run ID的React key隔离揭晓状态；原生按钮支持Enter/Space、aria-expanded/controls，来源先显示，揭晓后才显示解释/延伸/原文入口；没有新API、写入、依赖、迁移或工具链。旧Run不迁移，旧卡片缺字段可读取，真正审批/编辑/反馈/幂等规则不变。
+
+实际环境：Windows PowerShell、项目.venv Python3.12、已有.tools Node22与frontend/node_modules。pytest使用conftest隔离测试库，Mock+Fake SDK、禁用真实Key；浏览器启动器.cache/run-agent004h-preview.py明确新库.cache/agent004h/preview-final.db、MOCK_MODE=true、MODEL_API_KEY空、端口8000/5173无占用后才执行alembic upgrade head并启动本地API/Vite。没有访问wonder.db/个人服务，没有修改.env或API Key配置。启动器finally关闭服务。
+
+| 实际命令/检查 | 本轮结果 |
+| --- | --- |
+| 初轮 `.venv/Scripts/pytest.exe -q -rs` | 15 failed / 423 passed / 1 skipped。11项G测试因生产源码改变触发原production_subject_changed门控；4项旧知识Mock测试仍期待必有Quest，与本轮新契约冲突。G采样器/测试原样保留，未为通过检查放松保护。 |
+| 后续应用回归首轮（排除G） | 1 failed / 424 passed / 1 skipped；knowledge Prompt测试期待“不要求书面产出/实质不同”，在新可选Quest提示中保留这些约定后修复。 |
+| 最终 `.venv/Scripts/pytest.exe -q -rs --ignore=backend/tests/test_knowledge_experience_g.py` | **425 passed / 1 skipped / 1 warning**。PG缺TEST_POSTGRES_URL跳过；warning为既有故意构造非法model_copy偏移。不能称包含G在内的全套pytest全绿；G旧实验绑定基线源码，保留其拒绝运行行为。 |
+| `.venv/Scripts/ruff.exe check backend evals` / `format --check backend evals` | 均通过，42 files formatted。 |
+| 前端 `npm --prefix frontend run lint` / `run typecheck` / `test` / `run build` / `run format:check` | 全部通过，4 files / **91 tests passed**，Vite构建成功。初次新测试遇到重复文字选择器，已改为唯一原句；既有四方向测试Mock返回数组而非Run，补成合法Run以消除未处理渲染错误。首次format检查新增浏览器脚本未格式化，已格式化后通过；错误工作目录的单次prettier命令未匹配文件，未产生修改。 |
+| `.venv/Scripts/python.exe -X utf8 .cache/run-agent004h-preview.py` | 最终通过：依次运行node e2e/smoke.mjs、node e2e/discovery-preview.mjs。收藏→草稿批准→档案/检索→关联→Quest批准/编辑→反馈→偏好确认→审计，四方向、材料卡、1440/390、键盘/折叠/刷新、知识历史详情、无横向溢出均通过。真实失败/重试浏览器注入夹具未启用，明确skip；后端异常回归不能冒充浏览器注入。 |
+| 新预览初次/二次 | 初次按钮按旧名称定位，揭晓改名后等待超时；改为稳定button定位。第二次出现两个learning-takeaway严格选择器冲突，改为明确first/last。最终上述完整浏览器通过，失败截图不作为最终证据。 |
+| 内容与视觉观察 | 助手实际查看最终桌面揭晓、移动问题、无关材料结果，以及此前桌面问题/移动揭晓截图；问题未泄露答案、来源可见、焦点清楚、移动换行正常。逐项人工内容复核见H报告；未执行真实语音读屏器人工测试。 |
+| 历史/范围保护 | 26份G raw/账本、v1/v3历史JSON、.env/.env.example及G入口/测试SHA256全部相同；G raw仍1a260026eb4f4c4ab1a23a3e619e024bcec71221a494f22d070e1a8d8b5600d9。无固定CASE/材料、rules.py、数据库schema/审批代码/依赖变更。HEAD不变、暂存区为空，无commit/push/Cloud/发布。 |
+
+最初pytest包含G Fake测试与其默认离线审计（不是正式采样、无真实请求），因旧基线锁如实失败后不再运行G；后续显式排除，未改写旧测试或结果。一次工具执行环境中断后依据日志和进程检查恢复，未重复正式入口或使用已有数据库。应用回归最终425项耗时40.39秒；更早一轮日志受长时间中断影响，不作为性能证据。
+
+安全回归：既有精确原文合法/缺失/歧义/错误偏移/Unicode/元数据、注入、预算null/0、时间/精力/StarID、审批授权与幂等均在应用套件中；新增严格DTO非法字段/空白/类型/长度、旧无discovery Run/编辑批准/幂等、无卡零候选说明与409审批拒绝。浏览器揭晓期间请求监听断言零API请求；知识预览前后Quest与偏好相同。真实模型可能输出看似合法但语义不忠实的discovery，现有来源门控不能自动判断，未增加伪语义关键词检查。
+
+G-03对应无关面包固定Mock：无卡片/无Quest/简短说明，零结果的生产通路可用。**这不是G-03真实模型修复成功证据**。真实Qwen、Prompt遵从稳定性、揭晓科学忠实性、无关语义识别、Quest独立价值、0预算填写与用户本人趣味评价均未执行；PG/完整容器/远程新CI未执行。
+
+为什么用户需要：只了解一项知识就能结束，继续玩才参与。Agent解决什么：解除知识结果与必须产出可审批Quest的耦合，保留确定性来源/约束/用户授权边界；按钮属于UI/UX，不称模型能力提升。学到什么：知识、互动与可执行行动是不同结果，合法DTO/精确引用/Mock通过不能代替真实内容质量。G四例12,369 Token与预算null失败历史原样保留。整体仍M3穿插M2；无新增已证实P0；剩余P1为UX-003、INFRA-001/002、EVAL-001。下一项仅用户体验验收，本轮停止，不自动真实采样。
+
+[H离线报告与截图](AGENT004H_OFFLINE_REVIEW.md)、[浏览器预览输出](../.cache/agent004h/preview.json)、[浏览器日志](../.cache/agent004h/browser.txt)。文档修改仅本轮相关追加；最终本地链接/修改范围检查结果见本节收尾补记。
+
+H最终收尾：7份本轮相关Markdown共349条本地链接路径存在（未逐一验证所有历史锚点），git diff --check通过；26份历史/配置/G源码保护哈希仍一致。HEAD保持原基线，暂存区为空；Git状态保存在.cache/agent004h/git-status.txt。最终前端91项、lint/typecheck/build/format:check均通过；后端摘要文案收尾后再次执行上述425项应用回归和Ruff，结果通过。真实Qwen/正式数据库/提交推送均未执行。
+
+
+<a id="agent-004-i-20261118"></a>
+
+## 2026-11-18 · AGENT-004-I 成熟表达与参与式研发
+
+M3穿插M2，AGENT-004/EVAL-001整体仍in_progress。用户本轮明确范围优先，IDEA-005/006合并来源，全部未完成含deferred复评见Backlog同日I条目。开始实际工作区16个tracked修改、G/H新增文件已存在；HEAD aad9ddba7ab7b6c4b0cb6aacb477584344dbb0b0，未reset/clean/覆盖旧工作。本轮0真实请求，不修改.env、不访问个人数据库、不正式执行G/v3历史采样、不commit/push/发布。
+
+### 根因与最小修复
+
+G的preflight逐字比较baseline的model_adapter.py、learning.py、schemas.py、rules.py，H改变前三者，触发ValueError(production_subject_changed)，11项Fake SDK流程测试提前退出。把原检查原样抽出validate_production_subject；真实preflight仍必须调用它，H/I不能再作为G实验主体。仅Fake安装函数替换冻结检查，让当前adapter/schema流程验证保留原配置校验、额度、落盘、错误脱敏与重放保护。独立单测验证未改主体通过、源码变化拒绝、HEAD变化拒绝。没有删除历史断言、修改历史哈希或排除整个模块。
+
+A历史完整性：新增check_knowledge_g_history.py读取已有H protected.json的22条历史证据哈希（G11份、v1/v3与公开审核证据），不读取配置/数据库、不导入采样入口。当前代码回归在pytest中使用合成证据验证篡改/缺失/越界拒绝；本机另实际读取全部历史文件验证，避免让CI依赖不随代码分发的私有采样目录。
+
+G raw包含当时实际输入、输出、messages、tool_schema、配置、版本/来源哈希；与旧哈希相等覆盖这些字节完整性，四份独立result与raw各行完全相等。10份记录源码哈希已与Git历史字节/CRLF版本核对；未提交G采样器用本轮修改前真实复制的.cache/agent004i/g-sampler-before.py核对，未伪造历史源码。rubric初次仅比较统一LF/CRLF未匹配，进一步确认是既有混合换行：实际文件哈希等于历史记录，规范化后内容等于Git基线，没有重写文件。源哈希不要求当前H/I生产实现相等。证据：[历史文件检查](../.cache/agent004i/history.txt)、[源码及账本一致性](../.cache/agent004i/source-history.txt)。旧G结论4次/12,369 Tokens、G-01/04预算null失败保留。
+
+B当前正确性：只改knowledge提示与固定Mock及卡片展示，没有新增DTO字段/表/工具；Schema、Workflow和rules仍是进入本轮时的H版本。新增直接解释回归；交互测试改为验证解释始终可见、按钮只控制额外答案，保留不可变状态。引用/来源元数据校验、预算null/0、审批编辑与幂等保护不放松。
+
+### 实际环境与检查
+
+Windows PowerShell，项目.venv Python3.12、已有.tools Node22/node_modules；pytest conftest隔离tmp数据库、Mock/Fake、禁读.env。浏览器新库.cache/agent004i/preview-i.db，显式DATABASE_URL、MOCK_MODE=true、MODEL_API_KEY空；默认8000端口已占用，启动器在访问前拒绝，未连接该服务。后改8018/5188，核对两个端口均空闲、新库不存在，alembic upgrade head后启动并最终关闭子服务。临时frontend/vite.preview-i.config.ts只改变预览代理，结束归档到.cache后删除。
+
+| 实际命令/检查 | 本轮结果 |
+| --- | --- |
+| `.venv/Scripts/pytest.exe -q -rs` 首轮 | 2 failed/444 passed/1 skipped；新增门控测试Fake HEAD错误返回bytes、旧Mock测试仍期待默认discovery，均已修正。未排除G。 |
+| 同命令最终全量 | **449 passed / 1 skipped / 1 warning**；PG无独立配置跳过；警告为既有非法model_copy测试触发Pydantic序列化提示。[日志](../.cache/agent004i/pytest-final.txt) |
+| `.venv/Scripts/ruff.exe check backend evals` | All checks passed。[日志](../.cache/agent004i/ruff.txt) |
+| frontend `npm run lint/typecheck/test/build`（分别执行） | 全通过；4文件91 tests；[测试](../.cache/agent004i/frontend-test.txt)、[构建](../.cache/agent004i/frontend-build.txt) |
+| frontend `npm run format:check` | 初次临时预览配置不合格式；预览结束移除后最终通过。[日志](../.cache/agent004i/frontend-format-final.txt) |
+| `.venv/Scripts/python.exe evals/check_knowledge_g_history.py` | 22份历史文件通过；另10份源码哈希/四结果一致性检查通过。 |
+| `.venv/Scripts/python.exe .cache/run-agent004i-preview.py` | 隔离迁移、smoke.mjs与discovery-preview.mjs通过；1440/390、Enter/Space/焦点/aria、无水平溢出、历史Run及无额外Quest/偏好写入。[浏览器日志](../.cache/agent004i/browser.txt) |
+
+浏览器通用smoke的故障注入/恢复fixture未启用，明确skip；Fake错误路径在pytest验证。PG、完整容器、新远程CI、真实Qwen及用户人工体验均未执行，不引用旧检查作为本轮重跑。
+
+### 实际预览（固定Mock，不是Qwen质量证据）
+
+- A直接解释：成熟自然的完整用途/机制知识、discovery=null、零Quest；[移动](../.cache/agent004i/A-390-card.png)、[桌面](../.cache/agent004i/A-1440-card.png)。
+- B互动：同一材料在明确预测请求下提供“光还能帮助脱身吗”，额外揭晓比较光的位置与注意对象；完整解释始终可读，揭晓不重新整段加粗；零Quest。[移动揭晓](../.cache/agent004i/B-390-revealed.png)、[桌面揭晓](../.cache/agent004i/B-1440-revealed.png)。固定规则仅为预览分支，不能证明模型理解何时值得互动；额外解释语义仍需用户验收。
+- C无关面包：零卡片、零Quest、简短说明；[移动](../.cache/agent004i/C-390-result.png)。另含弱观察、限定/冲突、无材料案例。完整返回：[preview.json](../.cache/agent004i/preview.json)。助手实际查看A/B移动截图，正文清楚、无大段粗体，来源始终显示“用户提供，未经独立核实”。
+
+### 研发学习记录与复盘
+
+为什么用户需要：用户喜欢有具体知识收获的自然表达，希望有自主探索权，也希望亲写真实研发代码。Agent系统解决什么：分开知识内容、可选互动和需审批的行动；Prompt设目标而非事实保证，纯规则继续约束来源、预算、审批。界面可读性属于UI/UX，不夸大为模型能力提升。学到什么：历史冻结应保护当时实验，当前回归允许实现演进；合法结构/精确引用和Mock不能代替语义质量证据。
+
+[表达规范](AI_VOICE_AND_EXPLORATION.md)记录原则与用户认可示例；[练习入口与TODO](AGENT004I_DEVELOPER_EXERCISE.md)解释Proposal/AgentRequest/Preferences/quest_constraint_errors，指定backend/tests/test_learning_quality_v3.py追加函数。用户填写expected_rejected和核心assert，三参数0/None/1；骨架仅在文档，不冒充已执行测试。
+
+未解决：真实Qwen文风、discovery预测价值/语义忠实、无关材料拒绝稳定性、Quest行动价值和预算0填写可靠性均未验证。无新增已证实P0；剩余P1为UX-003、INFRA-001/002、EVAL-001。下一项仅用户亲写练习与产品验收；完成后停止，不自动采样。
+
+I收尾检查：8份相关Markdown的367条本地链接路径存在（未逐一验证历史锚点），git diff --check通过；最终16个tracked修改、11个untracked，暂存区为空，HEAD未变，状态见.cache/agent004i/git-status.txt。另对本轮开始实际实验目录19份文件逐字哈希复核无变；初次广泛缓存清单误包含pytest临时合成文件，重跑后这些临时fixture自然变化，未将其算作历史采样证据。此前H固定22条清单全部通过。
+
+<a id="agent-004-j-20261118"></a>
+
+## 2026-11-18 · AGENT-004-J 交付收尾与主动接续
+
+当前M3穿插M2，AGENT-004/EVAL-001整体仍in_progress；全部未完成含deferred复评见Backlog同日J条目。先读AGENTS/路线图/Backlog/相关IDEA与G/H/I最新证据；开始HEAD aad9ddba7ab7b6c4b0cb6aacb477584344dbb0b0，16个tracked修改/11个untracked，符合用户报告。旧I的449/1 skipped、前端91 passed仅核对旧日志，不当作本轮新跑；G现存raw与独立账本只读核对4请求/12,369 tokens，H/I记录0真实请求。新需求合并IDEA-006/016，未新建重复任务。用户明确继续开发，I预算练习文件无diff，核心TODO未代写。
+
+### 工程与产品实现
+
+G历史门控仍在：preflight→validate_production_subject检查历史HEAD和四源码；仅Fake测试替换冻结函数。独立只读check_knowledge_g_history.py实际验证既有清单22份文件（含G/v1/v3及公开审核结果），不是用当前源码哈希覆盖历史记录。再次对比四份G独立result与raw各行相等。旧采样证据和账本原样保留；未调用任何正式G/v1/v3采样入口；完整pytest中的Fake/默认离线计划测试不是真实采样。
+
+J增加可选parent_run_id，仅knowledge Explore，None不序列化保持旧payload/幂等哈希。FastAPI Schema先校验，再由main.resolve_continuation在begin_run前读取父AgentRun：存在、原始知识结果、非子Run、有原始材料、状态允许；不存在404，关系不适用409，替换材料422。损坏历史请求返回409且不创建新Run。复用原始用户learning_source，不把上次AI卡片拼回事实。新Run保存父ID和独立请求，旧Run、events/decisions/审批状态不变；允许同原始结果分别提交问题，不允许从接续结果链式继续。
+
+Workflow按父请求兴趣检索当前Star（删除/归档不复活历史Star），ModelAdapter接收新问题+原材料+检索Star+当前明确偏好/限制。Prompt要求缺依据简短说明，不伪装联网；这不是确定性语义保证。固定Mock提供酶作用支持答案和交流机制不足样例。沿用ToolRegistry来源/精确引用与Quest预算/时间/精力/存在性校验；无新表/迁移/工具。正式Quest仍仅用户审批API写入；未自动写偏好。
+
+App卡片入口打开本地Modal，可编辑/放弃；只有明确提交带新问题、父ID、原时间/预算/精力才POST。子Run不再显示接续按钮，含空卡片的子Run在结果/历史显示父ID。LearningResult依然知识直接可读。新增12项后端接续边界测试与1项前端入口测试，浏览器脚本复用隔离Mock服务；仅修复与本轮关联的选择器（新增按钮后揭晓按钮须按名称定位），不重构无关模块。
+
+### 环境与实际检查
+
+Windows PowerShell、项目.venv Python3.12与已有.tools Node22/node_modules。pytest conftest隔离tmp数据库/禁.env/空模型Key；浏览器新库.cache/agent004j/preview-j.db，MOCK_MODE=true、MODEL_API_KEY空、明确DATABASE_URL/PYTHONPATH，8019/5189在启动前核对空闲，新库存在即拒绝。alembic upgrade head后启动API/Vite；临时frontend/vite.preview-j.config.ts只为隔离代理，finally关闭服务并删除此临时配置。没有连接默认8000上的个人服务，没有访问wonder.db或改.env。
+
+| 实际命令 | 结果与证据 |
+| --- | --- |
+| `.venv/Scripts/python.exe evals/check_knowledge_g_history.py` | 22份既有历史文件全部通过；[日志](../.cache/agent004j/history-before.txt)。另只读G四账本/Token核对与敏感路径忽略检查见[交付审计](../.cache/agent004j/delivery-audit.txt)。 |
+| `.venv/Scripts/pytest.exe backend/tests/test_continuation.py -q` | 初轮9 passed；后追加三项上下文/删除Star/损坏历史边界后纳入最终全量。 |
+| `.venv/Scripts/pytest.exe -q -rs` | 首轮458 passed/1 skipped；追加三项后最终 **461 passed / 1 skipped / 1 warning**，不排除G。PG未配置独立环境跳过；warning为既有故意非法model_copy的Pydantic序列化提示。[最终日志](../.cache/agent004j/pytest-final.txt) |
+| `.venv/Scripts/ruff.exe check backend evals` | All checks passed。[日志](../.cache/agent004j/ruff-final.txt) |
+| frontend `npm run lint` / `npm run typecheck` / `npm run test` / `npm run build` | 最终全部通过；**4 files / 92 tests**。初次新增测试错误使用Testing Library不支持的exact选项，导致typecheck/build失败，改用名称正则后重跑全部四项通过。[测试](../.cache/agent004j/frontend-final-test.txt)、[构建](../.cache/agent004j/frontend-final-build.txt) |
+| frontend `npm run format:check` | 临时预览配置清理后通过。[日志](../.cache/agent004j/frontend-format.txt) |
+| `.venv/Scripts/python.exe .cache/run-agent004j-preview.py` | smoke.mjs、discovery-preview.mjs、continuation-preview.mjs全部通过：1440/390、直接知识/编辑/放弃/明确提交/支持答案/不足/刷新历史；打开修改放弃零写请求、提交一次POST、父Run结构相等、Quest/偏好无变。[浏览器日志](../.cache/agent004j/browser.txt) |
+
+通用smoke仍明确跳过真实故障注入/恢复fixture，没有本轮浏览器故障注入证据；后端Fake异常路径由全量pytest覆盖。PG、完整容器、新远程CI、真实Qwen和用户人工体验未执行，不能以Mock质量代替真实语义质量。
+
+### 实际浏览器预览与研发学习记录
+
+助手实际查看移动端[编辑问题](../.cache/agent004j/J-edit-390.png)、[接续答案](../.cache/agent004j/J-answer-390.png)、[材料不足](../.cache/agent004j/J-insufficient-390.png)，信息完整、来源保留“用户提供，未经独立核实”。桌面/移动截图与原始样例见[交付报告](AGENT004J_DELIVERY.md)、[Mock数据](../.cache/agent004j/continuation.json)。键盘Enter打开、放弃返回原按钮焦点、刷新后父关系存在、无水平溢出均有浏览器断言。
+
+为什么用户需要：读完知识后能自主继续提问，不被强迫创建Quest。Agent解决什么：受控地从历史Run选择原用户材料和兴趣，把生成解释与证据分开，保留单次执行/审批边界。学到什么：Context Engineering首先需要来源、身份、相关性与授权边界；只拼AI历史不是可靠接续。弹窗和按钮属于UI价值，明确父关系/证据选择是Agent工程增量，真实自然交流效果未验证。
+
+[交付报告](AGENT004J_DELIVERY.md)有UI→API→Schema→Workflow→ModelAdapter→校验→Run的Mermaid调用链和关键输入输出表，供后续教学；[原预算练习](AGENT004I_DEVELOPER_EXERCISE.md)保持未填写，不阻塞产品开发。
+
+### 交付边界与待验收
+
+最终建议提交17个tracked修改和14个新增文件，逐项清单见AGENT004J_DELIVERY；全部为公开源码/测试/文档。建议整体原子交付，避免共享文件按G/H/I/J阶段拆出未经验证中间版本。git ls-files确认无.env/数据库/.cache被跟踪，gitignore涵盖密钥/原始采样/账本/缓存，临时预览配置已删除。暂存区为空、HEAD不变，没有git add/commit/push。
+
+尚未验证真实Qwen接续相关性、材料不足拒答稳定性、科学忠实/成熟文风及Quest独立价值。无新增已证实P0；剩余P1为UX-003、INFRA-001/002、EVAL-001；两整体任务不done。下一项仅用户产品验收，预算练习可并行学习；任何真实调用都要新授权，不恢复旧批次。
+
+J收尾：31个建议文件全部在交付清单，460条本地Markdown链接路径存在（未逐一校验所有历史锚点）；短格式密钥扫描未发现匹配，不能代替全面密钥审计。22份历史证据哈希再次相同，.env字节与旧H保护记录相同（未输出内容），暂存区为空。最终17个tracked修改/14个untracked，HEAD未变；git diff --check在移除文档末尾多余空行后通过。状态见.cache/agent004j/git-status.txt。
+
+<a id="ghij-final-delivery-20261118"></a>
+
+## 2026-11-18 · G/H/I/J 最终授权交付：提交前检查快照
+
+用户明确授权在最终检查通过后，32个已审阅文件一次原子commit并正常push到原main触发CI；禁止force push/覆盖分支/部署。本轮只对两份教学/交付文档追加完成事实与32清单，不改业务逻辑或用户预算断言。开始HEAD aad9ddba7ab7b6c4b0cb6aacb477584344dbb0b0，main跟踪origin/main，18个tracked修改/14个untracked，暂存区空。默认Git代理127.0.0.1:7897不可用；仅使用单命令 `git -c http.proxy= -c https.proxy= fetch origin` 后成功，新fetch的main与origin/main相同（0/0）。没有改代理配置或.env。
+
+实际环境仍为项目.venv Python3.12、已有.tools Node22/npm及node_modules。pytest conftest隔离tmp库、Mock/Fake、禁.env，未操作个人数据库。完整重跑 `.venv/Scripts/pytest.exe -q -rs` 实际 **464 passed / 1 skipped / 1 warning in 52.65s**（[日志](../.cache/ghij-final-delivery/pytest.txt)），不是旧461与练习3的推算。PG未配置独立本机测试环境跳过；warning为既有故意非法model_copy的Pydantic序列化提示。
+
+`.venv/Scripts/ruff.exe check --no-cache backend evals` 通过；`format --check --no-cache backend evals` 45 files符合格式。frontend分别执行 `npm run lint`、`npm run typecheck`、`npm run test`、`npm run build`、`npm run format:check` 全通过，4 files/**92 tests passed**（[测试](../.cache/ghij-final-delivery/frontend-test.txt)、[构建](../.cache/ghij-final-delivery/frontend-build.txt)、[格式](../.cache/ghij-final-delivery/frontend-format-check.txt)）。用户的预算练习文件SHA256与开始相同，未改断言/TODO。未重复跑浏览器，J双尺寸浏览器为此前证据，不能称本轮重跑。
+
+本轮只读执行check_knowledge_g_history.py并另比对22份旧证据哈希、G四账本结果和4请求/12,369 tokens，全部一致。当前全量覆盖冻结门控与Fake流程分离、J父关系/材料替换/一次接续/来源失败/当前Star/预算null与0/审批幂等；没有运行正式历史采样或真实Qwen。参数校验和原始用户材料边界保持不变。
+
+提交前核对32清单覆盖全部tracked/untracked差异，没有额外未知文件；敏感路径仍被忽略，.env字节与旧H保护一致，不输出密钥，不暂存.cache原始采样/账本或数据库。最终显式32路径暂存后还会执行cached name-status/check/stat；仅允许这一原子提交。CI属于push后的检查，当前快照不提前宣称CI通过；按本次用户授权使用真实GitHub API核对该SHA的push运行/Jobs/日志，最终结果及SHA/URL保存在最终报告与本地忽略目录.cache/ghij-final-delivery，不为回填本提交SHA再创建第二个文档提交。
+
+为什么需要本轮：将已审阅功能和用户亲写测试完整交付并验证Linux/PG CI。Agent系统解决什么：保护历史证据、接续来源和审批边界的跨环境回归。学到什么：本地完整通过、历史哈希一致和远程CI是独立证据，不能互相替代；真实语义质量仍未验证。M3穿插M2、AGENT-004/EVAL-001整体边界不变，无新增已证实P0；剩余P1仍UX-003、INFRA-001/002、EVAL-001。下一产品问题建议先验收接续材料不足后的自主补充材料路径，未在本轮实现或授权真实采样。
+
+最终暂存检查补记：cached --check首次发现新增G审阅文档末尾额外空行（原untracked不在普通diff --check范围）；仅移除该空行，未改历史正文或raw/账本。随后复核显式32文件的cached name-status/check/stat与无额外改动；文档格式收尾未重跑应用测试，以上全量为本轮实际源码检查。

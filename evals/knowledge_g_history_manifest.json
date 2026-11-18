@@ -1,0 +1,28 @@
+{
+  "version": "g-history-integrity-v1",
+  "origin": "Existing H protected.json hashes, copied 2026-11-18; no historical hash recalculated",
+  "files": {
+    ".cache/knowledge-experience-g/raw.json": "1a260026eb4f4c4ab1a23a3e619e024bcec71221a494f22d070e1a8d8b5600d9",
+    ".cache/knowledge-experience-g-budget/complete.json": "6fe2bb7e55a81f093cbdf956a53f726ddad6ea2a47807e451908db1513edd5f1",
+    ".cache/knowledge-experience-g-budget/G-01.attempt.json": "aabc2b867803e47cd922aa120d14c3a5a90ae2cc7bd4fbffd740b8a798c0eb8f",
+    ".cache/knowledge-experience-g-budget/G-01.result.json": "1c31907b4e8a2c22c5eb5913415cd622516b0b182674761ef23f0e8270740174",
+    ".cache/knowledge-experience-g-budget/G-02.attempt.json": "ef189c8fbaeefb1c7d4dad7cf284a53e9d3d39bda6627ed30cb8d27c5f1e1744",
+    ".cache/knowledge-experience-g-budget/G-02.result.json": "61601ce8c1edcac777e122ade379f3c8e0acf6ad7be466db3a8fba09ec526a2d",
+    ".cache/knowledge-experience-g-budget/G-03.attempt.json": "51f74db3594cbc718349548ac0ba23af0fcfc65c54c2de9275de7f7c9b5be78d",
+    ".cache/knowledge-experience-g-budget/G-03.result.json": "a06f474f819f7f3f4e0f896caa817e9a52e7a2bec41659f09099f6a7a1476666",
+    ".cache/knowledge-experience-g-budget/G-04.attempt.json": "283b549a9d2e03fa1976f5417d8571b6928c63f03ba7d83e9291ab46a7b9ea07",
+    ".cache/knowledge-experience-g-budget/G-04.result.json": "39029514cad62836cac32afaef819202f2ab972a430942e0c720011235922c9f",
+    ".cache/knowledge-experience-g-budget/plan.json": "59202a65d240a2325295ef521122cf69d9597ab73d32f0b5c08478560b3d8b67",
+    ".cache/learning-quality-v1/raw.json": "5a26ae03d9d59a87d8a9839eb0a824e873dec84d5683afeb5bfa37154767c27b",
+    ".cache/learning-quality-v3/batch-1/raw.json": "5ae7b4cf7858b6a66a27df1618807db45fa02c9b0fbb2e2a17bb5733e8ed0f91",
+    ".cache/learning-quality-v3-budget/batch-1-reserved.json": "06b63b057ae6d39b9d2720339087bf1d0c073f4816d3370d63bafceec375f72c",
+    ".cache/learning-quality-v3-budget/CASE-01-S01.attempt.json": "c91a23fa5224a7fefcdeb19f59a427d5bc0d4569f38cbbeda009e71bfc91ea8b",
+    ".cache/learning-quality-v3-budget/CASE-01-S01.result.json": "3835f8212004603c6d281aace2d9197474c0a62dd97d7cf689ebe959cbf36d65",
+    ".cache/learning-quality-v3-budget/CASE-02-S01.attempt.json": "880b5c99174a9ce8b564c8cee1e520d0ff6804f569eb8f25ea7de60e66c61b95",
+    ".cache/learning-quality-v3-budget/CASE-02-S01.result.json": "a239354d7c8a151404594911a7523373135dd91c0c106d2e86b645bdca148f28",
+    ".cache/learning-quality-v3-budget/plan.json": "a0243157b15d4acd44a4822d976910281225954210dcd3bb721ad62064cdc4e1",
+    "evals/reviewed_quality_captures.json": "4bc5f0576eaa5c8400bfba1428de416e7ce788258bc69fdc1bb8ab768267d4be",
+    "evals/reviewed_quality_report.json": "47eaa93337af56266d3553ec184c07123eb818fce8d1040f9095861b495b84db",
+    "evals/reviewed_quality_results.json": "dc4a1aab7a56c111942d2f18c0eaa6c95e47b76af0ad5ceeeb84844753d5436f"
+  }
+}

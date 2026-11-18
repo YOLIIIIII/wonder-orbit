@@ -658,3 +658,39 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 - [knowledge_preview_material.json](../evals/knowledge_preview_material.json)：独立public v1中文转述及核对来源，不是历史评测输入。
 - [knowledge-preview.mjs](../frontend/e2e/knowledge-preview.mjs)：专用隔离Mock库启动后，在frontend运行 `node e2e/knowledge-preview.mjs`；先设置 E2E_ALLOW_WRITE=true、E2E_BASE_URL、E2E_ARTIFACT_DIR、项目PLAYWRIGHT_BROWSERS_PATH，启动器必须核对数据库与端口。会写测试Star/Run，不审批Quest；不能指向个人服务。
 - 新旧对照、内容边界与截图见[离线复核](AGENT004F_OFFLINE_REVIEW.md)，实际命令/失败/跳过见[实证](VERIFICATION.md#agent-004-f-20261113)。
+
+
+### 2026-11-18 · AGENT-004-G 独立真实体验实验
+
+- [run_knowledge_experience_g.py](../evals/run_knowledge_experience_g.py)：默认仅离线计划；`python evals/run_knowledge_experience_g.py --allow-live` 为本批唯一真实入口，固定科学/CASE-01/CASE-04/相同科学四槽。复用Adapter、DTO、来源定位/门控和v3纯落盘/只读诊断函数，不使用旧v3账本、批次或重跑入口。
+- 独立 `.cache/knowledge-experience-g-budget/` 先独占创建并fsync；`.cache/knowledge-experience-g/raw.json` 保存实际messages/payload/schema、原DTO、修正/门控、Quest诊断、usage、源码哈希。既有账本拒绝新批次；报告删除不解锁，异常/中断不补跑。
+- [test_knowledge_experience_g.py](../backend/tests/test_knowledge_experience_g.py)：Fake SDK、默认离线审计、额度/存储/错误安全保护；不访问个人库，不运行Workflow/审批。合法来源或Quest失败保留为质量样本。非法DTO只允许字段路径/错误类型诊断，额外未知字段名脱敏。
+- 生产Prompt、规则、卡片与前端未变；本轮证据与候选审阅见[验证记录](VERIFICATION.md#agent-004-g-20261118)。
+
+
+### 2026-11-18 · AGENT-004-H 发现互动导航
+
+- schemas.py 的 Discovery 是Run内LearningCard可选字段；learning.py引用门控不判断揭晓语义；无表/迁移。
+- workflow.py：knowledge零候选复用succeeded；有候选沿用awaiting_decision，正式审批链不变。
+- App.tsx 的 LearningResult 以Run ID为key隔离揭晓状态，来源先显示、答案和依据在揭晓后显示；历史无discovery沿用旧布局。
+- [test_discovery.py](../backend/tests/test_discovery.py)覆盖严格DTO/旧Run/审批幂等；[discovery-preview.mjs](../frontend/e2e/discovery-preview.mjs)为新离线浏览器入口，frontend目录执行node e2e/discovery-preview.mjs，须由启动器核对专用Mock数据库、端口及E2E_ALLOW_WRITE/E2E_BASE_URL/E2E_ARTIFACT_DIR/PLAYWRIGHT_BROWSERS_PATH，不能指向个人服务。旧F/G入口保留历史，不用于重算H。
+- [复核与截图](AGENT004H_OFFLINE_REVIEW.md)，[实际验证](VERIFICATION.md#agent-004-h-20261118)。
+
+
+### 2026-11-18 · I 表达与验证边界
+
+- [表达规范](AI_VOICE_AND_EXPLORATION.md)与[研发练习](AGENT004I_DEVELOPER_EXERCISE.md)。
+- LearningResult 现在始终呈现完整解释、来源及原文入口；按钮仅控制 discovery.reveal。H历史描述保留为当时快照。
+- G的validate_production_subject从preflight抽出，真实入口仍检查原HEAD与四份源码，H/I源码会被拒绝；Fake SDK测试仅替换这项冻结检查，配置/额度/落盘检查继续执行，不声称G历史重放。
+- [check_knowledge_g_history.py](../evals/check_knowledge_g_history.py)独立只读检查历史文件，运行 `.venv/Scripts/python.exe evals/check_knowledge_g_history.py`，不调用采样器/配置/数据库；[固定哈希清单](../evals/knowledge_g_history_manifest.json)复制自已有H保护记录，历史raw/独立账本缺失时明确失败。本地证据不随代码自动分发，CI使用合成文件测试篡改检测。
+
+
+### 2026-11-18 · J 一次主动接续
+
+- AgentRequest 增加可选parent_run_id，仅knowledge Explore；为空时不序列化，保持旧请求幂等哈希/采样payload契约。不改表或迁移。
+- main.py 的resolve_continuation在begin_run前校验父Run存在/原始知识结果/非接续/有用户材料，404或409/422拒绝无效上下文；从父Run原始request读取learning_source，拒绝替换材料。已有retry读取新Run保存的完整请求，不改父Run。
+- workflow.py 的retrieve在接续时按父请求text复用当前Star检索/详情工具（已删/归档的Star不能凭历史复活）；generate仍只发新问题、真实检索Star、原材料、当前明确Preferences和预算模板，不发前次卡片。
+- ModelAdapter增加接续边界提示；learning.py新增固定Mock酶作用样例。普通任意问题的语义相关性不由关键词硬过滤承诺，Mock默认说明不足；真实模型未验证。ToolRegistry沿用来源门控→校验→Run状态，正式Quest仍需原审批API。
+- App.tsx 的LearningResult在原始知识结果提供接着探索入口；App管理可编辑/放弃的Modal与明确提交；子Run不再提供接续入口。types.ts同步parent_run_id；不新增工具、聊天消息表、网络检索或偏好写入。
+- [test_continuation.py](../backend/tests/test_continuation.py)覆盖父关系、材料替换/来源门控/幂等/旧Run/已删Star边界；[continuation-preview.mjs](../frontend/e2e/continuation-preview.mjs)需隔离Mock启动器设置E2E_ALLOW_WRITE/E2E_BASE_URL/E2E_ARTIFACT_DIR/PLAYWRIGHT_BROWSERS_PATH，frontend下执行node e2e/continuation-preview.mjs，会写测试Run，不能指向个人服务。
+- [交付文件与调用链](AGENT004J_DELIVERY.md)、[本轮验证](VERIFICATION.md#agent-004-j-20261118)。

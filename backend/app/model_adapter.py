@@ -1,4 +1,4 @@
-from .learning import LEARNING_INSTRUCTION, PUBLIC_SCIENCE_PREVIEW, mock_learning_card
+from .learning import LEARNING_INSTRUCTION, mock_learning_card
 import json
 import re
 from langchain_openai import ChatOpenAI
@@ -20,7 +20,7 @@ INTEREST_REASON_INSTRUCTION = (
 )
 
 DIRECTION_INSTRUCTIONS = {
-    "knowledge": "知识探索：一个发现→一个简明解释→一个有参与感的小探索→一个自然延伸。有材料时先回答用户关心的问题，解释材料支持的机制、区别或实例，再设计比较、预测后解释依据或辨别说法的体验。默认一个高质量Quest，只有探索方式实质不同时才给第二个；每项一至三步即可，不凑数。不强制笔记、两栏表、三个问题或感受记录。没有learning_source时，简短说明缺乏可验证材料，至多给一条有用的获取材料方向，也可空proposals；不伪装完成科学讲解。rationale只说明兴趣联系，关键限定具体简洁，避免在各字段重复免责声明。延伸问题引出好奇，不默认追问缺哪些资料。",
+    "knowledge": "知识探索优先顺序：1.先回答用户最想知道的事。2.选择最有理解价值的具体信息解释。3.直接解释是默认结果；只有问题有真正预测价值、揭晓提供额外理解且不重复takeaway时才给出材料支持的可选discovery。4.只有比知识卡片多出独立体验价值时才建议Quest，例如持续观察、自愿创作或可执行的小体验。5.可以只返回learning_card和空proposals、空questions，不要求用户继续玩。阅读后复述、分类、列问题不是新Quest。只有观察数字就解释观察支持什么，不创造机制。无关或没有可靠知识依据的材料优先learning_card=null、proposals=[]，用简短questions说明无法回答兴趣问题，无需强行追问。不能把包含主题关键词或否定该主题的句子视为相关证据；依据实际语义判断，但模型判断不保证正确。没有材料时简短说明不足，可给一条获取材料方向。rationale只说明兴趣联系；延伸问题引出好奇。",
     "hands_on": "用户想动手尝试：明确动作、对象和产出，遵守有效时间预算精力上限，不假定材料设备工具。当前仅支持已有文字的小尝试；若主题需要其他条件，先澄清，不编造成本。",
     "creative": "用户自愿选择创意表达：可以设计、写作、构思、想象或比喻，产出须与 Star 主题有关；明确创作不是科学解释或事实学习。",
 }
@@ -161,10 +161,15 @@ class ModelAdapter:
                             "仅依据提供的星星和明确偏好生成结果，不编造用户行为、动机、外部价格或个人事实。"
                             "缺失字段用 null。兴趣原因仅在原文明确提供时提取。"
                             + (
-                                "建议仅用已有材料进行室内理解、比较或预测，不要求书面产出；不能购买、联网或假定设备。优先一项，至多两项实质不同的体验，每项引用真实ID。"
+                                "先提供知识；可选discovery是卡片内互动，无须Quest。仅有独立体验价值才建议至多两项实质不同的Quest，不要求书面产出，每项引用真实ID；不能购买、联网或假定设备。"
                                 if tool_name == "generate_quest_proposal"
                                 and payload.get("request", {}).get("exploration_direction") == "knowledge"
                                 else "建议限定为使用已有文字的室内思考/记录小体验，不能购买物品、联网或假定有任何设备。免费文字记录可估算预算为0。提出1到3项，每项引用真实ID并说明不确定性。"
+                            )
+                            + (
+                                "这是用户主动提交的接续问题；parent_run_id仅为关联标识，不是知识证据。仅用原始用户材料回应新问题；材料不足时learning_card=null、proposals=[]，简短说明缺少什么。不得把前次AI解释当事实，不假装联网获取新来源。"
+                                if payload.get("request", {}).get("parent_run_id")
+                                else ""
                             )
                             + "如果信息不足或无法满足约束，返回问题和空建议。不输出隐藏推理。"
                             + (
@@ -313,35 +318,22 @@ class ModelAdapter:
             )
         if request.learning_source is not None:
             card = mock_learning_card(request)
+            if request.parent_run_id and card is None:
+                # Fixed offline example: no claim of semantic coverage for arbitrary questions.
+                return ProposalResult(
+                    proposals=[],
+                    questions=[
+                        "现有材料只提到发光可用于交流，未解释它如何传递信息，无法据此回答这个接续问题。"
+                        if "交流" in request.text
+                        else "现有材料不足以回答这个接续问题；需要补充直接讨论该问题的材料。"
+                    ],
+                )
             if card is None:
                 return ProposalResult(
                     proposals=[],
-                    questions=["Mock无法可靠解释这段材料；仅支持公开固定测试材料，不生成知识结论。"],
+                    questions=["这份材料不支持回答本次知识探索的问题。"],
                 )
-            result = mock_knowledge_proposals(request, stars, preferences, limit)
-            proposal = result.proposals[0]
-            if request.learning_source.text == PUBLIC_SCIENCE_PREVIEW:
-                proposal.title = "同样的光，两种用途"
-                proposal.description = "比较吸引猎物与迷惑捕食者的区别。（Mock固定演示）"
-                proposal.steps = [
-                    "本次用户提供的材料称（未经独立核实）：有些鱼用发光诱饵吸引猎物，有些鱿鱼喷出发光液迷惑捕食者。先想想：两种光分别改变了谁的行为？",
-                    "再对照：前者吸引猎物靠近，后者迷惑捕食者。用‘都为了捕食’概括它们准确吗？依据材料，第二种用途是防御。无需写下来。",
-                ]
-            else:
-                proposal.title = "比较两种对记录的理解"
-                proposal.description = "从观察文字辨别材料实际支持的说法。（Mock固定演示）"
-                proposal.steps = [
-                    "本次用户提供的材料称（未经独立核实）：" + card.evidence_quote,
-                    "比较‘记录描述了观察’与‘记录解释了发光机制’：哪种更贴近这段文字？对照原文，材料只提供观察描述，没有给出化学机制。无需书面记录。",
-                ]
-            if preferences.constraints:
-                proposal.steps = exploration_steps("knowledge")
-            proposal.rationale = "围绕这颗星星的海洋兴趣，比较材料中说法的区别。"
-            proposal.uncertainties = []
-            result.proposals = [proposal]
-            result.questions = []
-            result.learning_card = card
-            return result
+            return ProposalResult(proposals=[], questions=[], learning_card=card)
         if request.exploration_direction == "knowledge":
             return mock_knowledge_proposals(request, stars, preferences, limit)
         proposals = []

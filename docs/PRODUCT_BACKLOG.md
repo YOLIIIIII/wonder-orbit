@@ -701,3 +701,27 @@ AGENT-004-A 范围与验收：可跳过方向选择→枚举请求→同一 Work
 2026-11-13（AGENT-004-F 实施复评）：AGENT-004 P2/in_progress、EVAL-001 P1/in_progress维持。完整复评全部未完成含deferred：无新增已证实P0；UX-003、INFRA-001/002、EVAL-001保持P1；UX-004/005、UI-001、AGENT-002/003/004/005、RETR-001、DATA-001/002/003/004、INFRA-004/005保持P2；UI-002/003、AGENT-006、INFRA-006保持P3/deferred。用户价值与最新重复作业证据支持先做F产品改善，成本/环境/素材/公开部署依赖、风险与手动阅读/关键词/安全新运行替代不变。顺序由E采样建议转为F离线开发与Mock预览→用户验收；历史v3两批均不得重新执行，未来比较须独立新批次和新授权。验收：knowledge单独策略、发现优先/原生可展开来源、公开材料A–E离线边界、桌面移动人工观察、完整本地检查、来源/约束/审批回归；不包含真实质量提升、新表、自动检索或新评测平台。证据将追加至VERIFICATION的agent-004-f-20261113；整体任务不done。
 
 F离线切片交付：Prompt/DTO呈现/公开材料/单元与Mock浏览器检查完成；用户体验与真实模型质量尚未验收，AGENT-004/EVAL-001不设done。证据：[本轮验证](VERIFICATION.md#agent-004-f-20261113)、[离线复核](AGENT004F_OFFLINE_REVIEW.md)。当前下一项仅为用户验收F，不恢复旧v3采样。
+
+
+2026-11-18（AGENT-004-G 实施复评）：沿用 AGENT-004 P2/in_progress、EVAL-001 P1/in_progress，不新增重复任务。复核全部未完成含deferred：无新增已证实P0；UX-003、INFRA-001/002、EVAL-001保持P1；UX-004/005、UI-001、AGENT-002/003/004/005、RETR-001、DATA-001/002/003/004、INFRA-004/005保持P2；UI-002/003、AGENT-006、INFRA-006保持P3/deferred。环境/素材/规模/公开部署依赖、成本风险及手动阅读/关键词/安全新运行替代不变。用户明确范围优先：F后真实产品证据优先，独立G轻量入口/四槽保护→离线验收→已授权的一次入口执行→只读审阅。验收为固定顺序与相同科学上下文、原DTO/定位/门控/规则/usage可追溯、异常停跑与旧账本不变；不含生产修改、通用平台或用户语义评分。
+
+G本轮交付边界：独立采样器及离线保护已交付；正式配置预检发现MOCK_MODE=true，依用户“任何预检失败即停止”未执行真实入口，0请求、四例均未执行，G真实产品验收尚未完成。AGENT-004/EVAL-001仍in_progress，不以准备完成或历史CI成功设done。下一项先处理本地Mock配置，再在既有授权额度内取得真实证据；不启动其他任务。见[本轮审阅](AGENT004G_EXPERIENCE_REVIEW.md)。
+
+2026-11-18（G续执行交付）：按用户临时进程环境指示完整预检通过；一次正式入口完成4次Qwen、12,369 Token。四例DTO合法、修正引用后retained，G-01/04预算null不合规，G-02/03规则通过；无关材料仍硬生成Quest、科学玩法仍偏作业。AGENT-004 P2/in_progress、EVAL-001 P1/in_progress保持，用户语义评分not_rated，整体不done；全部未完成及deferred的优先级/依赖沿用本轮完整复评，无新P0证据，不开启新阶段。G固定采样已结束不可重跑，下一项建议用户审阅本批真实内容，不自动开发修复。见[审阅](AGENT004G_EXPERIENCE_REVIEW.md)、[实证](VERIFICATION.md#agent-004-g-live-20261118)。
+
+
+2026-11-18（H完整复评）：AGENT-004 P2/in_progress、EVAL-001 P1/in_progress维持。全部未完成含deferred：无新增已证实P0；UX-003、INFRA-001/002、EVAL-001保持P1；UX-004/005、UI-001、AGENT-002/003/004/005、RETR-001、DATA-001/002/003/004、INFRA-004/005保持P2；UI-002/003、AGENT-006、INFRA-006保持P3/deferred。环境/素材/规模/公开部署依赖、成本风险及手动阅读/关键词/安全重试替代不变。用户明确范围优先，执行顺序由G内容审阅转为H离线产品切片→用户体验验收。范围：可选discovery严格DTO、零Quest兼容状态、知识优先Prompt、点击揭晓和隔离Mock预览；验收覆盖引用、约束、审批、历史运行与双尺寸，真实Qwen额度0；不迁移、不改正式规则、不重新执行G/v3。整体任务仍待真实质量与用户验收。
+
+
+H离线切片交付与边界见[报告](AGENT004H_OFFLINE_REVIEW.md)、[实证](VERIFICATION.md#agent-004-h-20261118)。知识卡片/可选互动/零候选状态已实现，整体AGENT-004与EVAL-001仍in_progress，用户体验与真实模型质量未验收；不重算G的历史结果。
+
+
+2026-11-18（I完整复评与实施）：AGENT-004 P2/in_progress、EVAL-001 P1/in_progress保持。复核全部未完成含deferred：无新增已证实P0；UX-003、INFRA-001/002、EVAL-001仍P1；UX-004/005、UI-001、AGENT-002/003/004/005、RETR-001、DATA-001/002/003/004、INFRA-004/005仍P2；UI-002/003、AGENT-006、INFRA-006仍P3/deferred，环境/素材/规模/公开部署触发、成本风险、依赖及手动阅读/关键词/新运行重试替代不变。执行顺序从H用户验收建议转为本轮I授权的历史证据/当前回归分离→成熟表达小改→隔离预览→研发者练习与产品验收。验收：完整pytest不排除G，Ruff及前端全项，直接/互动/无关三类隔离预览与保护回归；练习核心断言由用户填写，不代完成。不含真实Qwen、新DTO/表/工具或全站重做。
+
+
+I离线实现与检查交付：完整pytest 449 passed/1 skipped、前端91 passed及全项静态/构建检查通过，隔离Mock三类预览完成，G历史证据检查通过。AGENT-004/EVAL-001整体仍in_progress；开发者练习尚未填写、产品体验与真实模型语义未验收，不能done。证据见[本轮验证](VERIFICATION.md#agent-004-i-20261118)、[研发学习记录](AGENT004I_DEVELOPER_EXERCISE.md)。下一项仅用户练习与体验，不自动开始新开发或采样。
+
+
+2026-11-18（J完整复评/实施）：AGENT-004 P2/in_progress、EVAL-001 P1/in_progress维持。全部未完成含deferred复评：无新增已证实P0；UX-003、INFRA-001/002、EVAL-001仍P1；UX-004/005、UI-001、AGENT-002/003/004/005、RETR-001、DATA-001/002/003/004、INFRA-004/005仍P2；UI-002/003、AGENT-006、INFRA-006仍P3/deferred。原环境/素材/规模/公开部署触发、成本风险、依赖和手动查历史/关键词/新Run重试替代不变。顺序由等待I练习更新为用户授权J交付检查→一次主动接续→隔离回归→用户验收；不扩大AGENT-003澄清或完整聊天范围。验收：服务端父Run与原材料校验、禁止链式接续、明确提交/可修改放弃、材料不足/历史刷新、引用预算审批幂等、全量检查及双尺寸预览，正式写入仍审批；练习不代写。
+
+J离线切片交付：父Run/原材料边界、主动编辑/放弃/提交、支持与不足结果/历史可追溯已实现；完整pytest461 passed/1 skipped，前端92 passed及lint/typecheck/build/format:check、Ruff、双尺寸隔离浏览器通过。AGENT-004/EVAL-001整体仍in_progress，真实语义质量和用户体验未验收。见[本轮实证](VERIFICATION.md#agent-004-j-20261118)、[交付文件与调用链](AGENT004J_DELIVERY.md)。I练习保持待用户填写，不阻塞本次开发。

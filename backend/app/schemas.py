@@ -68,11 +68,17 @@ class LearningSource(StrictModel):
         return StarInput.valid_url(value)
 
 
+class Discovery(StrictModel):
+    question: str = Field(min_length=1, max_length=500, strict=True)
+    reveal: str = Field(min_length=1, max_length=1000, strict=True)
+
+
 class LearningCard(StrictModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
     evidence_quote: str = Field(min_length=1, max_length=1000)
     quote_start: int = Field(ge=0, strict=True)
     quote_end: int = Field(ge=1, strict=True)
+    discovery: Discovery | None = None
     takeaway: str = Field(min_length=1, max_length=1000)
     interest_relevance: str = Field(min_length=1, max_length=500)
     follow_up_question: str = Field(min_length=1, max_length=500)
@@ -83,6 +89,7 @@ class LearningCard(StrictModel):
 
 
 class AgentRequest(StrictModel):
+    parent_run_id: str | None = Field(default=None, min_length=1, max_length=100)
     learning_source: LearningSource | None = None
     exploration_direction: ExplorationDirection | None = None
     request_type: Literal["collect", "explore"]
@@ -95,6 +102,10 @@ class AgentRequest(StrictModel):
 
     @model_validator(mode="after")
     def explore_only(self):
+        if self.parent_run_id is not None and (
+            self.request_type != "explore" or self.exploration_direction != "knowledge"
+        ):
+            raise ValueError("接续仅适用于知识探索")
         if self.request_type != "explore" and self.exploration_direction is not None:
             raise ValueError("探索方向仅适用于 Explore")
         if self.learning_source is not None and (
@@ -107,6 +118,8 @@ class AgentRequest(StrictModel):
     def compatible_payload(self, handler):
         # 仅省略新增的空方向，保留旧字段默认值、历史 payload 与幂等哈希语义。
         data = handler(self)
+        if self.parent_run_id is None:
+            data.pop("parent_run_id", None)
         if self.learning_source is None:
             data.pop("learning_source", None)
         if self.exploration_direction is None:

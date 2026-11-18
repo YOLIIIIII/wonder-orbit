@@ -139,6 +139,7 @@ function hasClarification(run: Run) {
     run.status === "awaiting_decision" &&
     run.request_type === "explore" &&
     !run.state.proposals?.length &&
+    !run.state.learning_card &&
     !!run.state.questions?.length
   );
 }
@@ -181,6 +182,13 @@ export default function App() {
   const [preferences, setPreferences] = useState(initialPreferences);
   const [mock, setMock] = useState<boolean | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [continuation, setContinuation] = useState<Run | null>(null);
+  const [continuationQuestion, setContinuationQuestion] = useState("");
+  function startContinuation(run: Run) {
+    setError("");
+    setContinuation(run);
+    setContinuationQuestion(run.state.learning_card?.follow_up_question || "");
+  }
   const [homeHelpOpen, setHomeHelpOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -368,7 +376,9 @@ export default function App() {
     if (navigate) setPage(destination);
     if (
       activePage.current === destination &&
-      (hasPendingResult(run) || hasClarification(run))
+      (hasPendingResult(run) ||
+        hasClarification(run) ||
+        !!run.state.learning_card)
     )
       setFocusTarget({
         page: destination,
@@ -1407,14 +1417,24 @@ export default function App() {
                     }
                     onView={() => openRun(exploreRun)}
                   />
-                  <LearningResult run={exploreRun} />
+                  <LearningResult
+                    key={exploreRun.run_id}
+                    run={exploreRun}
+                    onContinue={startContinuation}
+                  />
+                  {exploreRun.state.request?.parent_run_id && (
+                    <p className="field-hint">
+                      接续自运行 {exploreRun.state.request.parent_run_id}
+                    </p>
+                  )}
                   {exploreRun.state.questions?.map((q) => (
                     <p className="soft-note" key={q}>
                       {q}
                     </p>
                   ))}
                   {!exploreRun.state.proposals?.length &&
-                    !exploreRun.state.questions?.length && (
+                    !exploreRun.state.questions?.length &&
+                    !exploreRun.state.learning_card && (
                       <p className="soft-note">
                         本次没有可查看的候选或澄清，请查看运行详情。
                       </p>
@@ -1717,7 +1737,21 @@ export default function App() {
                             : "打开待确认结果"}
                         </button>
                       )}
-                      <LearningResult run={selectedRun} />
+                      <LearningResult
+                        key={selectedRun.run_id}
+                        run={selectedRun}
+                        onContinue={startContinuation}
+                      />
+                      {selectedRun.state.request?.parent_run_id && (
+                        <p className="field-hint">
+                          接续自运行 {selectedRun.state.request.parent_run_id}
+                        </p>
+                      )}
+                      {selectedRun.state.questions?.map((q) => (
+                        <p className="soft-note" key={q}>
+                          {q}
+                        </p>
+                      ))}
                       <details>
                         <summary>结构化状态与验证结果</summary>
                         <pre>{JSON.stringify(selectedRun.state, null, 2)}</pre>
@@ -2100,6 +2134,68 @@ export default function App() {
           />
         </Modal>
       )}
+      {continuation && (
+        <Modal
+          title="接着探索"
+          onClose={() => {
+            if (!busy) setContinuation(null);
+          }}
+          error={error}
+        >
+          <p className="field-hint">
+            来自运行 {continuation.run_id}。沿用原始用户材料，不会将上次 AI
+            的解释作为事实，也不会自动寻找新来源。
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              act(async () => {
+                await generate({
+                  request_type: "explore",
+                  exploration_direction: "knowledge",
+                  parent_run_id: continuation.run_id,
+                  text: continuationQuestion.trim(),
+                  available_minutes:
+                    continuation.state.request.available_minutes,
+                  budget: continuation.state.request.budget,
+                  energy_level: continuation.state.request.energy_level,
+                });
+                setContinuation(null);
+                setPage("explore");
+              });
+            }}
+          >
+            <label>
+              接着想了解什么？
+              <textarea
+                required
+                maxLength={12000}
+                value={continuationQuestion}
+                onChange={(e) => setContinuationQuestion(e.target.value)}
+              />
+            </label>
+            <p className="field-hint">
+              可以修改或放弃。提交后会创建新运行；Live
+              模式会请求模型，沿用原运行的时间、预算和精力限制。
+            </p>
+            <button
+              type="submit"
+              className="primary"
+              disabled={busy || !continuationQuestion.trim()}
+            >
+              提交接续问题
+            </button>
+            <button
+              type="button"
+              className="quiet"
+              disabled={busy}
+              onClick={() => setContinuation(null)}
+            >
+              放弃接续
+            </button>
+          </form>
+        </Modal>
+      )}
       {guideOpen && (
         <Modal title="星屿怎么使用" onClose={() => setGuideOpen(false)}>
           <UsageGuide mock={mock} />
@@ -2354,7 +2450,14 @@ function Modal({
   );
 }
 
-export function LearningResult({ run }: { run: Run }) {
+export function LearningResult({
+  run,
+  onContinue,
+}: {
+  run: Run;
+  onContinue?: (run: Run) => void;
+}) {
+  const [revealed, setRevealed] = useState(false);
   const card = run.state.learning_card;
   if (!card || card.source_kind !== "user_supplied_unverified") return null;
   return (
@@ -2362,9 +2465,37 @@ export function LearningResult({ run }: { run: Run }) {
       <h3>从材料中发现</h3>
       <p className="learning-takeaway">{card.takeaway}</p>
       <p className="learning-relevance">{card.interest_relevance}</p>
+      {card.discovery && (
+        <div className="learning-discovery">
+          <p>{card.discovery.question}</p>
+          <button
+            type="button"
+            className="secondary"
+            aria-expanded={revealed}
+            aria-controls={"discovery-" + run.run_id}
+            onClick={() => setRevealed(!revealed)}
+          >
+            {revealed ? "收起答案" : "揭晓答案"}
+          </button>
+          <div id={"discovery-" + run.run_id} hidden={!revealed}>
+            <p className="learning-reveal" role="status">
+              {revealed ? card.discovery.reveal : ""}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="learning-extension">
         <h4>还可以好奇</h4>
         <p>{card.follow_up_question}</p>
+        {onContinue && !run.state.request?.parent_run_id && (
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => onContinue(run)}
+          >
+            接着探索
+          </button>
+        )}
       </div>
       <p className="field-hint learning-source">
         来源：{card.source_label || "本次粘贴材料"} · 用户提供，未经独立核实

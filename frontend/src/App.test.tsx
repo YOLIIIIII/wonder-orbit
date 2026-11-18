@@ -51,7 +51,15 @@ function backend(
   maxBudget: number | null = null,
   stars: Star[] = [],
 ) {
-  mockedApi.mockImplementation(async (path) => {
+  mockedApi.mockImplementation(async (path, method) => {
+    if (path === "/agent/runs" && method === "POST")
+      return {
+        run_id: "direction-run",
+        request_type: "explore",
+        status: "succeeded",
+        state: { proposals: [], questions: [] },
+        decisions: {},
+      };
     if (path === "/stars") return stars;
     if (path === "/stats")
       return { stars: stars.length, quests: 0, completed: 0, categories: [] };
@@ -826,4 +834,83 @@ it("知识卡片优先解释并保留可展开依据，兼容无卡片历史运�
   expect(screen.getByText(/批准体验不会/)).toBeVisible();
   rerender(<LearningResult run={{ state: {} } as Run} />);
   expect(container).toBeEmptyDOMElement();
+});
+
+it("知识解释始终可读，揭晓只展开额外答案", () => {
+  const run = {
+    run_id: "discovery-test",
+    state: {
+      learning_card: {
+        discovery: { question: "两种光的用途相同吗？", reveal: "用途不同。" },
+        takeaway: "鱼吸引猎物，鱿鱼防御。",
+        interest_relevance: "海洋兴趣",
+        follow_up_question: "还想了解什么？",
+        evidence_quote: "材料原句",
+        uncertainties: ["部分体系"],
+        source_label: "公开材料",
+        source_kind: "user_supplied_unverified",
+      },
+    },
+  } as Run;
+  const before = JSON.stringify(run);
+  render(<LearningResult run={run} />);
+  expect(screen.getByText("两种光的用途相同吗？")).toBeVisible();
+  expect(screen.getByText("鱼吸引猎物，鱿鱼防御。")).toBeVisible();
+  expect(screen.getByText("材料原句")).not.toBeVisible();
+  expect(screen.getByText(/来源：公开材料/)).toBeVisible();
+  const button = screen.getByRole("button", { name: "揭晓答案" });
+  button.focus();
+  fireEvent.click(button);
+  expect(button).toHaveFocus();
+  expect(button).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByText("用途不同。")).toBeVisible();
+  expect(screen.getByText("鱼吸引猎物，鱿鱼防御。")).toBeVisible();
+  fireEvent.click(button);
+  expect(button).toHaveAttribute("aria-expanded", "false");
+  expect(screen.getByText("鱼吸引猎物，鱿鱼防御。")).toBeVisible();
+  expect(JSON.stringify(run)).toBe(before);
+});
+
+it("接续入口仅向用户交付可编辑问题，不自动调用API；接续结果不再显示入口", () => {
+  const run = {
+    run_id: "parent-run",
+    state: {
+      request: {
+        request_type: "explore",
+        text: "海洋",
+        exploration_direction: "knowledge",
+      },
+      learning_card: {
+        takeaway: "原始知识",
+        interest_relevance: "海洋兴趣",
+        follow_up_question: "接下来想了解什么？",
+        evidence_quote: "原文",
+        uncertainties: ["材料有限"],
+        source_kind: "user_supplied_unverified",
+      },
+    },
+  } as Run;
+  const start = vi.fn();
+  const before = JSON.stringify(run);
+  mockedApi.mockClear();
+  const { rerender } = render(<LearningResult run={run} onContinue={start} />);
+  fireEvent.click(screen.getByRole("button", { name: /^接着探索$/ }));
+  expect(start).toHaveBeenCalledWith(run);
+  expect(mockedApi).not.toHaveBeenCalled();
+  expect(JSON.stringify(run)).toBe(before);
+  rerender(
+    <LearningResult
+      run={{
+        ...run,
+        state: {
+          ...run.state,
+          request: { ...run.state.request, parent_run_id: "origin" },
+        },
+      }}
+      onContinue={start}
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: /^接着探索$/ }),
+  ).not.toBeInTheDocument();
 });

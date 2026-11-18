@@ -1,7 +1,7 @@
 from time import perf_counter
 from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
-from .models import now
+from .models import AgentRun, now
 from .schemas import AgentRequest
 from .tools import ToolRegistry
 
@@ -85,16 +85,29 @@ class Workflow:
         graph.add_edge("validate_suggestions", "await_user_decision")
         graph.add_edge("await_user_decision", END)
         result = graph.compile().invoke({"request": request.model_dump(mode="json")})
-        self.run.status = "awaiting_decision"
+        has_action = request.request_type == "collect" or bool(result.get("proposals"))
+        knowledge = request.exploration_direction == "knowledge"
+        self.run.status = "awaiting_decision" if has_action or not knowledge else "succeeded"
         self.run.summary = (
             "结构化草稿待确认"
             if request.request_type == "collect"
-            else f"{len(result.get('proposals', []))} 个已验证候选"
+            else (
+                "知识内容已生成，无待审批候选"
+                if knowledge and not has_action and result.get("learning_card")
+                else "本次知识探索已结束，无待审批候选"
+                if knowledge and not has_action
+                else f"{len(result.get('proposals', []))} 个已验证候选"
+            )
         )
         return result
 
     def retrieve(self, state):
-        stars = self.tools.call("search_stars", {"query": state["request"]["text"]})
+        query = state["request"]["text"]
+        if parent_id := state["request"].get("parent_run_id"):
+            # The API validated this relationship before reserving a new Run.
+            parent = self.session.get(AgentRun, parent_id)
+            query = parent.state["request"]["text"]
+        stars = self.tools.call("search_stars", {"query": query})
         details = [self.tools.call("get_star_details", {"star_id": star["star_id"]}) for star in stars[:3]]
         return {"related_stars": stars, "star_details": details}
 

@@ -49,6 +49,7 @@ export interface Match {
 }
 export type ExplorationDirection = "knowledge" | "hands_on" | "creative";
 export interface LearningCard {
+  discovery?: { question: string; reveal: string } | null;
   evidence_quote: string;
   quote_start: number;
   quote_end: number;
@@ -61,6 +62,7 @@ export interface LearningCard {
   source_url: string | null;
 }
 export interface AgentRequest {
+  parent_run_id?: string;
   learning_source?: { text: string; label: string | null; url: string | null };
   exploration_direction?: ExplorationDirection | null;
   request_type: "collect" | "explore";
