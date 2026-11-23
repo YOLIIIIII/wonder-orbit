@@ -694,3 +694,10 @@ foreach ($scriptFile in @('scripts/dev.ps1', 'scripts/web.ps1')) {
 - App.tsx 的LearningResult在原始知识结果提供接着探索入口；App管理可编辑/放弃的Modal与明确提交；子Run不再提供接续入口。types.ts同步parent_run_id；不新增工具、聊天消息表、网络检索或偏好写入。
 - [test_continuation.py](../backend/tests/test_continuation.py)覆盖父关系、材料替换/来源门控/幂等/旧Run/已删Star边界；[continuation-preview.mjs](../frontend/e2e/continuation-preview.mjs)需隔离Mock启动器设置E2E_ALLOW_WRITE/E2E_BASE_URL/E2E_ARTIFACT_DIR/PLAYWRIGHT_BROWSERS_PATH，frontend下执行node e2e/continuation-preview.mjs，会写测试Run，不能指向个人服务。
 - [交付文件与调用链](AGENT004J_DELIVERY.md)、[本轮验证](VERIFICATION.md#agent-004-j-20261118)。
+
+
+### 2026-11-23 · K 材料恢复与独立探索
+
+- App.tsx 的 LearningResult 根据知识请求/结束状态/无卡片提供“补充材料再探索”；startReplenishing 仅预填旧 request 中的用户字段，复用 Explore 表单/生成 API，提交不带 parent_run_id。J 的 resolve_continuation 与来源门控不变。
+- [test_replenishment.py](../backend/tests/test_replenishment.py)验证新用户材料、独立根Run、原Run/审批/幂等边界；[replenishment-preview.mjs](../frontend/e2e/replenishment-preview.mjs)在 frontend 目录用 node e2e/replenishment-preview.mjs 执行，必须由隔离启动器核对专用Mock数据库，并设置 E2E_ALLOW_WRITE/E2E_BASE_URL/E2E_ARTIFACT_DIR/PLAYWRIGHT_BROWSERS_PATH；不得指向个人服务。
+- [K交付与模型调用说明](AGENT004K_DELIVERY.md)、[验证](VERIFICATION.md#agent-004-k-20261123)。不增加后端API/工具/表或迁移。

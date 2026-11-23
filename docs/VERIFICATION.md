@@ -1868,3 +1868,74 @@ J收尾：31个建议文件全部在交付清单，460条本地Markdown链接路
 为什么需要本轮：将已审阅功能和用户亲写测试完整交付并验证Linux/PG CI。Agent系统解决什么：保护历史证据、接续来源和审批边界的跨环境回归。学到什么：本地完整通过、历史哈希一致和远程CI是独立证据，不能互相替代；真实语义质量仍未验证。M3穿插M2、AGENT-004/EVAL-001整体边界不变，无新增已证实P0；剩余P1仍UX-003、INFRA-001/002、EVAL-001。下一产品问题建议先验收接续材料不足后的自主补充材料路径，未在本轮实现或授权真实采样。
 
 最终暂存检查补记：cached --check首次发现新增G审阅文档末尾额外空行（原untracked不在普通diff --check范围）；仅移除该空行，未改历史正文或raw/账本。随后复核显式32文件的cached name-status/check/stat与无额外改动；文档格式收尾未重跑应用测试，以上全量为本轮实际源码检查。
+
+
+<a id="agent-004-k-20261123"></a>
+
+## 2026-11-23 · AGENT-004-K 材料不足后的独立重新探索
+
+M3穿插M2。开始读取AGENTS、ROADMAP、Backlog、相关IDEA与J最新证据，HEAD=f51b5b70ce707a9bc22da098b07fc59963ab0a77，与用户基线完全相同，工作区干净。需求合并IDEA-006/016；全部未完成含deferred复评见Backlog本日条目。仅实施K，不放宽J，不改变后端业务/Schema/数据库。
+
+### 本轮实际命令与结果
+
+Windows PowerShell，项目.venv Python3.12、已有.tools Node22及frontend/node_modules。pytest conftest禁.env，使用tmp独立SQLite。浏览器启动器在.cache/agent004k/preview.py，明确DATABASE_URL指向本轮独立 preview-k.db/k2.db/k3.db，Settings.env_file=None，MOCK_MODE=true、MODEL_API_KEY空、重试0、tracing关闭。启动前核对8023/5193空闲与数据库不存在，Alembic upgrade head后启动隔离API/Vite，health核对Mock。finally关闭服务并删除临时frontend/vite.preview-k.config.ts；不访问默认8000服务/个人库，不改.env。Qwen实际请求0，不执行任何G/v3正式采样器。
+
+| 检查 | 本轮结果 |
+| --- | --- |
+| `.venv/Scripts/pytest.exe backend/tests/test_replenishment.py -q` | 6 passed；三种不足 × None/0，适配入参/根Run/旧Run/幂等/审批/J替换拒绝。 |
+| `.venv/Scripts/pytest.exe -q -rs` | **470 passed / 1 skipped / 1 warning，45.07s**；[完整日志](../.cache/agent004k/pytest.txt)。PG集成未配置独立环境跳过；warning为既有故意非法model_copy序列化提示。不是历史464结果。 |
+| `.venv/Scripts/ruff.exe check backend evals`、`format --check backend evals` | 全部通过，46 files格式符合；未修改后端产品代码。 |
+| frontend `npm run lint`、`typecheck`、`test`、`build`、`format:check` | 最终结果见本节收尾追加；严格逐项失败即停。日志为.cache/agent004k/*-final.txt。 |
+| 隔离环境 `node e2e/smoke.mjs` | 完整主要闭环/方向/材料/双尺寸通过；[日志](../.cache/agent004k/smoke.mjs.txt)。故障恢复fixture未启用，明确skip，不能称本轮浏览器真实故障注入通过。 |
+| `node e2e/continuation-preview.mjs` | J原有双尺寸流程通过；[日志](../.cache/agent004k/continuation-preview.mjs.txt)。后续K表单隐藏无须重复选择的方向选项后，仅重跑K；普通Explore/J流程未改。 |
+| `node e2e/replenishment-preview.mjs` | 最终1440/390 × 有/无材料全部通过；键盘入口/问题焦点、预填、编辑/取消0写请求、空材料/空白/非法URL0写请求、明确提交1请求、新原材料/来源/问题/约束、预算null/0、无parent_run_id、新结果、原历史相等、Quest/偏好不变、无横向溢出/页面异常。[日志](../.cache/agent004k/replenishment-preview.mjs.txt)、[原始Mock响应](../.cache/agent004k/replenishment.json)。 |
+| `.venv/Scripts/python.exe evals/check_knowledge_g_history.py` | 22份既有证据只读哈希检查通过；[日志](../.cache/agent004k/history.txt)，没有重放或修订历史结果。 |
+
+初轮失败如实保留：新增前端夹具遗漏uncertainties导致4项失败，补齐夹具后96项通过；接着build发现夹具字段不完整的TS2352，已补全字段。初次K浏览器getByLabel严格匹配包含textarea内容而超时，改用textbox可访问名称后通过。format:check曾检出仍在运行的临时Vite配置和编辑中的文件，格式化源码并清理临时配置后再执行最终检查。这些不是模型质量失败，也不通过删断言绕过。
+
+### 实际观察、学习和边界
+
+助手实际查看最终[桌面编辑](../.cache/agent004k/K-edit-1440-true.png)、[移动编辑](../.cache/agent004k/K-edit-390-true.png)、[移动结果](../.cache/agent004k/K-result-390-true.png)：恢复页只呈现本次问题/材料/来源/约束，不重复方向选择；来源未核实提示可见，提交与取消可访问，卡片直接可读。材料textarea可滚动查看全文，额外原文预览沿用details。
+
+为什么用户需要：保留原问题与约束，换材料后继续探索，减少重新填写。Agent解决什么：用户证据与旧AI内容隔离；明确提交触发独立执行，保留J父关系边界。学到什么：结构化无卡片状态可用于可靠恢复入口；UI恢复便利不等于模型知识或拒答能力提升。简短真实调用字段/时机说明见[K报告](AGENT004K_DELIVERY.md#模块03一次真实调用会发生什么)。
+
+未执行：真实Qwen、用户人工产品验收、PG/完整容器/远程CI；不宣称补材料必然正确或已修G-03。AGENT-004/EVAL-001整体仍待验收，剩余P1为UX-003、INFRA-001/002、EVAL-001；无新增已证实P0。本轮交付后停止，等待用户验收，不自动commit/push/采样。
+
+
+K最终收尾：最终源码完成后重新逐项执行前端 lint、typecheck、test、build、format:check，全部退出0；4 files / **96 tests passed**，16.20s，日志[test-final](../.cache/agent004k/test-final.txt)、[lint](../.cache/agent004k/lint-final.txt)、[typecheck](../.cache/agent004k/typecheck-final.txt)、[build](../.cache/agent004k/build-final.txt)、[format](../.cache/agent004k/format-check-final.txt)。本轮后端最终仍为470/1 skipped；之后未改后端代码/测试，未机械重复运行。K最终精简表单在新preview-k3.db中重跑并通过双尺寸，smoke/J为本轮前一轮preview-k2.db的实际证据。确认后端五个核心契约文件相对指定基线无diff，暂存区为空、HEAD不变；8个tracked修改与3个新增（含本报告/测试/E2E），不含临时配置、数据库、截图或日志。收尾实际检查31个新增段落本地链接目标均存在（未逐一检查历史锚点），git diff --check通过；未做远程CI或用户验收。
+
+
+<a id="agent-004-k-final-20261123"></a>
+
+## 2026-11-23 · AGENT-004-K 人工反馈与授权交付收尾
+
+用户亲测通过：无原材料→补充材料，入口可发现、预填问题正确、操作流畅。尚未亲测：已有原材料后的补充/替换。此前470/96及双尺寸记录是上一轮证据，本轮重新执行，不冒称旧结果为新跑。新反馈并入IDEA-006/016及Backlog本日追加，整体AGENT-004/EVAL-001保持原状态。
+
+后续产品问题：无知识材料时Mock仍可能生成“找到一份入门材料”Quest和接受按钮；model_adapter.py仍保留fallback，与知识优先/独立行动价值原则冲突。本轮仅记录、不修复、不重写Quest系统，G-03语义问题也未解决。
+
+开始HEAD=f51b5b70ce707a9bc22da098b07fc59963ab0a77，与指定基线一致，main跟踪origin/main；8个tracked修改、3个新增，暂存区空。使用单命令git -c http.proxy= -c https.proxy= fetch origin后0/0，未改代理配置。全部源码/测试/E2E与文档diff已审阅：只有Explore表单明确提交才POST；K不带parent_run_id，预填只读旧request中的用户问题/材料/来源/约束；旧AI卡片/Quest不自动作材料，原Run保持不变；后端main/schemas/learning/model_adapter/workflow/tools及用户预算练习未改，来源/预算null与0/审批/幂等/J父材料保护规则保持。
+
+本轮显式审阅清单（仅这11路径允许暂存）：CHANGELOG.md、ROADMAP.md、docs/IDEA_LOG.md、docs/PRODUCT_BACKLOG.md、docs/PROJECT_GUIDE.md、docs/VERIFICATION.md、docs/AGENT004K_DELIVERY.md、frontend/src/App.tsx、frontend/src/App.test.tsx、backend/tests/test_replenishment.py、frontend/e2e/replenishment-preview.mjs。未跟踪的3文件是测试/E2E/交付文档；git ls-files未发现.env/数据库/.cache被跟踪。密钥、本机产物、模型raw/账本/截图/日志均不暂存。
+
+为什么用户需要本轮：将已体验认可的恢复流程及可审阅的边界测试交付到main。Agent系统解决什么：验证原始证据与模型内容隔离、主动提交与审批边界在本地/远程一致。学到什么：人工无材料流程认可、已有材料自动化、真实模型质量是独立证据；无材料Quest仍需单独产品取舍，不能因K流程顺畅就宣称Agent决策质量改善。
+
+
+### 本轮重新执行的检查与证据
+
+环境：Windows PowerShell、项目.venv Python3.12、已有.tools Node22/npm及node_modules。pytest通过conftest禁.env并使用tmp隔离库。浏览器启动器.cache/agent004k-final/preview.py在新库.cache/agent004k-final/preview-final.db执行Alembic upgrade head；启动前确认8023/5193空闲、新数据库不存在，Settings.env_file=None，明确Mock/空Key/零重试/关闭tracing，health核对Mock后运行。未连接个人服务或正式库。finally关闭隔离服务并删除临时Vite配置。
+
+| 实际命令 | 真实结果 |
+| --- | --- |
+| `.venv/Scripts/pytest.exe -q -rs` | **470 passed / 1 skipped / 1 warning，64.00s**；PG本地独立环境未配置而skip，既有故意非法model_copy序列化warning保留。[日志](../.cache/agent004k-final/pytest.txt)。 |
+| `.venv/Scripts/ruff.exe check --no-cache backend evals` / `format --check --no-cache backend evals` | 全通过，46 files格式符合。[check](../.cache/agent004k-final/ruff.txt)、[format](../.cache/agent004k-final/ruff-format.txt)。 |
+| frontend `npm run format:check` / `lint` / `typecheck` / `test` / `build` | 逐项检查退出0；**4 files / 96 tests passed，26.42s**。[格式](../.cache/agent004k-final/format-check.txt)、[lint](../.cache/agent004k-final/lint.txt)、[类型](../.cache/agent004k-final/typecheck.txt)、[测试](../.cache/agent004k-final/test.txt)、[构建](../.cache/agent004k-final/build.txt)。 |
+| `node e2e/smoke.mjs` | 主要闭环、来源/方向、审批与历史双尺寸通过；故障恢复fixture未启用，明确skip，不称本轮浏览器故障注入通过。[日志](../.cache/agent004k-final/smoke.mjs.txt)。 |
+| `node e2e/continuation-preview.mjs` | J双尺寸编辑/取消/提交/材料不足/父关系/旧Run保护通过。[日志](../.cache/agent004k-final/continuation-preview.mjs.txt)。 |
+| `node e2e/replenishment-preview.mjs` | K 1440/390 × 有/无原材料全通过：预填、键盘焦点、取消/编辑/空白/非法URL零写请求，主动提交仅1请求，新材料与来源/问题/约束、无parent_run_id、新Run与旧历史不变、Quest/偏好不变。[日志](../.cache/agent004k-final/replenishment-preview.mjs.txt)、[公开Mock结果](../.cache/agent004k-final/replenishment.json)。 |
+| `.venv/Scripts/python.exe evals/check_knowledge_g_history.py` | 22份历史证据哈希一致；只读保护检查，没有重放历史采样。[日志](../.cache/agent004k-final/history.txt)。 |
+
+助手重新观察本轮[移动恢复表单](../.cache/agent004k-final/K-edit-390-true.png)，字段/来源/约束/提交完整可见；自动化通过不等于用户已体验有原材料场景。没有阻断性失败。对照开始哈希确认.env、后端核心契约文件与用户预算练习字节不变；11个明确文件凭据模式扫描无匹配（不是全面密钥审计），忽略目录内原始数据/产物不提交。
+
+用户本轮已明确授权通过后commit/push，取代K初交付时的禁止提交快照。提交前将复核具体11路径的cached name-status/check/stat及完整staged diff；推送后核对本次SHA的push Actions终态/各Job，结果保存至.cache/agent004k-final/delivery-result.json并最终报告。此处不提前宣称CI成功，不为回填自身SHA再创建第二个提交。真实Qwen请求0；PG/完整容器/真实模型质量未在本机验证。M3穿插M2边界与剩余P0/P1见本日Backlog，下一项建议已有原材料场景人工体验及单独讨论无材料Quest问题，不自动实现。
+
+收尾文档检查：47个新增/变更段落本地链接目标存在，未逐一重查历史锚点；范围与明确11路径完全相同，保护哈希未变。本轮只追加人工反馈与真实证据，不将文档收尾冒称为再次应用测试。

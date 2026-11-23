@@ -233,7 +233,32 @@ export default function App() {
   const [materialLabel, setMaterialLabel] = useState("");
   const [materialUrl, setMaterialUrl] = useState("");
   const [direction, setDirection] = useState<ExplorationDirection | "">("");
-  const [energy, setEnergy] = useState<Energy>("low");
+  const [energy, setEnergy] = useState<Energy | "">("low");
+  const [replenishing, setReplenishing] = useState<Run | null>(null);
+  const exploreQuestion = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (page === "explore" && replenishing) exploreQuestion.current?.focus();
+  }, [page, replenishing]);
+  function startReplenishing(run: Run) {
+    const request = run.state.request;
+    setText(request.text);
+    setMaterial(request.learning_source?.text || "");
+    setMaterialLabel(request.learning_source?.label || "");
+    setMaterialUrl(request.learning_source?.url || "");
+    setMinutes(
+      request.available_minutes == null
+        ? ""
+        : String(request.available_minutes),
+    );
+    setBudget(request.budget == null ? "" : String(request.budget));
+    setEnergy(request.energy_level || "");
+    setDirection("knowledge");
+    setExploreRun(null);
+    setError("");
+    setNotice("");
+    setReplenishing(run);
+    setPage("explore");
+  }
   const [query, setQuery] = useState("");
   const [searchIds, setSearchIds] = useState<string[] | null>(null);
   const [category, setCategory] = useState("");
@@ -1218,11 +1243,73 @@ export default function App() {
                 </section>
               )}
               <section className="panel">
+                {replenishing && (
+                  <div
+                    className="flow-note"
+                    role="region"
+                    aria-label="补充材料再探索"
+                  >
+                    <h2>补充材料再探索</h2>
+                    <p>
+                      已带入原问题和用户材料，可以修改后再提交。下方问题、材料来源与约束将用于一次独立探索，原运行保持不变。
+                    </p>
+                    <p className="field-hint">
+                      材料由用户提供，未经独立核实；补充后仍可能无法形成答案。URL
+                      仅记录，不访问。
+                    </p>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        const original = replenishing;
+                        setReplenishing(null);
+                        openRun(original);
+                      }}
+                    >
+                      取消补充，返回原运行
+                    </button>
+                  </div>
+                )}
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    act(() =>
-                      generate({
+                    if (!text.trim() || (replenishing && !material.trim())) {
+                      setError("请填写问题，并补充非空白的原始材料后再探索。");
+                      return;
+                    }
+                    if (replenishing) {
+                      const length = (value: string) =>
+                        Array.from(value).length;
+                      if (
+                        length(text.trim()) > 12000 ||
+                        length(material) > 5000 ||
+                        length(materialLabel) > 200 ||
+                        length(materialUrl) > 2000
+                      ) {
+                        setError(
+                          "问题最多 12000 字符，材料最多 5000 字符，来源名称最多 200 字符，URL 最多 2000 字符。",
+                        );
+                        return;
+                      }
+                      if (materialUrl) {
+                        try {
+                          const url = new URL(materialUrl);
+                          if (
+                            !["http:", "https:"].includes(url.protocol) ||
+                            !url.host
+                          )
+                            throw new Error();
+                        } catch {
+                          setError(
+                            "参考 URL 请填写完整的 http/https 地址；这里只记录，不会访问。",
+                          );
+                          return;
+                        }
+                      }
+                    }
+                    act(async () => {
+                      await generate({
                         request_type: "explore",
                         text,
                         ...(direction
@@ -1239,9 +1326,10 @@ export default function App() {
                           : {}),
                         available_minutes: numeric(minutes),
                         budget: numeric(budget),
-                        energy_level: energy,
-                      }),
-                    );
+                        energy_level: energy || null,
+                      });
+                      setReplenishing(null);
+                    });
                   }}
                 >
                   <label>
@@ -1251,44 +1339,50 @@ export default function App() {
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       aria-label="今天想靠近哪份好奇？"
+                      ref={exploreQuestion}
                       maxLength={12000}
                       placeholder="使用档案里的关键词，如：海洋、星空…"
                     />
                   </label>
-                  <fieldset className="exploration-direction">
-                    <legend>这次想收获什么？（可选）</legend>
-                    <p className="field-hint">
-                      只用于本次探索，不会记为长期偏好，随时可以先放下。
-                    </p>
-                    <div className="direction-options">
-                      {directionOptions.map((option) => (
-                        <label key={option.value}>
-                          <input
-                            type="radio"
-                            name="exploration-direction"
-                            value={option.value}
-                            checked={direction === option.value}
-                            onChange={() => setDirection(option.value)}
-                          />
-                          <span>
-                            <strong>{option.title}</strong>
-                            <small>{option.text}</small>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                    {direction === "knowledge" && (
-                      <p className="field-hint" id="knowledge-boundary">
-                        目前星屿不联网，也不自动检索外部事实；可以帮你整理可验证的学习问题和路径，但不能保证直接给出经过核验的科学答案。
+                  {!replenishing && (
+                    <fieldset className="exploration-direction">
+                      <legend>这次想收获什么？（可选）</legend>
+                      <p className="field-hint">
+                        只用于本次探索，不会记为长期偏好，随时可以先放下。
                       </p>
-                    )}
-                  </fieldset>
+                      <div className="direction-options">
+                        {directionOptions.map((option) => (
+                          <label key={option.value}>
+                            <input
+                              type="radio"
+                              name="exploration-direction"
+                              value={option.value}
+                              checked={direction === option.value}
+                              onChange={() => setDirection(option.value)}
+                            />
+                            <span>
+                              <strong>{option.title}</strong>
+                              <small>{option.text}</small>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      {direction === "knowledge" && (
+                        <p className="field-hint" id="knowledge-boundary">
+                          目前星屿不联网，也不自动检索外部事实；可以帮你整理可验证的学习问题和路径，但不能保证直接给出经过核验的科学答案。
+                        </p>
+                      )}
+                    </fieldset>
+                  )}
                   {direction === "knowledge" && (
                     <div className="learning-input">
                       <label>
-                        有想一起看的材料吗？（选填）
+                        {replenishing
+                          ? "本次一起看的材料（必填）"
+                          : "有想一起看的材料吗？（选填）"}
                         <textarea
                           value={material}
+                          required={!!replenishing}
                           onChange={(e) => setMaterial(e.target.value)}
                           maxLength={5000}
                           rows={5}
@@ -1365,8 +1459,11 @@ export default function App() {
                         aria-label="当前精力（必选）"
                         aria-describedby="explore-energy-hint"
                         value={energy}
-                        onChange={(e) => setEnergy(e.target.value as Energy)}
+                        onChange={(e) =>
+                          setEnergy(e.target.value as Energy | "")
+                        }
                       >
+                        <option value="">未设置，沿用偏好</option>
                         {Object.entries(energyNames).map(([k, v]) => (
                           <option key={k} value={k}>
                             {v}
@@ -1396,7 +1493,7 @@ export default function App() {
                   </details>
                   <button className="primary" disabled={busy}>
                     <Compass size={17} />
-                    寻找小体验
+                    {replenishing ? "提交材料，重新探索" : "寻找小体验"}
                   </button>
                 </form>
               </section>
@@ -1421,6 +1518,7 @@ export default function App() {
                     key={exploreRun.run_id}
                     run={exploreRun}
                     onContinue={startContinuation}
+                    onReplenish={startReplenishing}
                   />
                   {exploreRun.state.request?.parent_run_id && (
                     <p className="field-hint">
@@ -1741,6 +1839,7 @@ export default function App() {
                         key={selectedRun.run_id}
                         run={selectedRun}
                         onContinue={startContinuation}
+                        onReplenish={startReplenishing}
                       />
                       {selectedRun.state.request?.parent_run_id && (
                         <p className="field-hint">
@@ -2453,13 +2552,33 @@ function Modal({
 export function LearningResult({
   run,
   onContinue,
+  onReplenish,
 }: {
   run: Run;
   onContinue?: (run: Run) => void;
+  onReplenish?: (run: Run) => void;
 }) {
   const [revealed, setRevealed] = useState(false);
   const card = run.state.learning_card;
-  if (!card || card.source_kind !== "user_supplied_unverified") return null;
+  if (!card) {
+    const request = run.state.request;
+    return onReplenish &&
+      run.request_type === "explore" &&
+      request?.request_type === "explore" &&
+      request.exploration_direction === "knowledge" &&
+      ["succeeded", "awaiting_decision", "decided", "failed"].includes(
+        run.status,
+      ) ? (
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => onReplenish(run)}
+      >
+        补充材料再探索
+      </button>
+    ) : null;
+  }
+  if (card.source_kind !== "user_supplied_unverified") return null;
   return (
     <section className="panel learning-card" aria-label="基于材料的知识微探索">
       <h3>从材料中发现</h3>

@@ -914,3 +914,68 @@ it("接续入口仅向用户交付可编辑问题，不自动调用API；接续�
     screen.queryByRole("button", { name: /^接着探索$/ }),
   ).not.toBeInTheDocument();
 });
+
+it.each(["succeeded", "awaiting_decision", "failed", "decided"])(
+  "无卡片知识结果 %s 依据结构显示补充入口，不依赖中文提示",
+  (status) => {
+    const run = {
+      run_id: "empty",
+      request_type: "explore",
+      status,
+      state: {
+        request: {
+          request_type: "explore",
+          text: "海洋",
+          exploration_direction: "knowledge",
+        },
+        learning_card: null,
+        questions: ["arbitrary message"],
+      },
+    } as Run;
+    const start = vi.fn();
+    mockedApi.mockClear();
+    const { rerender } = render(
+      <LearningResult run={run} onReplenish={start} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "补充材料再探索" }));
+    expect(start).toHaveBeenCalledWith(run);
+    expect(mockedApi).not.toHaveBeenCalled();
+    for (const changed of [
+      { ...run, status: "running" },
+      { ...run, request_type: "collect" },
+      {
+        ...run,
+        state: {
+          ...run.state,
+          request: {
+            ...run.state.request,
+            exploration_direction: "creative" as const,
+          },
+        },
+      },
+      {
+        ...run,
+        state: {
+          ...run.state,
+          learning_card: {
+            source_kind: "user_supplied_unverified",
+            uncertainties: [],
+            evidence_quote: "原用户材料",
+            quote_start: 0,
+            quote_end: 5,
+            takeaway: "上次AI解释",
+            interest_relevance: "海洋",
+            follow_up_question: "继续？",
+            source_label: null,
+            source_url: null,
+          } as Run["state"]["learning_card"],
+        },
+      },
+    ]) {
+      rerender(<LearningResult run={changed} onReplenish={start} />);
+      expect(
+        screen.queryByRole("button", { name: "补充材料再探索" }),
+      ).not.toBeInTheDocument();
+    }
+  },
+);
